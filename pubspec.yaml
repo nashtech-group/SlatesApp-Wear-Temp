@@ -38,6 +38,14 @@ dependencies:
   intl: ^0.18.0
   geolocator: ^9.0.2
   loader_skeleton: ^0.0.4
+
+   # Dependency Injection
+  get_it: ^7.2.0
+
+  # Network Information
+  connectivity_plus: ^3.0.3
+
+  flutter_secure_storage: ^9.2.2
     
 
 
