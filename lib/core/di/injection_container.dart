@@ -1,4 +1,5 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:slates_app_wear/domain/use_cases/attempt_login.dart';
 
 import '../../data/repositories/user_repository_impl.dart';
 import '../../domain/repositories/user_repository.dart';
@@ -29,5 +30,5 @@ void init() {
   injector.registerLazySingleton(() => GetUser(injector()));
   injector.registerLazySingleton(() => LoginUser(injector()));
   injector.registerLazySingleton(() => LogoutUser(injector()));
-
+  injector.registerLazySingleton(() => AttemptLogin(injector()));
 }
