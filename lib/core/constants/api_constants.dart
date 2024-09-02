@@ -1,6 +1,6 @@
 class ApiConstants {
-  static const String baseUrl = 'https://api.example.com';
-  static const String apiKey = 'YOUR_API_KEY_HERE';
+  static const String baseUrl = 'http:localhost:8080/api';
+  static const String apiKey = '23|cIpKFRc0xfSSiEj8Ohi898uGuaUKnzvpLXZxYWPodb905cac';
   static const String contentType = 'application/json';
   static const int timeoutDuration = 30; // in seconds
 

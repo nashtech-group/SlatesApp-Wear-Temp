@@ -11,3 +11,4 @@ class NetworkInfo {
     return connectivityResult != ConnectivityResult.none;
   }
 }
+

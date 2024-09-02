@@ -1,3 +1,5 @@
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
 import '../../data/repositories/user_repository_impl.dart';
 import '../../domain/repositories/user_repository.dart';
 import '../../domain/use_cases/get_user.dart';
@@ -12,17 +14,20 @@ import '../utils/network_info.dart';
 final GetIt injector = GetIt.instance;
 
 void init() {
-
   injector.registerLazySingleton(() => http.Client());
   injector.registerLazySingleton(() => Connectivity());
-  injector.registerLazySingleton<UserRepository>(() => UserRepositoryImpl(client: injector()));
+  injector.registerLazySingleton(() => NetworkInfo(injector()));
+  injector.registerLazySingleton(() => FlutterSecureStorage());
+
+  // Register repositories with the required client and network info arguments
+  injector.registerLazySingleton<UserRepository>(() => UserRepositoryImpl(
+        client: injector(),
+        networkInfo: injector(),
+      ));
 
   // Register use cases
   injector.registerLazySingleton(() => GetUser(injector()));
   injector.registerLazySingleton(() => LoginUser(injector()));
   injector.registerLazySingleton(() => LogoutUser(injector()));
-
-   // Register network info utility with Connectivity dependency
-  injector.registerLazySingleton(() => NetworkInfo(injector()));
 
 }
