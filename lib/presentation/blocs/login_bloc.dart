@@ -1,3 +1,4 @@
+import 'package:slates_app_wear/core/utils/logger.dart';
 import 'package:slates_app_wear/domain/use_cases/attempt_login.dart';
 import 'package:slates_app_wear/domain/use_cases/login_user.dart';
 import 'package:slates_app_wear/presentation/blocs/login_event.dart';
@@ -17,6 +18,7 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
       LoginSubmitted event, Emitter<LoginState> emit) async {
     emit(LoginLoading());
     try {
+      Logger.log('Login submitted for ${event.employeeId}');
       final success = await attemptLogin.call(event.employeeId, event.password);
       if (success) {
         emit(LoginSuccess());
@@ -24,6 +26,7 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
         emit(LoginFailure(error: 'Login failed. Please try again later'));
       }
     } catch (e) {
+      Logger.error('Login failed: $e');
       emit(LoginFailure(error: e.toString()));
     }
   }

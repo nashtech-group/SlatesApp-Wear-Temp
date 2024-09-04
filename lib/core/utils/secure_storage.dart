@@ -1,17 +1,40 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../../domain/entities/authorization.dart';
-import 'dart:convert';
+class SecureStorage {
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
-final storage = FlutterSecureStorage();
-
-Future<void> saveAuthorizationData(Authorization authorization) async {
-  await storage.write(key: 'authorization', value: jsonEncode(authorization.toJson()));
-}
-
-Future<Authorization?> loadAuthorizationData() async {
-  String? data = await storage.read(key: 'authorization');
-  if (data != null) {
-    return Authorization.fromJson(jsonDecode(data));
+  // Save data to secure storage
+  Future<void> saveData(String key, String value) async {
+    try {
+      await _secureStorage.write(key: key, value: value);
+    } catch (e) {
+      throw Exception('Failed to save data securely: $e');
+    }
   }
-  return null;
+
+  // Load data from secure storage
+  Future<String?> loadData(String key) async {
+    try {
+      return await _secureStorage.read(key: key);
+    } catch (e) {
+      throw Exception('Failed to load data securely: $e');
+    }
+  }
+
+  // Delete data from secure storage
+  Future<void> deleteData(String key) async {
+    try {
+      await _secureStorage.delete(key: key);
+    } catch (e) {
+      throw Exception('Failed to delete data securely: $e');
+    }
+  }
+
+  // Clear all data from secure storage
+  Future<void> clear() async {
+    try {
+      await _secureStorage.deleteAll();
+    } catch (e) {
+      throw Exception('Failed to clear secure storage: $e');
+    }
+  }
 }
