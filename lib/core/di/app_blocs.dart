@@ -6,11 +6,11 @@ import '../../domain/use_cases/attempt_login.dart';
 import '../../presentation/blocs/login_bloc.dart';
 import '../../data/repositories/user_repository_impl.dart';
 
-class AppBlocs extends StatelessWidget{
+class AppBlocs extends StatelessWidget {
   final Widget app;
 
   const AppBlocs({Key? key, required this.app}) : super(key: key);
-  
+
   @override
   Widget build(BuildContext context) {
     return MultiBlocProvider(
@@ -25,7 +25,6 @@ class AppBlocs extends StatelessWidget{
             ),
           ),
         ),
-        
       ],
       child: app,
     );

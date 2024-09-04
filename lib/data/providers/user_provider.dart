@@ -1,4 +1,5 @@
 import 'package:http/http.dart' as http;
+import 'package:slates_app_wear/core/utils/logger.dart';
 import 'dart:convert';
 import '../../core/constants/api_constants.dart';
 import '../../domain/entities/user.dart';
@@ -26,11 +27,12 @@ class UserProvider {
   Future<User> loginUser(String employeeId, String password) async {
     final response = await client.post(
       Uri.parse('${ApiConstants.baseUrl}/v1/login'),
-      headers: {'Accept': ApiConstants.contentType},
-      body: json.encode({
-        'identifier': employeeId,
-        'password': password,
-      }),
+      headers: {
+        'Accept': ApiConstants.contentType,
+        'Content-Type': ApiConstants.contentType
+      },
+      body: json.encode(
+          {'identifier': employeeId.trim(), 'password': password.trim()}),
     );
 
     if (response.statusCode == 200) {

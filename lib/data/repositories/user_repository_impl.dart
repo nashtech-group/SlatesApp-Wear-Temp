@@ -66,11 +66,13 @@ class UserRepositoryImpl implements UserRepository {
 
   @override
   Future<bool> attemptLogin(String employeeId, String password) async {
-    Logger.log('Attempting offline login for $employeeId');
+    Logger.log('Choosing login method for $employeeId');
     if (await networkInfo.isConnected) {
+          Logger.log('Live login attempt for $employeeId');
       await loginUser(employeeId, password);
       return true;
     } else {
+       Logger.log('Offline login attempt for $employeeId');
       final user = await loadUserData();
       if (user != null && user.employeeId == employeeId) {
         return true;
