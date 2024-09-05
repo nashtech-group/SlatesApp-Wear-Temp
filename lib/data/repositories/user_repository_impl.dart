@@ -1,6 +1,5 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
-import '../../domain/entities/user.dart';
+import '../../domain/entities/user/user.dart';
 import '../../domain/repositories/user_repository.dart';
 import '../../core/utils/network_info.dart';
 import '../../core/utils/secure_storage.dart';
@@ -42,10 +41,12 @@ class UserRepositoryImpl implements UserRepository {
     if (await networkInfo.isConnected) {
       try {
         final user = await userProvider.loginUser(employeeId, password);
-        await saveUserData(user); 
+
+        await saveUserData(user);
       } catch (e) {
         Logger.error('Login failed: $e');
-        throw ServerException(message: 'Failed to login.');
+        throw ServerException(
+            message: e is ServerException ? e.message : 'Failed to login.');
       }
     } else {
       throw ServerException(message: 'No internet connection.');
@@ -68,11 +69,11 @@ class UserRepositoryImpl implements UserRepository {
   Future<bool> attemptLogin(String employeeId, String password) async {
     Logger.log('Choosing login method for $employeeId');
     if (await networkInfo.isConnected) {
-          Logger.log('Live login attempt for $employeeId');
+      Logger.log('Live login attempt for $employeeId');
       await loginUser(employeeId, password);
       return true;
     } else {
-       Logger.log('Offline login attempt for $employeeId');
+      Logger.log('Offline login attempt for $employeeId');
       final user = await loadUserData();
       if (user != null && user.employeeId == employeeId) {
         return true;

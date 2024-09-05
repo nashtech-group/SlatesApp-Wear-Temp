@@ -1,9 +1,10 @@
 // presentation/screens/login_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../blocs/login_bloc.dart';
-import '../blocs/login_event.dart';
-import '../blocs/login_state.dart';
+import 'package:slates_app_wear/core/constants/app_constants.dart';
+import '../blocs/user/login_bloc.dart';
+import '../blocs/user/login_event.dart';
+import '../blocs/user/login_state.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -20,7 +21,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('SlatesApp Wear'),
+        title: const Text(AppConstants.appTitle),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -82,7 +83,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     ));
                               } else {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
+                                  const SnackBar(
                                       content: Text(
                                           'Please enter a valid Employee ID and a 4-digit PIN.')),
                                 );

@@ -2,7 +2,7 @@ import 'package:http/http.dart' as http;
 import 'package:slates_app_wear/core/utils/logger.dart';
 import 'dart:convert';
 import '../../core/constants/api_constants.dart';
-import '../../domain/entities/user.dart';
+import '../../domain/entities/user/user.dart';
 import '../../core/errors/exceptions.dart';
 
 class UserProvider {
@@ -29,17 +29,29 @@ class UserProvider {
       Uri.parse('${ApiConstants.baseUrl}/v1/login'),
       headers: {
         'Accept': ApiConstants.contentType,
-        'Content-Type': ApiConstants.contentType
+        'Content-Type': ApiConstants.contentType,
       },
-      body: json.encode(
-          {'identifier': employeeId.trim(), 'password': password.trim()}),
+      body: json.encode({
+        'identifier': employeeId.trim(),
+        'password': password.trim(),
+      }),
     );
 
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
       return User.fromJson(data);
+    } else if (response.statusCode == 401) {
+      throw ServerException(
+          message: 'Incorrect password or employee Id. Please try again.');
+    } else if (response.statusCode == 404) {
+      throw ServerException(message: 'User not registered. Please sign up.');
+    } else if (response.statusCode == 422) {
+      throw ServerException(message: 'Validation error. Check your inputs.');
+    } else if (response.statusCode == 429) {
+      throw ServerException(
+          message: 'Too many login attempts. Please try again later');
     } else {
-      throw ServerException(message: 'Failed to login.');
+      throw ServerException(message: 'An unexpected error occurred.');
     }
   }
 

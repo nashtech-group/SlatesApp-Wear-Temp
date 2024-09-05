@@ -1,9 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../domain/use_cases/login_user.dart';
-import '../../domain/use_cases/attempt_login.dart';
-import '../../presentation/blocs/login_bloc.dart';
+import '../../presentation/blocs/user/login_bloc.dart';
 import '../../data/repositories/user_repository_impl.dart';
 
 class AppBlocs extends StatelessWidget {
@@ -17,12 +15,7 @@ class AppBlocs extends StatelessWidget {
       providers: [
         BlocProvider<LoginBloc>(
           create: (context) => LoginBloc(
-            loginUser: LoginUser(
-              RepositoryProvider.of<UserRepositoryImpl>(context),
-            ),
-            attemptLogin: AttemptLogin(
-              RepositoryProvider.of<UserRepositoryImpl>(context),
-            ),
+            userRepository: RepositoryProvider.of<UserRepositoryImpl>(context),
           ),
         ),
       ],

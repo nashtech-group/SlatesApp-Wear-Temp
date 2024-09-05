@@ -6,14 +6,14 @@ class AppRoutes {
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
       case '/':
-        return MaterialPageRoute(builder: (_) => LoginScreen());
+        return MaterialPageRoute(builder: (_) => const LoginScreen());
       case '/menu':
         return MaterialPageRoute(builder: (_) => MenuScreen());
       default:
         return MaterialPageRoute(
             builder: (_) => Scaffold(
                   body: Center(
-                    child: Text('No route defins for ${settings.name}'),
+                    child: Text('No route defines for ${settings.name}'),
                   ),
                 ));
     }

@@ -1,4 +1,4 @@
-import '../entities/user.dart';
+import '../entities/user/user.dart';
 import '../repositories/user_repository.dart';
 
 class GetUser {
