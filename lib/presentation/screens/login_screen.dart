@@ -76,16 +76,23 @@ class _LoginScreenState extends State<LoginScreen> {
                           ? null // Disable the button while loading
                           : () {
                               if (_employeeId.isNotEmpty &&
-                                  _password.length == 4) {
-                                context.read<LoginBloc>().add(LoginSubmitted(
-                                      employeeId: _employeeId,
-                                      password: _password,
-                                    ));
+                                  _password.isNotEmpty) {
+                                if (_password.length == 4) {
+                                  context.read<LoginBloc>().add(LoginSubmitted(
+                                        employeeId: _employeeId,
+                                        password: _password,
+                                      ));
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content: Text('PIN must be 4 digits.')),
+                                  );
+                                }
                               } else {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                       content: Text(
-                                          'Please enter a valid Employee ID and a 4-digit PIN.')),
+                                          'Please enter employee ID & PIN.')),
                                 );
                               }
                             },
