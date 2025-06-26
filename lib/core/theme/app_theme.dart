@@ -46,7 +46,6 @@ class AppTheme {
       tertiary: accentCyan,
       surface: Colors.white,
       onSurface: darkGrey,
-      background: Color(0xFFFAFAFA),
       onBackground: darkGrey,
       error: errorRed,
       onError: Colors.white,
@@ -73,7 +72,7 @@ class AppTheme {
         backgroundColor: primaryTeal,
         foregroundColor: Colors.white,
         elevation: 2,
-        shadowColor: primaryTeal.withOpacity(0.3),
+        shadowColor: primaryTeal.withValues(alpha:0.3),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
@@ -82,6 +81,7 @@ class AppTheme {
           fontWeight: FontWeight.w600,
           fontFamily: 'Inter',
         ),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       ),
     ),
     
@@ -97,17 +97,34 @@ class AppTheme {
       ),
     ),
     
+    // Outlined button theme
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: primaryTeal,
+        side: const BorderSide(color: primaryTeal),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        textStyle: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          fontFamily: 'Inter',
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      ),
+    ),
+    
     // Input decoration theme
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: Colors.grey[50],
+      fillColor: const Color(0xFFF5F5F5),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: lightGrey),
+        borderSide: const BorderSide(color: lightGrey),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: lightGrey),
+        borderSide: const BorderSide(color: lightGrey),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
@@ -117,17 +134,25 @@ class AppTheme {
         borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: errorRed),
       ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: errorRed, width: 2),
+      ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      labelStyle: TextStyle(
+      labelStyle: const TextStyle(
+        color: mediumGrey,
+        fontFamily: 'Inter',
+      ),
+      hintStyle: const TextStyle(
         color: mediumGrey,
         fontFamily: 'Inter',
       ),
     ),
     
     // Card theme
-    cardTheme: CardTheme(
+    cardTheme: CardThemeData(
       elevation: 2,
-      shadowColor: Colors.black.withOpacity(0.1),
+      shadowColor: Colors.black.withValues(alpha:0.1),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
       ),
@@ -212,25 +237,26 @@ class AppTheme {
     
     // Checkbox theme
     checkboxTheme: CheckboxThemeData(
-      fillColor: MaterialStateProperty.resolveWith((states) {
-        if (states.contains(MaterialState.selected)) {
+      fillColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
           return primaryTeal;
         }
         return Colors.transparent;
       }),
-      checkColor: MaterialStateProperty.all(Colors.white),
+      checkColor: WidgetStateProperty.all(Colors.white),
+      side: const BorderSide(color: mediumGrey),
     ),
     
     // Switch theme
     switchTheme: SwitchThemeData(
-      thumbColor: MaterialStateProperty.resolveWith((states) {
-        if (states.contains(MaterialState.selected)) {
+      thumbColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
           return primaryTeal;
         }
         return mediumGrey;
       }),
-      trackColor: MaterialStateProperty.resolveWith((states) {
-        if (states.contains(MaterialState.selected)) {
+      trackColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
           return primaryTealLight;
         }
         return lightGrey;
@@ -261,7 +287,7 @@ class AppTheme {
     scaffoldBackgroundColor: const Color(0xFFFAFAFA),
     
     // Divider theme
-    dividerTheme: DividerThemeData(
+    dividerTheme: const DividerThemeData(
       color: lightGrey,
       thickness: 1,
     ),
@@ -287,7 +313,6 @@ class AppTheme {
       tertiary: accentCyan,
       surface: Color(0xFF1E1E1E),
       onSurface: Colors.white,
-      background: Color(0xFF121212),
       onBackground: Colors.white,
       error: Color(0xFFEF5350),
       onError: Colors.white,
@@ -314,7 +339,7 @@ class AppTheme {
         backgroundColor: primaryTealLight,
         foregroundColor: Colors.white,
         elevation: 2,
-        shadowColor: primaryTealLight.withOpacity(0.3),
+        shadowColor: primaryTealLight.withValues(alpha:0.3),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
@@ -323,6 +348,7 @@ class AppTheme {
           fontWeight: FontWeight.w600,
           fontFamily: 'Inter',
         ),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       ),
     ),
     
@@ -335,6 +361,23 @@ class AppTheme {
           fontWeight: FontWeight.w500,
           fontFamily: 'Inter',
         ),
+      ),
+    ),
+    
+    // Outlined button theme
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: primaryTealLight,
+        side: const BorderSide(color: primaryTealLight),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        textStyle: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          fontFamily: 'Inter',
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       ),
     ),
     
@@ -358,17 +401,25 @@ class AppTheme {
         borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: Color(0xFFEF5350)),
       ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFFEF5350), width: 2),
+      ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       labelStyle: const TextStyle(
+        color: Color(0xFFB0B0B0),
+        fontFamily: 'Inter',
+      ),
+      hintStyle: const TextStyle(
         color: Color(0xFFB0B0B0),
         fontFamily: 'Inter',
       ),
     ),
     
     // Card theme
-    cardTheme: CardTheme(
+    cardTheme: CardThemeData(
       elevation: 2,
-      shadowColor: Colors.black.withOpacity(0.3),
+      shadowColor: Colors.black.withValues(alpha:0.3),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
       ),
@@ -451,94 +502,61 @@ class AppTheme {
       ),
     ),
     
-    // Scaffold background
-    scaffoldBackgroundColor: const Color(0xFF121212),
-    
-    // Other theme components...
+    // Checkbox theme
     checkboxTheme: CheckboxThemeData(
-      fillColor: MaterialStateProperty.resolveWith((states) {
-        if (states.contains(MaterialState.selected)) {
+      fillColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
           return primaryTealLight;
         }
         return Colors.transparent;
       }),
-      checkColor: MaterialStateProperty.all(Colors.white),
+      checkColor: WidgetStateProperty.all(Colors.white),
+      side: const BorderSide(color: Color(0xFFB0B0B0)),
     ),
     
+    // Switch theme
     switchTheme: SwitchThemeData(
-      thumbColor: MaterialStateProperty.resolveWith((states) {
-        if (states.contains(MaterialState.selected)) {
+      thumbColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
           return primaryTealLight;
         }
-        return const Color(0xFF666666);
+        return const Color(0xFFB0B0B0);
       }),
-      trackColor: MaterialStateProperty.resolveWith((states) {
-        if (states.contains(MaterialState.selected)) {
-          return primaryTealDark;
+      trackColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return primaryTealLight.withValues(alpha:0.5);
         }
         return const Color(0xFF404040);
       }),
     ),
     
+    // Progress indicator theme
     progressIndicatorTheme: const ProgressIndicatorThemeData(
       color: primaryTealLight,
     ),
     
+    // Floating action button theme
     floatingActionButtonTheme: const FloatingActionButtonThemeData(
       backgroundColor: primaryTealLight,
       foregroundColor: Colors.white,
       elevation: 4,
     ),
     
+    // Bottom navigation bar theme
     bottomNavigationBarTheme: const BottomNavigationBarThemeData(
       backgroundColor: Color(0xFF1E1E1E),
       selectedItemColor: primaryTealLight,
-      unselectedItemColor: Color(0xFF666666),
+      unselectedItemColor: Color(0xFFB0B0B0),
       type: BottomNavigationBarType.fixed,
     ),
     
+    // Scaffold background
+    scaffoldBackgroundColor: const Color(0xFF121212),
+    
+    // Divider theme
     dividerTheme: const DividerThemeData(
       color: Color(0xFF404040),
       thickness: 1,
     ),
   );
-  
-  // ===================
-  // HELPER METHODS
-  // ====================
-  
-  /// Get theme based on brightness
-  static ThemeData getTheme(Brightness brightness) {
-    return brightness == Brightness.dark ? darkTheme : lightTheme;
-  }
-  
-  /// Get primary color based on brightness
-  static Color getPrimaryColor(Brightness brightness) {
-    return brightness == Brightness.dark ? primaryTealLight : primaryTeal;
-  }
-  
-  /// Get logo text color based on theme
-  static Color getLogoTextColor(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return isDark ? Colors.white : darkGrey;
-  }
-  
-  /// Get surface color with elevation
-  static Color getSurfaceColor(BuildContext context, {double elevation = 0}) {
-    final theme = Theme.of(context);
-    final baseColor = theme.colorScheme.surface;
-    
-    if (elevation == 0) return baseColor;
-    
-    final overlayColor = theme.brightness == Brightness.dark 
-        ? Colors.white 
-        : Colors.black;
-    
-    final opacity = (elevation / 24).clamp(0.0, 1.0) * 0.05;
-    return Color.alphaBlend(
-      overlayColor.withOpacity(opacity),
-      baseColor,
-    );
-  }
 }
-

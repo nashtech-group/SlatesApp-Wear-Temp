@@ -1,60 +1,78 @@
 import 'package:flutter/material.dart';
-import 'package:slates_app_wear/core/constants/app_constants.dart';
-import 'package:slates_app_wear/app_blocs.dart';
-import 'package:slates_app_wear/app_repositories.dart';
-import 'package:slates_app_wear/routes/app_routes.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import 'app_repositories.dart';
+import 'app_blocs.dart';
+import 'core/theme/app_theme.dart';
+import 'core/theme/theme_provider.dart';
+import 'core/constants/route_constants.dart';
+import 'routes/app_routes.dart';
 
-void main() {
-  runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize theme provider
+  final themeProvider = ThemeProvider();
+  await themeProvider.initTheme();
+  
+  // Set preferred orientations for wearable
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+  ]);
+  
+  // Configure system UI for wearable
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+      systemNavigationBarColor: Colors.transparent,
+    ),
+  );
+  
+  runApp(
+    ChangeNotifierProvider.value(
+      value: themeProvider,
+      child: const SlatesApp(),
+    ),
+  );
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class SlatesApp extends StatelessWidget {
+  const SlatesApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return AppRepositories(
-      appBlocs: AppBlocs(
-        app: MaterialApp(
-          title: AppConstants.appTitle,
-        
-          onGenerateRoute: AppRoutes.generateRoute,
-          initialRoute: '/',
-        ),
-      ),
-    );
-  }
-}
-
-class MenuScreen extends StatefulWidget {
-  @override
-  _MenuScreenState createState() => _MenuScreenState();
-}
-
-class _MenuScreenState extends State<MenuScreen> {
-  int _selectedIndex = 1;
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-
-    //Handle navigation to different screens based index
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(AppConstants.appTitle),
-      ),
-      body: Center(
-        child: Text(
-          'Selected page index: $_selectedIndex',
-          style: const TextStyle(fontSize: 24),
-        ),
-      ),
-
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        return AppRepositories(
+          appBlocs: AppBlocs(
+            app: MaterialApp(
+              title: 'SlatesApp Wear',
+              debugShowCheckedModeBanner: false,
+              
+              // Theme configuration
+              theme: AppTheme.lightTheme,
+              darkTheme: AppTheme.darkTheme,
+              themeMode: themeProvider.themeMode,
+              
+              // Navigation
+              initialRoute: RouteConstants.splash,
+              onGenerateRoute: AppRoutes.generateRoute,
+              
+              // Builder for global configurations
+              builder: (context, child) {
+                // Configure text scale factor for wearable
+                return MediaQuery(
+                  data: MediaQuery.of(context).copyWith(
+                    textScaleFactor: MediaQuery.of(context).textScaleFactor.clamp(0.8, 1.2),
+                  ),
+                  child: child!,
+                );
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 }

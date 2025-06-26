@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:slates_app_wear/blocs/auth_bloc/auth_bloc.dart';
 import 'package:slates_app_wear/core/constants/route_constants.dart';
-import 'package:slates_app_wear/data/presentation/pages/login_screen.dart';
-import 'package:slates_app_wear/data/presentation/pages/menu_screen.dart';
+import 'package:slates_app_wear/data/presentation/screens/auth/login_screen.dart';
+import 'package:slates_app_wear/data/presentation/screens/home_screen.dart';
+import 'package:slates_app_wear/data/presentation/screens/splash_screen.dart';
 
 class AppRoutes {
   static Route<dynamic> generateRoute(RouteSettings settings) {
