@@ -1,0 +1,98 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:slates_app_wear/blocs/auth_bloc/auth_bloc.dart';
+import 'package:slates_app_wear/core/constants/route_constants.dart';
+import 'package:slates_app_wear/data/presentation/pages/login_screen.dart';
+import 'package:slates_app_wear/data/presentation/pages/menu_screen.dart';
+
+class AppRoutes {
+  static Route<dynamic> generateRoute(RouteSettings settings) {
+    switch (settings.name) {
+      case RouteConstants.splash:
+        return MaterialPageRoute(
+          builder: (_) => const SplashScreen(),
+          settings: settings,
+        );
+
+      case RouteConstants.login:
+        return MaterialPageRoute(
+          builder: (_) => const LoginScreen(),
+          settings: settings,
+        );
+
+      case RouteConstants.home:
+        return MaterialPageRoute(
+          builder: (context) => BlocBuilder<AuthBloc, AuthState>(
+            builder: (context, state) {
+              if (state is AuthAuthenticated || state is AuthOfflineMode) {
+                return const HomeScreen();
+              } else {
+                return const LoginScreen();
+              }
+            },
+          ),
+          settings: settings,
+        );
+
+      case RouteConstants.unauthorized:
+        return MaterialPageRoute(
+          builder: (_) => const ErrorScreen(
+            title: 'Unauthorized',
+            message: 'You are not authorized to access this page.',
+          ),
+          settings: settings,
+        );
+
+      case RouteConstants.serverError:
+        return MaterialPageRoute(
+          builder: (_) => const ErrorScreen(
+            title: 'Server Error',
+            message: 'Something went wrong. Please try again later.',
+          ),
+          settings: settings,
+        );
+
+      case RouteConstants.notFound:
+      default:
+        return MaterialPageRoute(
+          builder: (_) => const ErrorScreen(
+            title: 'Page Not Found',
+            message: 'The page you are looking for does not exist.',
+          ),
+          settings: settings,
+        );
+    }
+  }
+
+  /// Helper method to navigate and clear stack
+  static void navigateAndClearStack(BuildContext context, String routeName) {
+    Navigator.of(context).pushNamedAndRemoveUntil(
+      routeName,
+      (Route<dynamic> route) => false,
+    );
+  }
+
+  /// Helper method to navigate and replace current route
+  static void navigateAndReplace(BuildContext context, String routeName) {
+    Navigator.of(context).pushReplacementNamed(routeName);
+  }
+
+  /// Helper method to check if user can access route based on authentication
+  static bool canAccessRoute(String routeName, AuthState authState) {
+    // Public routes that don't require authentication
+    const publicRoutes = [
+      RouteConstants.splash,
+      RouteConstants.login,
+      RouteConstants.notFound,
+      RouteConstants.unauthorized,
+      RouteConstants.serverError,
+    ];
+
+    if (publicRoutes.contains(routeName)) {
+      return true;
+    }
+
+    // Protected routes require authentication
+    return authState is AuthAuthenticated || authState is AuthOfflineMode;
+  }
+}

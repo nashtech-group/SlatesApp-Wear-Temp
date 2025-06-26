@@ -1,4 +1,4 @@
-package com.example.slates_app_wear
+package com.nashtech.slates_app_wear
 
 import io.flutter.embedding.android.FlutterActivity
 
