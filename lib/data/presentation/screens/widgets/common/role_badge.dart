@@ -79,7 +79,7 @@ class RoleBadge extends StatelessWidget {
       case 'guard':
         backgroundColor = isActive 
             ? AppTheme.successGreen 
-            : (isDark ? AppTheme.successGreen.withOpacity(0.2) : AppTheme.lightGrey);
+            : (isDark ? AppTheme.successGreen.withValues(alpha:0.2) : AppTheme.lightGrey);
         textColor = isActive 
             ? Colors.white 
             : (isDark ? AppTheme.successGreen : AppTheme.mediumGrey);
@@ -90,7 +90,7 @@ class RoleBadge extends StatelessWidget {
       case 'admin':
         backgroundColor = isActive 
             ? AppTheme.primaryTeal 
-            : (isDark ? AppTheme.primaryTeal.withOpacity(0.2) : AppTheme.lightGrey);
+            : (isDark ? AppTheme.primaryTeal.withValues(alpha:0.2) : AppTheme.lightGrey);
         textColor = isActive 
             ? Colors.white 
             : (isDark ? AppTheme.primaryTeal : AppTheme.mediumGrey);
@@ -101,7 +101,7 @@ class RoleBadge extends StatelessWidget {
       case 'manager':
         backgroundColor = isActive 
             ? AppTheme.secondaryBlue 
-            : (isDark ? AppTheme.secondaryBlue.withOpacity(0.2) : AppTheme.lightGrey);
+            : (isDark ? AppTheme.secondaryBlue.withValues(alpha:0.2) : AppTheme.lightGrey);
         textColor = isActive 
             ? Colors.white 
             : (isDark ? AppTheme.secondaryBlue : AppTheme.mediumGrey);
@@ -112,7 +112,7 @@ class RoleBadge extends StatelessWidget {
       case 'supervisor':
         backgroundColor = isActive 
             ? AppTheme.warningOrange 
-            : (isDark ? AppTheme.warningOrange.withOpacity(0.2) : AppTheme.lightGrey);
+            : (isDark ? AppTheme.warningOrange.withValues(alpha:0.2) : AppTheme.lightGrey);
         textColor = isActive 
             ? Colors.white 
             : (isDark ? AppTheme.warningOrange : AppTheme.mediumGrey);
@@ -123,7 +123,7 @@ class RoleBadge extends StatelessWidget {
       case 'executive':
         backgroundColor = isActive 
             ? AppTheme.accentCyan 
-            : (isDark ? AppTheme.accentCyan.withOpacity(0.2) : AppTheme.lightGrey);
+            : (isDark ? AppTheme.accentCyan.withValues(alpha:0.2) : AppTheme.lightGrey);
         textColor = isActive 
             ? Colors.white 
             : (isDark ? AppTheme.accentCyan : AppTheme.mediumGrey);
@@ -134,7 +134,7 @@ class RoleBadge extends StatelessWidget {
       default:
         backgroundColor = isActive 
             ? theme.colorScheme.primary 
-            : (isDark ? theme.colorScheme.primary.withOpacity(0.2) : AppTheme.lightGrey);
+            : (isDark ? theme.colorScheme.primary.withValues(alpha:0.2) : AppTheme.lightGrey);
         textColor = isActive 
             ? Colors.white 
             : (isDark ? theme.colorScheme.primary : AppTheme.mediumGrey);
@@ -364,7 +364,7 @@ extension RoleBadgeTheme on BuildContext {
     
     if (!isActive) {
       return isDark 
-          ? theme.colorScheme.surfaceVariant 
+          ? theme.colorScheme.surfaceContainerHighest 
           : AppTheme.lightGrey;
     }
     
@@ -372,8 +372,7 @@ extension RoleBadgeTheme on BuildContext {
   }
 
   Color getRoleTextColor(String role, {bool isActive = true, bool outlined = false}) {
-    final theme = Theme.of(this);
-    final isDark = theme.brightness == Brightness.dark;
+    Theme.of(this);
     
     if (outlined || !isActive) {
       return RoleBadge.getRoleColor(role, isActive: true);

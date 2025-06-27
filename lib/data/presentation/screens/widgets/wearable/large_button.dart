@@ -39,12 +39,12 @@ class LargeButton extends StatelessWidget {
           backgroundColor: backgroundColor ?? Theme.of(context).colorScheme.primary,
           foregroundColor: textColor ?? Colors.white,
           disabledBackgroundColor: Theme.of(context).colorScheme.outline,
-          disabledForegroundColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.38),
+          disabledForegroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha:0.38),
           shape: RoundedRectangleBorder(
             borderRadius: borderRadius ?? BorderRadius.circular(16),
           ),
           elevation: 2,
-          shadowColor: Theme.of(context).shadowColor.withOpacity(0.2),
+          shadowColor: Theme.of(context).shadowColor.withValues(alpha:0.2),
           textStyle: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,

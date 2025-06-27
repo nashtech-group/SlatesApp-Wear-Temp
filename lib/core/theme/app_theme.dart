@@ -559,4 +559,61 @@ class AppTheme {
       thickness: 1,
     ),
   );
+
+  // ====================
+  // HELPER METHODS
+  // ====================
+  
+  /// Get theme based on brightness
+  static ThemeData getTheme(Brightness brightness) {
+    return brightness == Brightness.dark ? darkTheme : lightTheme;
+  }
+  
+  /// Get primary color based on brightness
+  static Color getPrimaryColor(Brightness brightness) {
+    return brightness == Brightness.dark ? primaryTealLight : primaryTeal;
+  }
+  
+  /// Get logo text color based on theme
+  static Color getLogoTextColor(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? Colors.white : darkGrey;
+  }
+  
+  /// Get brand gradient decoration
+  static BoxDecoration getBrandGradientDecoration({
+    BorderRadius? borderRadius,
+    List<Color>? colors,
+  }) {
+    return BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: colors ?? [
+          primaryTeal,
+          primaryTealLight,
+          secondaryBlue.withValues(alpha: 0.8),
+        ],
+      ),
+      borderRadius: borderRadius ?? BorderRadius.circular(16),
+    );
+  }
+  
+  /// Get surface color with elevation
+  static Color getSurfaceColor(BuildContext context, {double elevation = 0}) {
+    final theme = Theme.of(context);
+    final baseColor = theme.colorScheme.surface;
+    
+    if (elevation == 0) return baseColor;
+    
+    final overlayColor = theme.brightness == Brightness.dark 
+        ? Colors.white 
+        : Colors.black;
+    
+    final opacity = (elevation / 24).clamp(0.0, 1.0) * 0.05;
+    return Color.alphaBlend(
+      overlayColor.withValues(alpha: opacity),
+      baseColor,
+    );
+  }
 }

@@ -9,6 +9,7 @@ import 'package:slates_app_wear/core/theme/app_theme.dart';
 import 'package:slates_app_wear/core/theme/theme_provider.dart';
 import 'package:slates_app_wear/data/models/user/user_model.dart';
 import 'package:slates_app_wear/data/presentation/screens/error_screen.dart';
+import 'package:slates_app_wear/data/presentation/screens/widgets/common/app_logo.dart';
 import 'package:slates_app_wear/data/presentation/screens/widgets/common/role_badge.dart';
 import 'package:slates_app_wear/data/presentation/screens/widgets/wearable/large_button.dart';
 
@@ -161,7 +162,7 @@ class _LoadingHomeScreen extends StatelessWidget {
         centerTitle: true,
       ),
       body: Container(
-        decoration: AppTheme.getBrandGradientDecoration(context),
+        decoration: AppTheme.getBrandGradientDecoration(),
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,

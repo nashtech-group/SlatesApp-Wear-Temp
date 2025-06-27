@@ -118,7 +118,7 @@ class ErrorScreen extends StatelessWidget {
               Text(
                 message,
                 style: theme.textTheme.bodyLarge?.copyWith(
-                  color: theme.colorScheme.onSurface.withOpacity(0.7),
+                  color: theme.colorScheme.onSurface.withValues(alpha:0.7),
                   height: 1.5,
                 ),
                 textAlign: TextAlign.center,
@@ -133,10 +133,10 @@ class ErrorScreen extends StatelessWidget {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.errorContainer.withOpacity(0.1),
+                    color: theme.colorScheme.errorContainer.withValues(alpha:0.1),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: theme.colorScheme.error.withOpacity(0.3),
+                      color: theme.colorScheme.error.withValues(alpha:0.3),
                     ),
                   ),
                   child: Text(
@@ -234,10 +234,10 @@ class ErrorScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+        color: theme.colorScheme.surfaceVariant.withValues(alpha:0.3),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: theme.colorScheme.outline.withOpacity(0.2),
+          color: theme.colorScheme.outline.withValues(alpha:0.2),
         ),
       ),
       child: Column(
@@ -270,13 +270,13 @@ class ErrorScreen extends StatelessWidget {
   Color _getIconBackgroundColor(ThemeData theme) {
     switch (title.toLowerCase()) {
       case 'unauthorized':
-        return theme.colorScheme.errorContainer.withOpacity(0.1);
+        return theme.colorScheme.errorContainer.withValues(alpha:0.1);
       case 'network error':
-        return theme.colorScheme.primaryContainer.withOpacity(0.1);
+        return theme.colorScheme.primaryContainer.withValues(alpha:0.1);
       case 'offline mode':
-        return theme.colorScheme.secondaryContainer.withOpacity(0.1);
+        return theme.colorScheme.secondaryContainer.withValues(alpha:0.1);
       default:
-        return theme.colorScheme.surfaceVariant.withOpacity(0.3);
+        return theme.colorScheme.surfaceVariant.withValues(alpha:0.3);
     }
   }
 
@@ -418,7 +418,7 @@ class ErrorScreen extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.errorContainer.withOpacity(0.1),
+                  color: Theme.of(context).colorScheme.errorContainer.withValues(alpha:0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
