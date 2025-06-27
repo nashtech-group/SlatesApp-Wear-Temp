@@ -3,12 +3,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:slates_app_wear/blocs/auth_bloc/auth_bloc.dart';
 import 'package:slates_app_wear/core/auth_manager.dart';
+import 'package:slates_app_wear/core/constants/route_constants.dart';
 import 'package:slates_app_wear/core/theme/app_theme.dart';
 import 'package:slates_app_wear/core/utils/validators.dart';
-import '../../widgets/wearable/large_button.dart';
-import '../../widgets/wearable/pin_input.dart';
-import '../../widgets/wearable/wearable_scaffold.dart';
-import '../../widgets/common/app_logo.dart';
+import 'package:slates_app_wear/data/presentation/screens/widgets/common/app_logo.dart';
+import 'package:slates_app_wear/data/presentation/screens/widgets/wearable/large_button.dart';
+import 'package:slates_app_wear/data/presentation/screens/widgets/wearable/pin_input.dart';
+import 'package:slates_app_wear/data/presentation/screens/widgets/wearable/wearable_scaffold.dart';
+
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
