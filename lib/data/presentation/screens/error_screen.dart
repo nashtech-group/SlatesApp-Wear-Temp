@@ -1,7 +1,6 @@
-// lib/data/presentation/pages/error_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:slates_app_wear/core/constants/app_constants.dart';
-import 'package:slates_app_wear/core/theme/app_theme.dart';
 
 class ErrorScreen extends StatelessWidget {
   final String title;
@@ -14,7 +13,7 @@ class ErrorScreen extends StatelessWidget {
   final VoidCallback? onCustomAction;
 
   const ErrorScreen({
-    Key? key,
+    super.key,
     required this.title,
     required this.message,
     this.errorCode,
@@ -23,7 +22,7 @@ class ErrorScreen extends StatelessWidget {
     this.onGoHome,
     this.actionButtonText,
     this.onCustomAction,
-  }) : super(key: key);
+  });
 
   // Predefined error screens for common cases
   static const ErrorScreen notFound = ErrorScreen(
@@ -69,11 +68,10 @@ class ErrorScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     
     return Scaffold(
       appBar: AppBar(
-        title: Text(AppConstants.appTitle),
+        title: const Text(AppConstants.appTitle),
         backgroundColor: theme.colorScheme.surface,
         foregroundColor: theme.colorScheme.onSurface,
         elevation: 0,
@@ -234,7 +232,7 @@ class ErrorScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withValues(alpha:0.3),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha:0.3),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: theme.colorScheme.outline.withValues(alpha:0.2),
@@ -276,7 +274,7 @@ class ErrorScreen extends StatelessWidget {
       case 'offline mode':
         return theme.colorScheme.secondaryContainer.withValues(alpha:0.1);
       default:
-        return theme.colorScheme.surfaceVariant.withValues(alpha:0.3);
+        return theme.colorScheme.surfaceContainerHighest.withValues(alpha:0.3);
     }
   }
 
