@@ -9,7 +9,7 @@ class LargeButton extends StatelessWidget {
   final Color? backgroundColor;
   final Color? textColor;
   final double? width;
-  final double height;
+  final double? height;
   final BorderRadius? borderRadius;
 
   const LargeButton({
@@ -21,15 +21,23 @@ class LargeButton extends StatelessWidget {
     this.backgroundColor,
     this.textColor,
     this.width,
-    this.height = 56,
+    this.height,
     this.borderRadius,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final isWearable = screenSize.width < 250 || screenSize.height < 250;
+    
+    final buttonHeight = height ?? (isWearable ? 44.0 : 56.0);
+    final fontSize = isWearable ? 12.0 : 16.0;
+    final iconSize = isWearable ? 16.0 : 20.0;
+    final horizontalPadding = isWearable ? 12.0 : 24.0;
+    
     return SizedBox(
       width: width ?? double.infinity,
-      height: height,
+      height: buttonHeight,
       child: ElevatedButton(
         onPressed: isLoading ? null : () {
           HapticFeedback.lightImpact();
@@ -39,22 +47,23 @@ class LargeButton extends StatelessWidget {
           backgroundColor: backgroundColor ?? Theme.of(context).colorScheme.primary,
           foregroundColor: textColor ?? Colors.white,
           disabledBackgroundColor: Theme.of(context).colorScheme.outline,
-          disabledForegroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha:0.38),
+          disabledForegroundColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.38),
           shape: RoundedRectangleBorder(
-            borderRadius: borderRadius ?? BorderRadius.circular(16),
+            borderRadius: borderRadius ?? BorderRadius.circular(isWearable ? 12 : 16),
           ),
           elevation: 2,
-          shadowColor: Theme.of(context).shadowColor.withValues(alpha:0.2),
+          shadowColor: Theme.of(context).shadowColor.withOpacity(0.2),
+          padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
           textStyle: TextStyle(
-            fontSize: 16,
+            fontSize: fontSize,
             fontWeight: FontWeight.w600,
             fontFamily: Theme.of(context).textTheme.labelLarge?.fontFamily,
           ),
         ),
         child: isLoading
             ? SizedBox(
-                width: 24,
-                height: 24,
+                width: iconSize,
+                height: iconSize,
                 child: CircularProgressIndicator(
                   strokeWidth: 2.5,
                   valueColor: AlwaysStoppedAnimation<Color>(
@@ -67,10 +76,16 @@ class LargeButton extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (icon != null) ...[
-                    Icon(icon, size: 20),
-                    const SizedBox(width: 8),
+                    Icon(icon, size: iconSize),
+                    SizedBox(width: isWearable ? 4 : 8),
                   ],
-                  Text(text),
+                  Flexible(
+                    child: Text(
+                      text,
+                      style: TextStyle(fontSize: fontSize),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ],
               ),
       ),

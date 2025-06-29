@@ -27,13 +27,10 @@ class _PinInputFieldState extends State<PinInputField> {
   void initState() {
     super.initState();
     _focusNodes = List.generate(widget.length, (index) => FocusNode());
-    _controllers =
-        List.generate(widget.length, (index) => TextEditingController());
+    _controllers = List.generate(widget.length, (index) => TextEditingController());
 
-    // Listen to main controller changes
     widget.controller.addListener(_onMainControllerChanged);
 
-    // Auto-focus first field
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focusNodes[0].requestFocus();
     });
@@ -62,17 +59,14 @@ class _PinInputFieldState extends State<PinInputField> {
     if (value.isNotEmpty && value.length == 1) {
       HapticFeedback.lightImpact();
 
-      // Update main controller
       final currentText = widget.controller.text.padRight(widget.length, ' ');
       final chars = currentText.split('');
       chars[index] = value;
       widget.controller.text = chars.join('').replaceAll(' ', '');
 
-      // Move to next field
       if (index < widget.length - 1) {
         _focusNodes[index + 1].requestFocus();
       } else {
-        // All digits entered
         _focusNodes[index].unfocus();
         if (widget.controller.text.length == widget.length) {
           HapticFeedback.mediumImpact();
@@ -80,7 +74,6 @@ class _PinInputFieldState extends State<PinInputField> {
         }
       }
     } else if (value.isEmpty) {
-      // Handle backspace
       final currentText = widget.controller.text;
       if (index < currentText.length) {
         final chars = currentText.split('');
@@ -88,7 +81,6 @@ class _PinInputFieldState extends State<PinInputField> {
         widget.controller.text = chars.join('');
       }
 
-      // Move to previous field
       if (index > 0) {
         _focusNodes[index - 1].requestFocus();
       }
@@ -97,21 +89,29 @@ class _PinInputFieldState extends State<PinInputField> {
 
   @override
   Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final isWearable = screenSize.width < 250 || screenSize.height < 250;
+    
+    final pinBoxSize = isWearable ? 40.0 : 56.0;
+    final fontSize = isWearable ? 16.0 : 20.0;
+    final spacing = isWearable ? 6.0 : 12.0;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'PIN',
           style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
+            fontWeight: FontWeight.w500,
+            fontSize: isWearable ? 12 : 14,
+          ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: isWearable ? 6 : 8),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: List.generate(widget.length, (index) {
             return SizedBox(
-              width: 56,
+              width: pinBoxSize,
               child: TextFormField(
                 controller: _controllers[index],
                 focusNode: _focusNodes[index],
@@ -120,18 +120,19 @@ class _PinInputFieldState extends State<PinInputField> {
                 maxLength: 1,
                 obscureText: widget.obscureText,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                  fontWeight: FontWeight.bold,
+                  fontSize: fontSize,
+                ),
                 decoration: InputDecoration(
                   counterText: '',
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(isWearable ? 8 : 12),
                     borderSide: BorderSide(
                       color: Theme.of(context).colorScheme.outline,
                     ),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(isWearable ? 8 : 12),
                     borderSide: BorderSide(
                       color: Theme.of(context).colorScheme.primary,
                       width: 2,
@@ -139,7 +140,9 @@ class _PinInputFieldState extends State<PinInputField> {
                   ),
                   filled: true,
                   fillColor: Theme.of(context).colorScheme.surface,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                  contentPadding: EdgeInsets.symmetric(
+                    vertical: isWearable ? 8 : 16,
+                  ),
                 ),
                 inputFormatters: [
                   FilteringTextInputFormatter.digitsOnly,
