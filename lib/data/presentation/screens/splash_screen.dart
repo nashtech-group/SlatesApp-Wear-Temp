@@ -4,7 +4,6 @@ import 'package:slates_app_wear/blocs/auth_bloc/auth_bloc.dart';
 import 'package:slates_app_wear/core/constants/app_constants.dart';
 import 'package:slates_app_wear/core/constants/route_constants.dart';
 
-
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -18,6 +17,71 @@ class _SplashScreenState extends State<SplashScreen>
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
   late Animation<Offset> _slideAnimation;
+
+  // Responsive properties
+  bool get _isWearable {
+    final size = MediaQuery.of(context).size;
+    return size.width < 250 || size.height < 250;
+  }
+
+  bool get _isSmallMobile {
+    final size = MediaQuery.of(context).size;
+    return size.width < 360 || size.height < 640;
+  }
+
+  double get _logoSize {
+    if (_isWearable) return 80.0;
+    if (_isSmallMobile) return 120.0;
+    return 150.0;
+  }
+
+  double get _logoRadius {
+    if (_isWearable) return 20.0;
+    if (_isSmallMobile) return 25.0;
+    return 30.0;
+  }
+
+  double get _logoPadding {
+    if (_isWearable) return 12.0;
+    if (_isSmallMobile) return 16.0;
+    return 20.0;
+  }
+
+  double get _spacing {
+    if (_isWearable) return 16.0;
+    if (_isSmallMobile) return 24.0;
+    return 40.0;
+  }
+
+  double get _smallSpacing {
+    if (_isWearable) return 4.0;
+    if (_isSmallMobile) return 6.0;
+    return 8.0;
+  }
+
+  double get _loadingSpacing {
+    if (_isWearable) return 24.0;
+    if (_isSmallMobile) return 40.0;
+    return 60.0;
+  }
+
+  double get _loadingSize {
+    if (_isWearable) return 20.0;
+    if (_isSmallMobile) return 25.0;
+    return 30.0;
+  }
+
+  double get _loadingStrokeWidth {
+    if (_isWearable) return 2.0;
+    if (_isSmallMobile) return 2.5;
+    return 3.0;
+  }
+
+  EdgeInsets get _containerPadding {
+    if (_isWearable) return const EdgeInsets.all(8.0);
+    if (_isSmallMobile) return const EdgeInsets.all(12.0);
+    return const EdgeInsets.all(16.0);
+  }
 
   @override
   void initState() {
@@ -88,6 +152,8 @@ class _SplashScreenState extends State<SplashScreen>
       },
       child: Scaffold(
         body: Container(
+          width: double.infinity,
+          height: double.infinity,
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
@@ -99,102 +165,224 @@ class _SplashScreenState extends State<SplashScreen>
             ),
           ),
           child: SafeArea(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Logo with animations
-                AnimatedBuilder(
-                  animation: _animationController,
-                  builder: (context, child) {
-                    return FadeTransition(
-                      opacity: _fadeAnimation,
-                      child: ScaleTransition(
-                        scale: _scaleAnimation,
-                        child: Container(
-                          width: 150,
-                          height: 150,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(30),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha:0.2),
-                                blurRadius: 20,
-                                offset: const Offset(0, 10),
-                              ),
-                            ],
-                          ),
-                          padding: const EdgeInsets.all(20),
-                          child: Image.asset(
-                            'assets/images/applogo.png',
-                            fit: BoxFit.contain,
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                
-                const SizedBox(height: 40),
-                
-                // App title with slide animation
-                SlideTransition(
-                  position: _slideAnimation,
-                  child: FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: Column(
-                      children: [
-                        Text(
-                          AppConstants.appTitle,
-                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          AppConstants.appSubtitle,
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: Colors.white.withValues(alpha:0.9),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                
-                const SizedBox(height: 60),
-                
-                // Loading indicator
-                FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: const SizedBox(
-                    width: 30,
-                    height: 30,
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      strokeWidth: 3,
-                    ),
-                  ),
-                ),
-                
-                const SizedBox(height: 20),
-                
-                // Loading text
-                FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: Text(
-                    'Initializing...',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.white.withValues(alpha:0.8),
-                    ),
-                  ),
-                ),
-              ],
+            child: SizedBox(
+              width: double.infinity,
+              height: double.infinity,
+              child: Padding(
+                padding: _containerPadding,
+                child: _buildResponsiveLayout(),
+              ),
             ),
           ),
         ),
       ),
     );
+  }
+
+  Widget _buildResponsiveLayout() {
+    if (_isWearable) {
+      return _buildWearableLayout();
+    }
+    return _buildMobileLayout();
+  }
+
+  Widget _buildWearableLayout() {
+    return SingleChildScrollView(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          minHeight: MediaQuery.of(context).size.height -
+              MediaQuery.of(context).padding.top -
+              MediaQuery.of(context).padding.bottom -
+              16,
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Compact logo
+            _buildAnimatedLogo(),
+
+            SizedBox(height: _spacing * 0.8),
+
+            // Compact title
+            _buildAnimatedTitle(),
+
+            SizedBox(height: _loadingSpacing * 0.8),
+
+            // Loading indicator
+            _buildLoadingIndicator(),
+
+            SizedBox(height: _spacing * 0.5),
+
+            // Loading text
+            _buildLoadingText(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMobileLayout() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        // Logo with animations
+        _buildAnimatedLogo(),
+
+        SizedBox(height: _spacing),
+
+        // App title with slide animation
+        _buildAnimatedTitle(),
+
+        SizedBox(height: _loadingSpacing),
+
+        // Loading indicator
+        _buildLoadingIndicator(),
+
+        SizedBox(height: _spacing * 0.5),
+
+        // Loading text
+        _buildLoadingText(),
+      ],
+    );
+  }
+
+  Widget _buildAnimatedLogo() {
+    return AnimatedBuilder(
+      animation: _animationController,
+      builder: (context, child) {
+        return FadeTransition(
+          opacity: _fadeAnimation,
+          child: ScaleTransition(
+            scale: _scaleAnimation,
+            child: Container(
+              width: _logoSize,
+              height: _logoSize,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(_logoRadius),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: _isWearable ? 10 : 20,
+                    offset: Offset(0, _isWearable ? 5 : 10),
+                  ),
+                ],
+              ),
+              padding: EdgeInsets.all(_logoPadding),
+              child: Image.asset(
+                'assets/images/applogo.png',
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildAnimatedTitle() {
+    return SlideTransition(
+      position: _slideAnimation,
+      child: FadeTransition(
+        opacity: _fadeAnimation,
+        child: Column(
+          children: [
+            Text(
+              AppConstants.appTitle,
+              style: _getHeadlineStyle(),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: _smallSpacing),
+            Text(
+              AppConstants.appSubtitle,
+              style: _getSubtitleStyle(),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingIndicator() {
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: SizedBox(
+        width: _loadingSize,
+        height: _loadingSize,
+        child: CircularProgressIndicator(
+          valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+          strokeWidth: _loadingStrokeWidth,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingText() {
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: Text(
+        'Initializing...',
+        style: _getLoadingTextStyle(),
+        textAlign: TextAlign.center,
+      ),
+    );
+  }
+
+  TextStyle? _getHeadlineStyle() {
+    if (_isWearable) {
+      return Theme.of(context).textTheme.titleLarge?.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          );
+    } else if (_isSmallMobile) {
+      return Theme.of(context).textTheme.headlineSmall?.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 22,
+          );
+    } else {
+      return Theme.of(context).textTheme.headlineMedium?.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          );
+    }
+  }
+
+  TextStyle? _getSubtitleStyle() {
+    if (_isWearable) {
+      return Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: Colors.white.withValues(alpha: 0.9),
+            fontSize: 12,
+          );
+    } else if (_isSmallMobile) {
+      return Theme.of(context).textTheme.titleSmall?.copyWith(
+            color: Colors.white.withValues(alpha: 0.9),
+            fontSize: 14,
+          );
+    } else {
+      return Theme.of(context).textTheme.titleMedium?.copyWith(
+            color: Colors.white.withValues(alpha: 0.9),
+          );
+    }
+  }
+
+  TextStyle? _getLoadingTextStyle() {
+    if (_isWearable) {
+      return Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Colors.white.withValues(alpha: 0.8),
+            fontSize: 10,
+          );
+    } else if (_isSmallMobile) {
+      return Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Colors.white.withValues(alpha: 0.8),
+            fontSize: 12,
+          );
+    } else {
+      return Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: Colors.white.withValues(alpha: 0.8),
+          );
+    }
   }
 }

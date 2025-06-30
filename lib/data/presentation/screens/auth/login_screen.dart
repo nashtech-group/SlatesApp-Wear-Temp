@@ -11,7 +11,6 @@ import 'package:slates_app_wear/data/presentation/screens/widgets/wearable/large
 import 'package:slates_app_wear/data/presentation/screens/widgets/wearable/pin_input.dart';
 import 'package:slates_app_wear/data/presentation/screens/widgets/wearable/wearable_scaffold.dart';
 
-
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -19,17 +18,59 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin {
+class _LoginScreenState extends State<LoginScreen>
+    with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _identifierController = TextEditingController();
   final _pinController = TextEditingController();
-  
+
   bool _isGuardLogin = true;
   bool _rememberDevice = true;
   String? _lastEmployeeId;
-  
+
   late AnimationController _slideController;
   late Animation<Offset> _slideAnimation;
+
+  // Responsive properties
+  bool get _isWearable {
+    final size = MediaQuery.of(context).size;
+    return size.width < 250 || size.height < 250;
+  }
+
+  bool get _isSmallMobile {
+    final size = MediaQuery.of(context).size;
+    return size.width < 360 || size.height < 640;
+  }
+
+  double get _responsivePadding {
+    if (_isWearable) return 8.0;
+    if (_isSmallMobile) return 16.0;
+    return 20.0;
+  }
+
+  double get _responsiveSpacing {
+    if (_isWearable) return 8.0;
+    if (_isSmallMobile) return 12.0;
+    return 16.0;
+  }
+
+  double get _responsiveLargeSpacing {
+    if (_isWearable) return 16.0;
+    if (_isSmallMobile) return 20.0;
+    return 24.0;
+  }
+
+  double get _logoSize {
+    if (_isWearable) return 60.0;
+    if (_isSmallMobile) return 80.0;
+    return 120.0;
+  }
+
+  double get _buttonHeight {
+    if (_isWearable) return 36.0;
+    if (_isSmallMobile) return 44.0;
+    return 48.0;
+  }
 
   @override
   void initState() {
@@ -43,7 +84,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
-    
+
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.1),
       end: Offset.zero,
@@ -51,7 +92,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       parent: _slideController,
       curve: Curves.easeOutCubic,
     ));
-    
+
     _slideController.forward();
   }
 
@@ -92,69 +133,199 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
         },
         builder: (context, state) {
           final isLoading = state is AuthLoading || state is AuthRefreshing;
-          
+
           return Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Theme.of(context).colorScheme.primary.withValues(alpha:0.1),
+                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                   Theme.of(context).colorScheme.surface,
                 ],
               ),
             ),
             child: SafeArea(
               child: Padding(
-                padding: const EdgeInsets.all(20.0),
+                padding: EdgeInsets.all(_responsivePadding),
                 child: Form(
                   key: _formKey,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // App Logo with theme-aware text
-                      SlideTransition(
-                        position: _slideAnimation,
-                        child: const AppLogo(size: 120),
-                      ),
-                      
-                      const SizedBox(height: 32),
-                      
-                      // Login Type Toggle
-                      _buildLoginTypeToggle(),
-                      const SizedBox(height: 24),
-                      
-                      // Identifier Input
-                      _buildIdentifierInput(),
-                      const SizedBox(height: 16),
-                      
-                      // PIN Input
-                      _buildPinInput(),
-                      const SizedBox(height: 20),
-                      
-                      // Remember Device (for guards only)
-                      if (_isGuardLogin) _buildRememberDevice(),
-                      
-                      const SizedBox(height: 28),
-                      
-                      // Login Button
-                      _buildLoginButton(isLoading),
-                      
-                      // Offline Status Indicator
-                      if (state is AuthOfflineMode) _buildOfflineIndicator(),
-                      
-                      // Clear Saved Data Button (for guards)
-                      if (_isGuardLogin && _lastEmployeeId != null) ...[
-                        const SizedBox(height: 16),
-                        _buildClearDataButton(),
-                      ],
-                    ],
-                  ),
+                  child: _buildResponsiveLayout(context, state, isLoading),
                 ),
               ),
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildResponsiveLayout(
+      BuildContext context, AuthState state, bool isLoading) {
+    if (_isWearable) {
+      return _buildWearableLayout(context, state, isLoading);
+    }
+    return _buildMobileLayout(context, state, isLoading);
+  }
+
+  Widget _buildWearableLayout(
+      BuildContext context, AuthState state, bool isLoading) {
+    return SingleChildScrollView(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Compact logo
+          SlideTransition(
+            position: _slideAnimation,
+            child: AppLogo(size: _logoSize),
+          ),
+
+          SizedBox(height: _responsiveSpacing),
+
+          // Compact login type toggle
+          _buildCompactLoginTypeToggle(),
+          SizedBox(height: _responsiveSpacing),
+
+          // Identifier input
+          _buildResponsiveIdentifierInput(),
+          SizedBox(height: _responsiveSpacing * 0.75),
+
+          // PIN input
+          _buildResponsivePinInput(),
+          SizedBox(height: _responsiveSpacing),
+
+          // Remember device (guards only)
+          if (_isGuardLogin) _buildCompactRememberDevice(),
+
+          SizedBox(height: _responsiveLargeSpacing),
+
+          // Login button
+          _buildResponsiveLoginButton(isLoading),
+
+          // Status indicators
+          if (state is AuthOfflineMode)
+            Padding(
+              padding: EdgeInsets.only(top: _responsiveSpacing),
+              child: _buildCompactOfflineIndicator(),
+            ),
+
+          // Clear data button (guards)
+          if (_isGuardLogin && _lastEmployeeId != null)
+            Padding(
+              padding: EdgeInsets.only(top: _responsiveSpacing * 0.5),
+              child: _buildCompactClearDataButton(),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileLayout(
+      BuildContext context, AuthState state, bool isLoading) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        // App Logo
+        SlideTransition(
+          position: _slideAnimation,
+          child: AppLogo(size: _logoSize),
+        ),
+
+        SizedBox(height: _responsiveLargeSpacing * 1.3),
+
+        // Login Type Toggle
+        _buildLoginTypeToggle(),
+        SizedBox(height: _responsiveLargeSpacing),
+
+        // Identifier Input
+        _buildResponsiveIdentifierInput(),
+        SizedBox(height: _responsiveSpacing),
+
+        // PIN Input
+        _buildResponsivePinInput(),
+        SizedBox(height: _responsiveLargeSpacing * 0.8),
+
+        // Remember Device (for guards only)
+        if (_isGuardLogin) _buildRememberDevice(),
+
+        SizedBox(height: _responsiveLargeSpacing * 1.2),
+
+        // Login Button
+        _buildResponsiveLoginButton(isLoading),
+
+        // Offline Status Indicator
+        if (state is AuthOfflineMode) _buildOfflineIndicator(),
+
+        // Clear Saved Data Button (for guards)
+        if (_isGuardLogin && _lastEmployeeId != null) ...[
+          SizedBox(height: _responsiveSpacing),
+          _buildClearDataButton(),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildCompactLoginTypeToggle() {
+    return Container(
+      height: _buttonHeight,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(_isWearable ? 20 : 30),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(child: _buildToggleOption(true, 'Guard', Icons.security)),
+          Expanded(
+              child: _buildToggleOption(
+                  false, 'Admin', Icons.admin_panel_settings)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildToggleOption(bool isGuard, String label, IconData icon) {
+    final isSelected = _isGuardLogin == isGuard;
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        setState(() => _isGuardLogin = isGuard);
+      },
+      child: Container(
+        height: _buttonHeight,
+        decoration: BoxDecoration(
+          color: isSelected
+              ? Theme.of(context).colorScheme.primary
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(_isWearable ? 20 : 30),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: _isWearable ? 14 : 18,
+              color: isSelected
+                  ? Colors.white
+                  : Theme.of(context).colorScheme.onSurface,
+            ),
+            if (!_isWearable) ...[
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: isSelected
+                          ? Colors.white
+                          : Theme.of(context).colorScheme.onSurface,
+                      fontWeight: FontWeight.w600,
+                      fontSize: _isSmallMobile ? 13 : null,
+                    ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -165,7 +336,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(30),
         border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withValues(alpha:0.2),
+          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
         ),
       ),
       child: Row(
@@ -177,9 +348,12 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                 setState(() => _isGuardLogin = true);
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 14),
+                padding:
+                    EdgeInsets.symmetric(vertical: _isSmallMobile ? 12 : 14),
                 decoration: BoxDecoration(
-                  color: _isGuardLogin ? Theme.of(context).colorScheme.primary : Colors.transparent,
+                  color: _isGuardLogin
+                      ? Theme.of(context).colorScheme.primary
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(30),
                 ),
                 child: Row(
@@ -187,20 +361,21 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                   children: [
                     Icon(
                       Icons.security,
-                      size: 18,
-                      color: _isGuardLogin 
-                          ? Colors.white 
+                      size: _isSmallMobile ? 16 : 18,
+                      color: _isGuardLogin
+                          ? Colors.white
                           : Theme.of(context).colorScheme.onSurface,
                     ),
                     const SizedBox(width: 8),
                     Text(
                       'Guard',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: _isGuardLogin 
-                            ? Colors.white 
-                            : Theme.of(context).colorScheme.onSurface,
-                        fontWeight: FontWeight.w600,
-                      ),
+                            color: _isGuardLogin
+                                ? Colors.white
+                                : Theme.of(context).colorScheme.onSurface,
+                            fontWeight: FontWeight.w600,
+                            fontSize: _isSmallMobile ? 13 : null,
+                          ),
                     ),
                   ],
                 ),
@@ -214,9 +389,12 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                 setState(() => _isGuardLogin = false);
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 14),
+                padding:
+                    EdgeInsets.symmetric(vertical: _isSmallMobile ? 12 : 14),
                 decoration: BoxDecoration(
-                  color: !_isGuardLogin ? Theme.of(context).colorScheme.primary : Colors.transparent,
+                  color: !_isGuardLogin
+                      ? Theme.of(context).colorScheme.primary
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(30),
                 ),
                 child: Row(
@@ -224,20 +402,21 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                   children: [
                     Icon(
                       Icons.admin_panel_settings,
-                      size: 18,
-                      color: !_isGuardLogin 
-                          ? Colors.white 
+                      size: _isSmallMobile ? 16 : 18,
+                      color: !_isGuardLogin
+                          ? Colors.white
                           : Theme.of(context).colorScheme.onSurface,
                     ),
                     const SizedBox(width: 8),
                     Text(
                       'Admin',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: !_isGuardLogin 
-                            ? Colors.white 
-                            : Theme.of(context).colorScheme.onSurface,
-                        fontWeight: FontWeight.w600,
-                      ),
+                            color: !_isGuardLogin
+                                ? Colors.white
+                                : Theme.of(context).colorScheme.onSurface,
+                            fontWeight: FontWeight.w600,
+                            fontSize: _isSmallMobile ? 13 : null,
+                          ),
                     ),
                   ],
                 ),
@@ -249,28 +428,41 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     );
   }
 
-  Widget _buildIdentifierInput() {
+  Widget _buildResponsiveIdentifierInput() {
     return TextFormField(
       controller: _identifierController,
       enabled: !(_isGuardLogin && _lastEmployeeId != null && _rememberDevice),
       decoration: InputDecoration(
         labelText: _isGuardLogin ? 'Employee ID' : 'Email Address',
         hintText: _isGuardLogin ? 'ABC-123' : 'user@company.com',
+        labelStyle: _isWearable ? Theme.of(context).textTheme.bodySmall : null,
+        hintStyle: _isWearable ? Theme.of(context).textTheme.bodySmall : null,
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: _isWearable ? 12 : 16,
+          vertical: _isWearable ? 8 : 16,
+        ),
         prefixIcon: Icon(
           _isGuardLogin ? Icons.badge : Icons.email_outlined,
           color: Theme.of(context).colorScheme.primary,
+          size: _isWearable ? 18 : 24,
         ),
-        suffixIcon: (_isGuardLogin && _lastEmployeeId != null && _rememberDevice)
-            ? Icon(
-                Icons.lock_outline,
-                color: Theme.of(context).colorScheme.outline,
-                size: 20,
-              )
-            : null,
+        suffixIcon:
+            (_isGuardLogin && _lastEmployeeId != null && _rememberDevice)
+                ? Icon(
+                    Icons.lock_outline,
+                    color: Theme.of(context).colorScheme.outline,
+                    size: _isWearable ? 16 : 20,
+                  )
+                : null,
       ),
-      style: Theme.of(context).textTheme.bodyLarge,
-      textCapitalization: _isGuardLogin ? TextCapitalization.characters : TextCapitalization.none,
-      keyboardType: _isGuardLogin ? TextInputType.text : TextInputType.emailAddress,
+      style: _isWearable
+          ? Theme.of(context).textTheme.bodySmall
+          : Theme.of(context).textTheme.bodyLarge,
+      textCapitalization: _isGuardLogin
+          ? TextCapitalization.characters
+          : TextCapitalization.none,
+      keyboardType:
+          _isGuardLogin ? TextInputType.text : TextInputType.emailAddress,
       validator: _isGuardLogin ? Validators.employeeId : Validators.email,
       onChanged: (value) {
         if (_isGuardLogin) {
@@ -286,7 +478,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     );
   }
 
-  Widget _buildPinInput() {
+  Widget _buildResponsivePinInput() {
     return PinInputField(
       controller: _pinController,
       onCompleted: (pin) {
@@ -294,6 +486,39 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
           _handleLogin();
         }
       },
+    );
+  }
+
+  Widget _buildCompactRememberDevice() {
+    return Row(
+      children: [
+        Transform.scale(
+          scale: _isWearable ? 0.8 : 1.0,
+          child: Checkbox(
+            value: _rememberDevice,
+            onChanged: (value) {
+              HapticFeedback.lightImpact();
+              setState(() {
+                _rememberDevice = value ?? false;
+                if (!_rememberDevice) {
+                  _identifierController.clear();
+                  _lastEmployeeId = null;
+                } else if (_lastEmployeeId != null) {
+                  _identifierController.text = _lastEmployeeId!;
+                }
+              });
+            },
+          ),
+        ),
+        Expanded(
+          child: Text(
+            'Remember device',
+            style: _isWearable
+                ? Theme.of(context).textTheme.bodySmall
+                : Theme.of(context).textTheme.bodyMedium,
+          ),
+        ),
+      ],
     );
   }
 
@@ -318,14 +543,16 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
         Expanded(
           child: Text(
             'Remember this device',
-            style: Theme.of(context).textTheme.bodyMedium,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontSize: _isSmallMobile ? 13 : null,
+                ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildLoginButton(bool isLoading) {
+  Widget _buildResponsiveLoginButton(bool isLoading) {
     return LargeButton(
       text: 'Sign In',
       onPressed: isLoading ? null : _handleLogin,
@@ -335,15 +562,53 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     );
   }
 
+  Widget _buildCompactOfflineIndicator() {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: _isWearable ? 8 : 16,
+        vertical: _isWearable ? 4 : 10,
+      ),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.errorContainer,
+        borderRadius: BorderRadius.circular(_isWearable ? 8 : 12),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.error.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.wifi_off,
+            size: _isWearable ? 12 : 18,
+            color: Theme.of(context).colorScheme.onErrorContainer,
+          ),
+          SizedBox(width: _isWearable ? 4 : 8),
+          Text(
+            _isWearable ? 'Offline' : 'Offline Mode Active',
+            style: (_isWearable
+                    ? Theme.of(context).textTheme.bodySmall
+                    : Theme.of(context).textTheme.bodySmall)
+                ?.copyWith(
+              color: Theme.of(context).colorScheme.onErrorContainer,
+              fontWeight: FontWeight.w500,
+              fontSize: _isWearable ? 10 : null,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildOfflineIndicator() {
     return Container(
-      margin: const EdgeInsets.only(top: 16),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      margin: EdgeInsets.only(top: _responsiveSpacing),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.errorContainer,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Theme.of(context).colorScheme.error.withValues(alpha:0.3),
+          color: Theme.of(context).colorScheme.error.withValues(alpha: 0.3),
         ),
       ),
       child: Row(
@@ -358,11 +623,39 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
           Text(
             'Offline Mode Active',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onErrorContainer,
-              fontWeight: FontWeight.w500,
-            ),
+                  color: Theme.of(context).colorScheme.onErrorContainer,
+                  fontWeight: FontWeight.w500,
+                  fontSize: _isSmallMobile ? 12 : null,
+                ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCompactClearDataButton() {
+    return TextButton.icon(
+      onPressed: _clearSavedData,
+      style: TextButton.styleFrom(
+        padding: EdgeInsets.symmetric(
+          horizontal: _isWearable ? 8 : 16,
+          vertical: _isWearable ? 4 : 8,
+        ),
+      ),
+      icon: Icon(
+        Icons.delete_outline,
+        size: _isWearable ? 12 : 16,
+        color: Theme.of(context).colorScheme.error,
+      ),
+      label: Text(
+        _isWearable ? 'Clear' : 'Clear Saved Data',
+        style: (_isWearable
+                ? Theme.of(context).textTheme.bodySmall
+                : Theme.of(context).textTheme.bodySmall)
+            ?.copyWith(
+          color: Theme.of(context).colorScheme.error,
+          fontSize: _isWearable ? 10 : null,
+        ),
       ),
     );
   }
@@ -378,8 +671,9 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       label: Text(
         'Clear Saved Data',
         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: Theme.of(context).colorScheme.error,
-        ),
+              color: Theme.of(context).colorScheme.error,
+              fontSize: _isSmallMobile ? 12 : null,
+            ),
       ),
     );
   }
@@ -387,22 +681,22 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   void _handleLogin() {
     if (_formKey.currentState?.validate() ?? false) {
       HapticFeedback.mediumImpact();
-      
+
       final identifier = _identifierController.text.trim();
       final pin = _pinController.text.trim();
-      
+
       context.read<AuthBloc>().add(
-        LoginEvent(
-          identifier: identifier,
-          password: pin,
-        ),
-      );
+            LoginEvent(
+              identifier: identifier,
+              password: pin,
+            ),
+          );
     }
   }
 
   void _clearSavedData() async {
     HapticFeedback.mediumImpact();
-    
+
     await AuthManager().clearAll();
     setState(() {
       _lastEmployeeId = null;
@@ -410,7 +704,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       _pinController.clear();
       _rememberDevice = true;
     });
-    
+
     _showSuccessSnackBar('Saved data cleared successfully');
   }
 
@@ -419,21 +713,30 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       SnackBar(
         content: Row(
           children: [
-            Icon(Icons.error_outline, color: Colors.white, size: 20),
-            const SizedBox(width: 12),
+            Icon(
+              Icons.error_outline,
+              color: Colors.white,
+              size: _isWearable ? 16 : 20,
+            ),
+            SizedBox(width: _isWearable ? 8 : 12),
             Expanded(
               child: Text(
                 message,
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: _isWearable ? 12 : 14,
+                ),
               ),
             ),
           ],
         ),
         backgroundColor: Theme.of(context).colorScheme.error,
-        duration: const Duration(seconds: 4),
+        duration: Duration(seconds: _isWearable ? 3 : 4),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(_isWearable ? 8 : 12),
+        ),
+        margin: EdgeInsets.all(_isWearable ? 8 : 16),
       ),
     );
   }
@@ -443,12 +746,19 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       SnackBar(
         content: Row(
           children: [
-            Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
-            const SizedBox(width: 12),
+            Icon(
+              Icons.check_circle_outline,
+              color: Colors.white,
+              size: _isWearable ? 16 : 20,
+            ),
+            SizedBox(width: _isWearable ? 8 : 12),
             Expanded(
               child: Text(
                 message,
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: _isWearable ? 12 : 14,
+                ),
               ),
             ),
           ],
@@ -456,8 +766,10 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
         backgroundColor: AppTheme.successGreen,
         duration: const Duration(seconds: 3),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(_isWearable ? 8 : 12),
+        ),
+        margin: EdgeInsets.all(_isWearable ? 8 : 16),
       ),
     );
   }
