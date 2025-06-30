@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 class ResponsiveUtils {
   final BuildContext context;
   late final Size _screenSize;
-
+  
   ResponsiveUtils(this.context) {
     _screenSize = MediaQuery.of(context).size;
   }
@@ -13,19 +13,19 @@ class ResponsiveUtils {
   // ====================
   // DEVICE DETECTION
   // ====================
-
+  
   /// Check if current device is a wearable (smartwatch)
   bool get isWearable => _screenSize.width < 250 || _screenSize.height < 250;
-
+  
   /// Check if current device is a small mobile phone
   bool get isSmallMobile => _screenSize.width < 360 || _screenSize.height < 640;
-
+  
   /// Check if current device is a tablet
   bool get isTablet => _screenSize.width > 768;
-
+  
   /// Check if current device has a round screen (common on smartwatches)
   bool get isRoundScreen => _screenSize.width == _screenSize.height;
-
+  
   /// Get device type as enum for easier switching
   DeviceType get deviceType {
     if (isWearable) return DeviceType.wearable;
@@ -37,7 +37,7 @@ class ResponsiveUtils {
   // ====================
   // RESPONSIVE SPACING
   // ====================
-
+  
   /// Get standard padding based on device type
   double get padding {
     switch (deviceType) {
@@ -51,7 +51,7 @@ class ResponsiveUtils {
         return 24.0;
     }
   }
-
+  
   /// Get small spacing between elements
   double get smallSpacing {
     switch (deviceType) {
@@ -65,7 +65,7 @@ class ResponsiveUtils {
         return 10.0;
     }
   }
-
+  
   /// Get medium spacing between elements
   double get mediumSpacing {
     switch (deviceType) {
@@ -79,7 +79,7 @@ class ResponsiveUtils {
         return 20.0;
     }
   }
-
+  
   /// Get large spacing between sections
   double get largeSpacing {
     switch (deviceType) {
@@ -93,7 +93,7 @@ class ResponsiveUtils {
         return 32.0;
     }
   }
-
+  
   /// Get extra large spacing for major sections
   double get extraLargeSpacing {
     switch (deviceType) {
@@ -111,7 +111,7 @@ class ResponsiveUtils {
   // ====================
   // RESPONSIVE SIZING
   // ====================
-
+  
   /// Get logo size based on device type
   double get logoSize {
     switch (deviceType) {
@@ -125,7 +125,7 @@ class ResponsiveUtils {
         return 150.0;
     }
   }
-
+  
   /// Get splash screen logo size (typically larger)
   double get splashLogoSize {
     switch (deviceType) {
@@ -139,7 +139,7 @@ class ResponsiveUtils {
         return 200.0;
     }
   }
-
+  
   /// Get button height based on device type
   double get buttonHeight {
     switch (deviceType) {
@@ -153,7 +153,7 @@ class ResponsiveUtils {
         return 52.0;
     }
   }
-
+  
   /// Get icon size based on device type
   double get iconSize {
     switch (deviceType) {
@@ -167,7 +167,7 @@ class ResponsiveUtils {
         return 20.0;
     }
   }
-
+  
   /// Get large icon size
   double get largeIconSize {
     switch (deviceType) {
@@ -181,7 +181,7 @@ class ResponsiveUtils {
         return 28.0;
     }
   }
-
+  
   /// Get border radius based on device type
   double get borderRadius {
     switch (deviceType) {
@@ -195,7 +195,7 @@ class ResponsiveUtils {
         return 20.0;
     }
   }
-
+  
   /// Get large border radius
   double get largeBorderRadius {
     switch (deviceType) {
@@ -213,7 +213,7 @@ class ResponsiveUtils {
   // ====================
   // RESPONSIVE TEXT SCALING
   // ====================
-
+  
   /// Get scaled font size
   double getScaledFontSize(double baseFontSize) {
     switch (deviceType) {
@@ -227,7 +227,7 @@ class ResponsiveUtils {
         return baseFontSize * 1.1;
     }
   }
-
+  
   /// Get responsive headline text style
   TextStyle? getHeadlineStyle({
     Color? color,
@@ -236,7 +236,7 @@ class ResponsiveUtils {
   }) {
     final theme = Theme.of(context);
     TextStyle? baseStyle;
-
+    
     switch (deviceType) {
       case DeviceType.wearable:
         baseStyle = theme.textTheme.titleLarge;
@@ -251,14 +251,14 @@ class ResponsiveUtils {
         baseStyle = theme.textTheme.headlineLarge;
         break;
     }
-
+    
     return baseStyle?.copyWith(
       color: color,
       fontWeight: fontWeight ?? FontWeight.bold,
       fontSize: baseFontSize != null ? getScaledFontSize(baseFontSize) : null,
     );
   }
-
+  
   /// Get responsive title text style
   TextStyle? getTitleStyle({
     Color? color,
@@ -267,7 +267,7 @@ class ResponsiveUtils {
   }) {
     final theme = Theme.of(context);
     TextStyle? baseStyle;
-
+    
     switch (deviceType) {
       case DeviceType.wearable:
         baseStyle = theme.textTheme.titleSmall;
@@ -282,14 +282,14 @@ class ResponsiveUtils {
         baseStyle = theme.textTheme.headlineSmall;
         break;
     }
-
+    
     return baseStyle?.copyWith(
       color: color,
       fontWeight: fontWeight,
       fontSize: baseFontSize != null ? getScaledFontSize(baseFontSize) : null,
     );
   }
-
+  
   /// Get responsive body text style
   TextStyle? getBodyStyle({
     Color? color,
@@ -298,7 +298,7 @@ class ResponsiveUtils {
   }) {
     final theme = Theme.of(context);
     TextStyle? baseStyle;
-
+    
     switch (deviceType) {
       case DeviceType.wearable:
         baseStyle = theme.textTheme.bodySmall;
@@ -313,14 +313,14 @@ class ResponsiveUtils {
         baseStyle = theme.textTheme.titleSmall;
         break;
     }
-
+    
     return baseStyle?.copyWith(
       color: color,
       fontWeight: fontWeight,
       fontSize: baseFontSize != null ? getScaledFontSize(baseFontSize) : null,
     );
   }
-
+  
   /// Get responsive caption text style
   TextStyle? getCaptionStyle({
     Color? color,
@@ -329,7 +329,7 @@ class ResponsiveUtils {
   }) {
     final theme = Theme.of(context);
     TextStyle? baseStyle;
-
+    
     switch (deviceType) {
       case DeviceType.wearable:
         baseStyle = theme.textTheme.bodySmall?.copyWith(fontSize: 10);
@@ -344,7 +344,7 @@ class ResponsiveUtils {
         baseStyle = theme.textTheme.bodyMedium;
         break;
     }
-
+    
     return baseStyle?.copyWith(
       color: color,
       fontWeight: fontWeight,
@@ -355,10 +355,10 @@ class ResponsiveUtils {
   // ====================
   // RESPONSIVE EDGE INSETS
   // ====================
-
+  
   /// Get responsive padding for containers
   EdgeInsets get containerPadding => EdgeInsets.all(padding);
-
+  
   /// Get responsive padding for forms
   EdgeInsets get formPadding {
     return EdgeInsets.symmetric(
@@ -366,7 +366,7 @@ class ResponsiveUtils {
       vertical: mediumSpacing,
     );
   }
-
+  
   /// Get responsive padding for input fields
   EdgeInsets get inputPadding {
     return EdgeInsets.symmetric(
@@ -374,7 +374,7 @@ class ResponsiveUtils {
       vertical: isWearable ? 8 : 16,
     );
   }
-
+  
   /// Get responsive padding for buttons
   EdgeInsets get buttonPadding {
     return EdgeInsets.symmetric(
@@ -386,13 +386,13 @@ class ResponsiveUtils {
   // ====================
   // RESPONSIVE WIDGETS
   // ====================
-
+  
   /// Get responsive sized box for spacing
   Widget get smallSpacer => SizedBox(height: smallSpacing);
   Widget get mediumSpacer => SizedBox(height: mediumSpacing);
   Widget get largeSpacer => SizedBox(height: largeSpacing);
   Widget get extraLargeSpacer => SizedBox(height: extraLargeSpacing);
-
+  
   /// Get responsive horizontal spacing
   Widget get smallHorizontalSpacer => SizedBox(width: smallSpacing);
   Widget get mediumHorizontalSpacer => SizedBox(width: mediumSpacing);
@@ -401,7 +401,7 @@ class ResponsiveUtils {
   // ====================
   // WIDGET-SPECIFIC SIZING
   // ====================
-
+  
   /// Get input field height
   double get inputFieldHeight {
     switch (deviceType) {
@@ -415,7 +415,7 @@ class ResponsiveUtils {
         return 60.0;
     }
   }
-
+  
   /// Get PIN input box size
   double get pinBoxSize {
     switch (deviceType) {
@@ -429,7 +429,7 @@ class ResponsiveUtils {
         return 64.0;
     }
   }
-
+  
   /// Get badge padding
   EdgeInsets get badgePadding {
     switch (deviceType) {
@@ -443,7 +443,7 @@ class ResponsiveUtils {
         return const EdgeInsets.symmetric(horizontal: 10, vertical: 5);
     }
   }
-
+  
   /// Get badge icon size
   double get badgeIconSize {
     switch (deviceType) {
@@ -457,7 +457,7 @@ class ResponsiveUtils {
         return 14.0;
     }
   }
-
+  
   /// Get badge text size
   double get badgeTextSize {
     switch (deviceType) {
@@ -475,7 +475,7 @@ class ResponsiveUtils {
   // ====================
   // CUSTOM RESPONSIVE VALUES
   // ====================
-
+  
   /// Get custom responsive value based on device type
   T getResponsiveValue<T>({
     required T wearable,
@@ -494,25 +494,32 @@ class ResponsiveUtils {
         return tablet ?? mobile;
     }
   }
-
+  
   /// Scale a value based on screen size ratio
   double scaleValue(double baseValue, {double? maxScale}) {
     final scale = _screenSize.width / 360; // Base width 360dp
     final scaledValue = baseValue * scale;
-    return maxScale != null
-        ? scaledValue.clamp(baseValue, baseValue * maxScale)
-        : scaledValue;
+    return maxScale != null ? scaledValue.clamp(baseValue, baseValue * maxScale) : scaledValue;
   }
-
+  
   /// Scale font size relative to base size
   double scaleFontSize(double baseSize) {
-    return baseSize *
-        getResponsiveValue(
-          wearable: 0.7,
-          smallMobile: 0.85,
-          mobile: 1.0,
-          tablet: 1.1,
-        );
+    return baseSize * getResponsiveValue(
+      wearable: 0.7,
+      smallMobile: 0.85,
+      mobile: 1.0,
+      tablet: 1.1,
+    );
+  }
+  
+  /// Get text scale constraints for current device
+  ({double min, double max}) get textScaleConstraints {
+    return getResponsiveValue(
+      wearable: (min: 0.9, max: 1.1),      // Tighter for small screens
+      smallMobile: (min: 0.8, max: 1.2),   // Medium constraints  
+      mobile: (min: 0.8, max: 1.3),        // Standard constraints
+      tablet: (min: 0.7, max: 1.4),        // Looser for large screens
+    );
   }
 }
 

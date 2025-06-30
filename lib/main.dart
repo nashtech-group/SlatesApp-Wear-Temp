@@ -6,20 +6,21 @@ import 'app_blocs.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
 import 'core/constants/route_constants.dart';
+import 'core/utils/responsive_utils.dart';
 import 'routes/app_routes.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
+  
   // Initialize theme provider
   final themeProvider = ThemeProvider();
   await themeProvider.initTheme();
-
+  
   // Set preferred orientations for wearable
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
   ]);
-
+  
   // Configure system UI for wearable
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -28,7 +29,7 @@ void main() async {
       systemNavigationBarColor: Colors.transparent,
     ),
   );
-
+  
   runApp(
     ChangeNotifierProvider.value(
       value: themeProvider,
@@ -51,24 +52,26 @@ class SlatesApp extends StatelessWidget {
                 return MaterialApp(
                   title: 'SlatesApp Wear',
                   debugShowCheckedModeBanner: false,
-
+                  
+                  // Theme configuration 
                   theme: AppTheme.lightTheme(context),
                   darkTheme: AppTheme.darkTheme(context),
                   themeMode: themeProvider.themeMode,
-
+                  
                   // Navigation
                   initialRoute: RouteConstants.splash,
                   onGenerateRoute: AppRoutes.generateRoute,
-
-                  // Builder for global configurations
+                  
                   builder: (context, child) {
-                    // Configure text scale factor for wearable (using updated API)
+                    // Get device-specific text scaling constraints
+                    final constraints = context.responsive.textScaleConstraints;
+                    
                     return MediaQuery(
                       data: MediaQuery.of(context).copyWith(
                         textScaler: MediaQuery.of(context).textScaler.clamp(
-                              minScaleFactor: 0.8,
-                              maxScaleFactor: 1.2,
-                            ),
+                          minScaleFactor: constraints.min,
+                          maxScaleFactor: constraints.max,
+                        ),
                       ),
                       child: child!,
                     );
