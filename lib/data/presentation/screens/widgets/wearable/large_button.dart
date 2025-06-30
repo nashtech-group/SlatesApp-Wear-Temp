@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:slates_app_wear/core/utils/responsive_utils.dart';
 
 class LargeButton extends StatelessWidget {
   final String text;
@@ -27,13 +28,10 @@ class LargeButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenSize = MediaQuery.of(context).size;
-    final isWearable = screenSize.width < 250 || screenSize.height < 250;
+    final responsive = context.responsive;
     
-    final buttonHeight = height ?? (isWearable ? 44.0 : 56.0);
-    final fontSize = isWearable ? 12.0 : 16.0;
-    final iconSize = isWearable ? 16.0 : 20.0;
-    final horizontalPadding = isWearable ? 12.0 : 24.0;
+    final buttonHeight = height ?? responsive.buttonHeight;
+    final loadingIndicatorSize = responsive.iconSize;
     
     return SizedBox(
       width: width ?? double.infinity,
@@ -47,25 +45,28 @@ class LargeButton extends StatelessWidget {
           backgroundColor: backgroundColor ?? Theme.of(context).colorScheme.primary,
           foregroundColor: textColor ?? Colors.white,
           disabledBackgroundColor: Theme.of(context).colorScheme.outline,
-          disabledForegroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha:0.38),
+          disabledForegroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38),
           shape: RoundedRectangleBorder(
-            borderRadius: borderRadius ?? BorderRadius.circular(isWearable ? 12 : 16),
+            borderRadius: borderRadius ?? BorderRadius.circular(responsive.borderRadius),
           ),
           elevation: 2,
-          shadowColor: Theme.of(context).shadowColor.withValues(alpha:0.2),
-          padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-          textStyle: TextStyle(
-            fontSize: fontSize,
+          shadowColor: Theme.of(context).shadowColor.withValues(alpha: 0.2),
+          padding: responsive.buttonPadding,
+          textStyle: responsive.getBodyStyle(
             fontWeight: FontWeight.w600,
-            fontFamily: Theme.of(context).textTheme.labelLarge?.fontFamily,
           ),
         ),
         child: isLoading
             ? SizedBox(
-                width: iconSize,
-                height: iconSize,
+                width: loadingIndicatorSize,
+                height: loadingIndicatorSize,
                 child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
+                  strokeWidth: responsive.getResponsiveValue(
+                    wearable: 2.0,
+                    smallMobile: 2.5,
+                    mobile: 3.0,
+                    tablet: 3.5,
+                  ),
                   valueColor: AlwaysStoppedAnimation<Color>(
                     textColor ?? Colors.white,
                   ),
@@ -76,13 +77,16 @@ class LargeButton extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (icon != null) ...[
-                    Icon(icon, size: iconSize),
-                    SizedBox(width: isWearable ? 4 : 8),
+                    Icon(icon, size: responsive.iconSize),
+                    SizedBox(width: responsive.smallSpacing),
                   ],
                   Flexible(
                     child: Text(
                       text,
-                      style: TextStyle(fontSize: fontSize),
+                      style: responsive.getBodyStyle(
+                        color: textColor ?? Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),

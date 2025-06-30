@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:slates_app_wear/core/utils/responsive_utils.dart';
 
 class WearableScaffold extends StatelessWidget {
   final Widget body;
@@ -20,16 +21,15 @@ class WearableScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenSize = MediaQuery.of(context).size;
-    final isWearable = screenSize.width < 250 || screenSize.height < 250;
-    final isRound = screenSize.width == screenSize.height;
+    final responsive = context.responsive;
     
-    if (isWearable) {
+    if (responsive.isWearable) {
       return _WearableOptimizedScaffold(
         body: body,
         backgroundColor: backgroundColor,
         floatingActionButton: floatingActionButton,
-        isRound: isRound,
+        isRound: responsive.isRoundScreen,
+        responsive: responsive,
       );
     }
     
@@ -62,19 +62,23 @@ class _WearableOptimizedScaffold extends StatelessWidget {
   final Color? backgroundColor;
   final Widget? floatingActionButton;
   final bool isRound;
+  final ResponsiveUtils responsive;
 
   const _WearableOptimizedScaffold({
     required this.body,
     this.backgroundColor,
     this.floatingActionButton,
     required this.isRound,
+    required this.responsive,
   });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: backgroundColor ?? Theme.of(context).scaffoldBackgroundColor,
-      body: isRound ? _RoundScreenLayout(body: body) : _SquareScreenLayout(body: body),
+      body: isRound 
+          ? _RoundScreenLayout(body: body, responsive: responsive) 
+          : _SquareScreenLayout(body: body, responsive: responsive),
       floatingActionButton: floatingActionButton,
     );
   }
@@ -82,8 +86,12 @@ class _WearableOptimizedScaffold extends StatelessWidget {
 
 class _RoundScreenLayout extends StatelessWidget {
   final Widget body;
+  final ResponsiveUtils responsive;
 
-  const _RoundScreenLayout({required this.body});
+  const _RoundScreenLayout({
+    required this.body,
+    required this.responsive,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -95,7 +103,7 @@ class _RoundScreenLayout extends StatelessWidget {
         child: ClipOval(
           child: SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.all(8), // Padding for round insets
+            padding: EdgeInsets.all(responsive.smallSpacing), // Responsive padding for round insets
             child: body,
           ),
         ),
@@ -106,8 +114,12 @@ class _RoundScreenLayout extends StatelessWidget {
 
 class _SquareScreenLayout extends StatelessWidget {
   final Widget body;
+  final ResponsiveUtils responsive;
 
-  const _SquareScreenLayout({required this.body});
+  const _SquareScreenLayout({
+    required this.body,
+    required this.responsive,
+  });
 
   @override
   Widget build(BuildContext context) {

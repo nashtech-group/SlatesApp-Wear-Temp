@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:slates_app_wear/core/constants/app_constants.dart';
 import 'package:slates_app_wear/core/theme/app_theme.dart';
+import 'package:slates_app_wear/core/utils/responsive_utils.dart';
 
 class RoleBadge extends StatelessWidget {
   final String role;
@@ -14,23 +15,19 @@ class RoleBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenSize = MediaQuery.of(context).size;
-    final isWearable = screenSize.width < 250 || screenSize.height < 250;
-    final isCompact = compact || isWearable;
+    final responsive = context.responsive;
+    final isCompact = compact || responsive.isWearable;
     
     final displayRole = AppConstants.getRoleDisplayName(role);
     final badgeColor = _getRoleColor();
     
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: isCompact ? 6 : 8,
-        vertical: isCompact ? 2 : 4,
-      ),
+      padding: responsive.badgePadding,
       decoration: BoxDecoration(
-        color: badgeColor.withValues(alpha:0.1),
-        borderRadius: BorderRadius.circular(isCompact ? 6 : 8),
+        color: badgeColor.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(responsive.borderRadius),
         border: Border.all(
-          color: badgeColor.withValues(alpha:0.3),
+          color: badgeColor.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
@@ -40,15 +37,15 @@ class RoleBadge extends StatelessWidget {
           Icon(
             _getRoleIcon(),
             color: badgeColor,
-            size: isCompact ? 10 : 12,
+            size: responsive.badgeIconSize,
           ),
-          SizedBox(width: isCompact ? 3 : 4),
+          SizedBox(width: responsive.smallSpacing * 0.5),
           Text(
             isCompact && role == AppConstants.guardRole ? 'Guard' : displayRole,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            style: responsive.getCaptionStyle(
               color: badgeColor,
               fontWeight: FontWeight.w600,
-              fontSize: isCompact ? 9 : 11,
+              baseFontSize: responsive.badgeTextSize,
             ),
           ),
         ],
@@ -86,4 +83,3 @@ class RoleBadge extends StatelessWidget {
     }
   }
 }
-

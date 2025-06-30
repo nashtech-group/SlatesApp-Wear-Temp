@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:slates_app_wear/core/theme/app_theme.dart';
+import 'package:slates_app_wear/core/utils/responsive_utils.dart';
 
 class AppLogo extends StatelessWidget {
   final double size;
@@ -15,6 +16,8 @@ class AppLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final responsive = context.responsive;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -27,9 +30,21 @@ class AppLogo extends StatelessWidget {
             borderRadius: BorderRadius.circular(size * 0.2),
             boxShadow: [
               BoxShadow(
-                color: Theme.of(context).shadowColor.withValues(alpha:0.1),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+                color: Theme.of(context).shadowColor.withValues(alpha: 0.1),
+                blurRadius: responsive.getResponsiveValue(
+                  wearable: 6.0,
+                  smallMobile: 8.0,
+                  mobile: 10.0,
+                  tablet: 12.0,
+                ),
+                offset: Offset(
+                    0,
+                    responsive.getResponsiveValue(
+                      wearable: 2.0,
+                      smallMobile: 3.0,
+                      mobile: 4.0,
+                      tablet: 5.0,
+                    )),
               ),
             ],
           ),
@@ -42,24 +57,24 @@ class AppLogo extends StatelessWidget {
 
         if (showText) ...[
           SizedBox(height: size * 0.15),
-          // App name with theme-aware color
+          // App name with responsive text
           Text(
             'SlatesApp',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontSize: size * 0.25,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.getLogoTextColor(context),
-                ),
+            style: responsive.getHeadlineStyle(
+              color: AppTheme.getLogoTextColor(context),
+              fontWeight: FontWeight.bold,
+              baseFontSize: size * 0.25,
+            ),
           ),
 
           if (showSubtitle) ...[
             SizedBox(height: size * 0.05),
             Text(
-              'Guard Monitor',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontSize: size * 0.15,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+              'Security Operations Platform',
+              style: responsive.getBodyStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                baseFontSize: size * 0.15,
+              ),
             ),
           ],
         ],

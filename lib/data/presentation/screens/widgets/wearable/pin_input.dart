@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:slates_app_wear/core/utils/responsive_utils.dart';
 
 class PinInputField extends StatefulWidget {
   final TextEditingController controller;
@@ -89,29 +90,23 @@ class _PinInputFieldState extends State<PinInputField> {
 
   @override
   Widget build(BuildContext context) {
-    final screenSize = MediaQuery.of(context).size;
-    final isWearable = screenSize.width < 250 || screenSize.height < 250;
-    
-    final pinBoxSize = isWearable ? 40.0 : 56.0;
-    final fontSize = isWearable ? 16.0 : 20.0;
-    final spacing = isWearable ? 6.0 : 12.0;
+    final responsive = context.responsive;
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'PIN',
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+          style: responsive.getBodyStyle(
             fontWeight: FontWeight.w500,
-            fontSize: isWearable ? 12 : 14,
           ),
         ),
-        SizedBox(height: isWearable ? 6 : 8),
+        responsive.smallSpacer,
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: List.generate(widget.length, (index) {
             return SizedBox(
-              width: pinBoxSize,
+              width: responsive.pinBoxSize,
               child: TextFormField(
                 controller: _controllers[index],
                 focusNode: _focusNodes[index],
@@ -119,20 +114,19 @@ class _PinInputFieldState extends State<PinInputField> {
                 keyboardType: TextInputType.number,
                 maxLength: 1,
                 obscureText: widget.obscureText,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                style: responsive.getHeadlineStyle(
                   fontWeight: FontWeight.bold,
-                  fontSize: fontSize,
                 ),
                 decoration: InputDecoration(
                   counterText: '',
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(isWearable ? 8 : 12),
+                    borderRadius: BorderRadius.circular(responsive.borderRadius),
                     borderSide: BorderSide(
                       color: Theme.of(context).colorScheme.outline,
                     ),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(isWearable ? 8 : 12),
+                    borderRadius: BorderRadius.circular(responsive.borderRadius),
                     borderSide: BorderSide(
                       color: Theme.of(context).colorScheme.primary,
                       width: 2,
@@ -141,7 +135,12 @@ class _PinInputFieldState extends State<PinInputField> {
                   filled: true,
                   fillColor: Theme.of(context).colorScheme.surface,
                   contentPadding: EdgeInsets.symmetric(
-                    vertical: isWearable ? 8 : 16,
+                    vertical: responsive.getResponsiveValue(
+                      wearable: 8.0,
+                      smallMobile: 12.0,
+                      mobile: 16.0,
+                      tablet: 20.0,
+                    ),
                   ),
                 ),
                 inputFormatters: [
