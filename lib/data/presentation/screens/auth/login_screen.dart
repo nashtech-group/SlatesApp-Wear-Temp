@@ -13,7 +13,7 @@ import 'package:slates_app_wear/data/presentation/screens/widgets/wearable/weara
 
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  const LoginScreen({super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -100,7 +100,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                 end: Alignment.bottomCenter,
                 colors: [
                   Theme.of(context).colorScheme.primary.withValues(alpha:0.1),
-                  Theme.of(context).colorScheme.background,
+                  Theme.of(context).colorScheme.surface,
                 ],
               ),
             ),

@@ -13,7 +13,6 @@ import 'package:slates_app_wear/data/presentation/screens/widgets/common/app_log
 import 'package:slates_app_wear/data/presentation/screens/widgets/common/role_badge.dart';
 import 'package:slates_app_wear/data/presentation/screens/widgets/wearable/large_button.dart';
 
-
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
 
@@ -21,7 +20,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> 
+class _HomeScreenState extends State<HomeScreen>
     with WidgetsBindingObserver, TickerProviderStateMixin {
   late AnimationController _greetingController;
   late Animation<double> _greetingAnimation;
@@ -48,7 +47,7 @@ class _HomeScreenState extends State<HomeScreen>
       duration: const Duration(milliseconds: 1200),
       vsync: this,
     );
-    
+
     _greetingAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -56,7 +55,7 @@ class _HomeScreenState extends State<HomeScreen>
       parent: _greetingController,
       curve: Curves.easeInOut,
     ));
-    
+
     _greetingController.forward();
   }
 
@@ -155,7 +154,7 @@ class _LoadingHomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(AppConstants.appTitle),
@@ -174,7 +173,7 @@ class _LoadingHomeScreen extends StatelessWidget {
               Text(
                 'Loading...',
                 style: theme.textTheme.bodyLarge?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha:0.7),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
               ),
             ],
@@ -209,16 +208,16 @@ class _AuthenticatedHomeScreen extends StatelessWidget {
           children: [
             // Custom App Bar with user info
             _buildCustomAppBar(context),
-            
+
             // Offline mode banner
             if (isOffline) _buildOfflineBanner(context),
-            
+
             // Main content
             Expanded(child: _buildMainContent(context)),
           ],
         ),
       ),
-      
+
       // Bottom navigation for different user roles
       bottomNavigationBar: _buildBottomNavigation(context),
     );
@@ -226,14 +225,14 @@ class _AuthenticatedHomeScreen extends StatelessWidget {
 
   Widget _buildCustomAppBar(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha:0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -274,7 +273,7 @@ class _AuthenticatedHomeScreen extends StatelessWidget {
               ],
             ),
           ),
-          
+
           // Theme toggle button
           IconButton(
             onPressed: () {
@@ -288,7 +287,7 @@ class _AuthenticatedHomeScreen extends StatelessWidget {
             ),
             tooltip: 'Toggle Theme',
           ),
-          
+
           // User menu
           PopupMenuButton<String>(
             icon: CircleAvatar(
@@ -355,7 +354,7 @@ class _AuthenticatedHomeScreen extends StatelessWidget {
 
   Widget _buildOfflineBanner(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -395,7 +394,7 @@ class _AuthenticatedHomeScreen extends StatelessWidget {
     switch (selectedIndex) {
       case 0:
         return _DashboardTab(
-          user: user, 
+          user: user,
           isOffline: isOffline,
           greetingAnimation: greetingAnimation,
         );
@@ -409,7 +408,7 @@ class _AuthenticatedHomeScreen extends StatelessWidget {
         return _MoreTab(user: user, isOffline: isOffline);
       default:
         return _DashboardTab(
-          user: user, 
+          user: user,
           isOffline: isOffline,
           greetingAnimation: greetingAnimation,
         );
@@ -418,7 +417,7 @@ class _AuthenticatedHomeScreen extends StatelessWidget {
 
   Widget _buildBottomNavigation(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     List<BottomNavigationBarItem> items = [
       const BottomNavigationBarItem(
         icon: Icon(Icons.dashboard),
@@ -452,7 +451,7 @@ class _AuthenticatedHomeScreen extends StatelessWidget {
       items: items,
       type: BottomNavigationBarType.fixed,
       selectedItemColor: theme.colorScheme.primary,
-      unselectedItemColor: theme.colorScheme.onSurface.withValues(alpha:0.6),
+      unselectedItemColor: theme.colorScheme.onSurface.withValues(alpha: 0.6),
       backgroundColor: theme.colorScheme.surface,
       elevation: 8,
     );
@@ -537,15 +536,15 @@ class _DashboardTab extends StatelessWidget {
           // Greeting section
           _buildGreeting(context),
           const SizedBox(height: 24),
-          
+
           // Status Overview
           _buildStatusOverview(context),
           const SizedBox(height: 24),
-          
+
           // Quick Actions Grid
           _buildQuickActions(context),
           const SizedBox(height: 24),
-          
+
           // Recent Activity or Current Duty Info
           _buildActivitySection(context),
         ],
@@ -557,7 +556,7 @@ class _DashboardTab extends StatelessWidget {
     final theme = Theme.of(context);
     final timeOfDay = DateTime.now().hour;
     String greeting;
-    
+
     if (timeOfDay < 12) {
       greeting = 'Good Morning';
     } else if (timeOfDay < 17) {
@@ -565,7 +564,7 @@ class _DashboardTab extends StatelessWidget {
     } else {
       greeting = 'Good Evening';
     }
-    
+
     return FadeTransition(
       opacity: greetingAnimation,
       child: Card(
@@ -598,7 +597,7 @@ class _DashboardTab extends StatelessWidget {
 
   Widget _buildStatusOverview(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -609,7 +608,7 @@ class _DashboardTab extends StatelessWidget {
               children: [
                 Icon(
                   isOffline ? Icons.cloud_off : Icons.check_circle,
-                  color: isOffline 
+                  color: isOffline
                       ? theme.colorScheme.error
                       : AppTheme.successGreen,
                 ),
@@ -624,7 +623,7 @@ class _DashboardTab extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              isOffline 
+              isOffline
                   ? 'You can continue working. Data will sync when connected.'
                   : 'All systems operational. Ready for duty.',
               style: theme.textTheme.bodyMedium?.copyWith(
@@ -659,9 +658,10 @@ class _DashboardTab extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusItem(BuildContext context, String label, String value, IconData icon) {
+  Widget _buildStatusItem(
+      BuildContext context, String label, String value, IconData icon) {
     final theme = Theme.of(context);
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -707,8 +707,8 @@ class _DashboardTab extends StatelessWidget {
         Text(
           'Quick Actions',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+                fontWeight: FontWeight.bold,
+              ),
         ),
         const SizedBox(height: 16),
         GridView.count(
@@ -760,8 +760,8 @@ class _DashboardTab extends StatelessWidget {
         Text(
           'Quick Actions',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+                fontWeight: FontWeight.bold,
+              ),
         ),
         const SizedBox(height: 16),
         GridView.count(
@@ -791,14 +791,16 @@ class _DashboardTab extends StatelessWidget {
               'Sites',
               Icons.location_city,
               AppTheme.warningOrange,
-              () => Navigator.of(context).pushNamed(RouteConstants.siteManagement),
+              () => Navigator.of(context)
+                  .pushNamed(RouteConstants.siteManagement),
             ),
             _buildActionCard(
               context,
               'Users',
               Icons.manage_accounts,
               AppTheme.accentCyan,
-              () => Navigator.of(context).pushNamed(RouteConstants.userManagement),
+              () => Navigator.of(context)
+                  .pushNamed(RouteConstants.userManagement),
             ),
           ],
         ),
@@ -814,12 +816,12 @@ class _DashboardTab extends StatelessWidget {
     VoidCallback onTap,
   ) {
     final theme = Theme.of(context);
-    
+
     return Material(
       color: theme.colorScheme.surface,
       borderRadius: BorderRadius.circular(16),
       elevation: 2,
-      shadowColor: Colors.black.withValues(alpha:0.1),
+      shadowColor: Colors.black.withValues(alpha: 0.1),
       child: InkWell(
         onTap: () {
           HapticFeedback.lightImpact();
@@ -831,7 +833,7 @@ class _DashboardTab extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: theme.colorScheme.outline.withValues(alpha:0.1),
+              color: theme.colorScheme.outline.withValues(alpha: 0.1),
             ),
           ),
           child: Column(
@@ -841,7 +843,7 @@ class _DashboardTab extends StatelessWidget {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha:0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
@@ -875,22 +877,20 @@ class _DashboardTab extends StatelessWidget {
             Text(
               user.isGuard ? 'Current Duty Status' : 'Recent Activity',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
             const SizedBox(height: 16),
             ListTile(
               leading: CircleAvatar(
-                backgroundColor: AppTheme.primaryTeal.withValues(alpha:0.1),
+                backgroundColor: AppTheme.primaryTeal.withValues(alpha: 0.1),
                 child: Icon(
                   user.isGuard ? Icons.schedule : Icons.notifications,
                   color: AppTheme.primaryTeal,
                 ),
               ),
               title: Text(
-                user.isGuard 
-                    ? 'Ready for Duty'
-                    : 'System Status Normal',
+                user.isGuard ? 'Ready for Duty' : 'System Status Normal',
               ),
               subtitle: Text(
                 user.isGuard
@@ -916,14 +916,14 @@ class _DashboardTab extends StatelessWidget {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
-        title: Row(
+        title: const Row(
           children: [
             Icon(
               Icons.construction,
               color: AppTheme.warningOrange,
             ),
-            const SizedBox(width: 12),
-            const Text('Coming Soon'),
+            SizedBox(width: 12),
+            Text('Coming Soon'),
           ],
         ),
         content: Text('$feature feature is under development.'),
@@ -945,14 +945,14 @@ class _DashboardTab extends StatelessWidget {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
-        title: Row(
+        title: const Row(
           children: [
             Icon(
               Icons.warning,
               color: AppTheme.errorRed,
             ),
-            const SizedBox(width: 12),
-            const Text('Emergency Alert'),
+            SizedBox(width: 12),
+            Text('Emergency Alert'),
           ],
         ),
         content: const Text(
@@ -1000,11 +1000,11 @@ class _GuardDutyTab extends StatelessWidget {
           Text(
             'Guard Duty',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+                  fontWeight: FontWeight.bold,
+                ),
           ),
           const SizedBox(height: 20),
-          
+
           // Duty Status Card
           Card(
             child: Padding(
@@ -1015,17 +1015,17 @@ class _GuardDutyTab extends StatelessWidget {
                   Text(
                     'Current Status',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                          fontWeight: FontWeight.bold,
+                        ),
                   ),
                   const SizedBox(height: 16),
-                  Row(
+                  const Row(
                     children: [
                       Icon(
                         Icons.access_time,
                         color: AppTheme.warningOrange,
                       ),
-                      const SizedBox(width: 12),
+                      SizedBox(width: 12),
                       Text('Off Duty'),
                     ],
                   ),
@@ -1040,9 +1040,9 @@ class _GuardDutyTab extends StatelessWidget {
               ),
             ),
           ),
-          
+
           const SizedBox(height: 20),
-          
+
           // Quick Actions for Guards
           _buildGuardActions(context),
         ],
@@ -1057,18 +1057,17 @@ class _GuardDutyTab extends StatelessWidget {
         Text(
           'Guard Actions',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+                fontWeight: FontWeight.bold,
+              ),
         ),
         const SizedBox(height: 16),
-        
         Card(
           child: Column(
             children: [
               ListTile(
                 leading: CircleAvatar(
-                  backgroundColor: AppTheme.primaryTeal.withValues(alpha:0.1),
-                  child: Icon(Icons.my_location, color: AppTheme.primaryTeal),
+                  backgroundColor: AppTheme.primaryTeal.withValues(alpha: 0.1),
+                  child: const Icon(Icons.my_location, color: AppTheme.primaryTeal),
                 ),
                 title: const Text('Movement Tracking'),
                 subtitle: const Text('Record your patrol movements'),
@@ -1078,8 +1077,9 @@ class _GuardDutyTab extends StatelessWidget {
               const Divider(height: 1),
               ListTile(
                 leading: CircleAvatar(
-                  backgroundColor: AppTheme.warningOrange.withValues(alpha:0.1),
-                  child: Icon(Icons.location_on, color: AppTheme.warningOrange),
+                  backgroundColor:
+                      AppTheme.warningOrange.withValues(alpha: 0.1),
+                  child: const Icon(Icons.location_on, color: AppTheme.warningOrange),
                 ),
                 title: const Text('Perimeter Checks'),
                 subtitle: const Text('Scan checkpoints during patrol'),
@@ -1089,8 +1089,8 @@ class _GuardDutyTab extends StatelessWidget {
               const Divider(height: 1),
               ListTile(
                 leading: CircleAvatar(
-                  backgroundColor: AppTheme.errorRed.withValues(alpha:0.1),
-                  child: Icon(Icons.emergency, color: AppTheme.errorRed),
+                  backgroundColor: AppTheme.errorRed.withValues(alpha: 0.1),
+                  child: const Icon(Icons.emergency, color: AppTheme.errorRed),
                 ),
                 title: const Text('Emergency Alert'),
                 subtitle: const Text('Send emergency notification'),
@@ -1111,11 +1111,11 @@ class _GuardDutyTab extends StatelessWidget {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
-        title: Row(
+        title: const Row(
           children: [
             Icon(Icons.construction, color: AppTheme.warningOrange),
-            const SizedBox(width: 12),
-            const Text('Coming Soon'),
+            SizedBox(width: 12),
+            Text('Coming Soon'),
           ],
         ),
         content: Text('$feature feature is under development.'),
@@ -1189,15 +1189,15 @@ class _ManagementTab extends StatelessWidget {
           Text(
             'Management',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+                  fontWeight: FontWeight.bold,
+                ),
           ),
           const SizedBox(height: 20),
-          
+
           // Quick Stats
           _buildQuickStats(context),
           const SizedBox(height: 20),
-          
+
           // Management Actions
           _buildManagementActions(context),
         ],
@@ -1212,8 +1212,8 @@ class _ManagementTab extends StatelessWidget {
         Text(
           'Overview',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+                fontWeight: FontWeight.bold,
+              ),
         ),
         const SizedBox(height: 16),
         Row(
@@ -1236,10 +1236,11 @@ class _ManagementTab extends StatelessWidget {
                       ),
                       Text(
                         '12',
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.primaryTeal,
-                        ),
+                        style:
+                            Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.primaryTeal,
+                                ),
                       ),
                     ],
                   ),
@@ -1265,10 +1266,11 @@ class _ManagementTab extends StatelessWidget {
                       ),
                       Text(
                         '5',
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.secondaryBlue,
-                        ),
+                        style:
+                            Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.secondaryBlue,
+                                ),
                       ),
                     ],
                   ),
@@ -1288,56 +1290,64 @@ class _ManagementTab extends StatelessWidget {
         Text(
           'Management Tools',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+                fontWeight: FontWeight.bold,
+              ),
         ),
         const SizedBox(height: 16),
-        
         Card(
           child: Column(
             children: [
               ListTile(
                 leading: CircleAvatar(
-                  backgroundColor: AppTheme.primaryTeal.withValues(alpha:0.1),
+                  backgroundColor: AppTheme.primaryTeal.withValues(alpha: 0.1),
                   child: const Icon(Icons.people, color: AppTheme.primaryTeal),
                 ),
                 title: const Text('Roster Management'),
                 subtitle: const Text('Manage guard schedules and assignments'),
                 trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () => Navigator.of(context).pushNamed(RouteConstants.roster),
+                onTap: () =>
+                    Navigator.of(context).pushNamed(RouteConstants.roster),
               ),
               const Divider(height: 1),
               ListTile(
                 leading: CircleAvatar(
-                  backgroundColor: AppTheme.secondaryBlue.withValues(alpha:0.1),
-                  child: const Icon(Icons.analytics, color: AppTheme.secondaryBlue),
+                  backgroundColor:
+                      AppTheme.secondaryBlue.withValues(alpha: 0.1),
+                  child: const Icon(Icons.analytics,
+                      color: AppTheme.secondaryBlue),
                 ),
                 title: const Text('Reports & Analytics'),
                 subtitle: const Text('View performance reports and insights'),
                 trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () => Navigator.of(context).pushNamed(RouteConstants.reports),
+                onTap: () =>
+                    Navigator.of(context).pushNamed(RouteConstants.reports),
               ),
               const Divider(height: 1),
               ListTile(
                 leading: CircleAvatar(
-                  backgroundColor: AppTheme.warningOrange.withValues(alpha:0.1),
-                  child: const Icon(Icons.location_city, color: AppTheme.warningOrange),
+                  backgroundColor:
+                      AppTheme.warningOrange.withValues(alpha: 0.1),
+                  child: const Icon(Icons.location_city,
+                      color: AppTheme.warningOrange),
                 ),
                 title: const Text('Site Management'),
                 subtitle: const Text('Configure sites and checkpoints'),
                 trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () => Navigator.of(context).pushNamed(RouteConstants.siteManagement),
+                onTap: () => Navigator.of(context)
+                    .pushNamed(RouteConstants.siteManagement),
               ),
               const Divider(height: 1),
               ListTile(
                 leading: CircleAvatar(
-                  backgroundColor: AppTheme.accentCyan.withValues(alpha:0.1),
-                  child: const Icon(Icons.manage_accounts, color: AppTheme.accentCyan),
+                  backgroundColor: AppTheme.accentCyan.withValues(alpha: 0.1),
+                  child: const Icon(Icons.manage_accounts,
+                      color: AppTheme.accentCyan),
                 ),
                 title: const Text('User Management'),
                 subtitle: const Text('Manage user accounts and permissions'),
                 trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () => Navigator.of(context).pushNamed(RouteConstants.userManagement),
+                onTap: () => Navigator.of(context)
+                    .pushNamed(RouteConstants.userManagement),
               ),
             ],
           ),
@@ -1367,8 +1377,8 @@ class _MoreTab extends StatelessWidget {
           Text(
             'More',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+                  fontWeight: FontWeight.bold,
+                ),
           ),
           const SizedBox(height: 20),
           _buildMoreOptions(context),
@@ -1396,7 +1406,8 @@ class _MoreTab extends StatelessWidget {
           title: 'User Management',
           subtitle: 'Manage user accounts',
           icon: Icons.manage_accounts,
-          onTap: () => Navigator.of(context).pushNamed(RouteConstants.userManagement),
+          onTap: () =>
+              Navigator.of(context).pushNamed(RouteConstants.userManagement),
         ),
         _MoreOption(
           title: 'Reports',
@@ -1420,7 +1431,8 @@ class _MoreTab extends StatelessWidget {
     ];
 
     return Column(
-      children: options.map((option) => _buildOptionTile(context, option)).toList(),
+      children:
+          options.map((option) => _buildOptionTile(context, option)).toList(),
     );
   }
 
@@ -1467,8 +1479,8 @@ class _MoreTab extends StatelessWidget {
             Text(
               'Email: ${AppConstants.supportEmail}',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
+                    fontWeight: FontWeight.w500,
+                  ),
             ),
           ],
         ),
