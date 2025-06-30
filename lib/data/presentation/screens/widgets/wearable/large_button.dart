@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:slates_app_wear/core/utils/responsive_utils.dart';
+import 'package:slates_app_wear/core/theme/app_theme.dart'; 
 
 class LargeButton extends StatelessWidget {
   final String text;
@@ -12,9 +13,10 @@ class LargeButton extends StatelessWidget {
   final double? width;
   final double? height;
   final BorderRadius? borderRadius;
+  final ButtonStyle? style;
 
   const LargeButton({
-    Key? key,
+    super.key,
     required this.text,
     this.onPressed,
     this.isLoading = false,
@@ -24,7 +26,8 @@ class LargeButton extends StatelessWidget {
     this.width,
     this.height,
     this.borderRadius,
-  }) : super(key: key);
+    this.style,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -32,6 +35,19 @@ class LargeButton extends StatelessWidget {
     
     final buttonHeight = height ?? responsive.buttonHeight;
     final loadingIndicatorSize = responsive.iconSize;
+    
+    // Get theme-aware button colors
+    final buttonColors = AppTheme.getButtonColors(
+      context,
+      customBackgroundColor: backgroundColor,
+      customTextColor: textColor,
+    );
+    
+    // Get loading spinner color (handles disabled state automatically)
+    final loadingSpinnerColor = AppTheme.getLoadingSpinnerColor(
+      context, 
+      isDisabled: isLoading,
+    );
     
     return SizedBox(
       width: width ?? double.infinity,
@@ -41,20 +57,12 @@ class LargeButton extends StatelessWidget {
           HapticFeedback.lightImpact();
           onPressed?.call();
         },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: backgroundColor ?? Theme.of(context).colorScheme.primary,
-          foregroundColor: textColor ?? Colors.white,
-          disabledBackgroundColor: Theme.of(context).colorScheme.outline,
-          disabledForegroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38),
-          shape: RoundedRectangleBorder(
-            borderRadius: borderRadius ?? BorderRadius.circular(responsive.borderRadius),
-          ),
-          elevation: 2,
-          shadowColor: Theme.of(context).shadowColor.withValues(alpha: 0.2),
+        style: style ?? AppTheme.getCustomButtonStyle(
+          context,
+          backgroundColor: backgroundColor,
+          textColor: textColor,
+          borderRadius: borderRadius ?? BorderRadius.circular(responsive.borderRadius),
           padding: responsive.buttonPadding,
-          textStyle: responsive.getBodyStyle(
-            fontWeight: FontWeight.w600,
-          ),
         ),
         child: isLoading
             ? SizedBox(
@@ -67,9 +75,7 @@ class LargeButton extends StatelessWidget {
                     mobile: 3.0,
                     tablet: 3.5,
                   ),
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    textColor ?? Colors.white,
-                  ),
+                  valueColor: AlwaysStoppedAnimation<Color>(loadingSpinnerColor),
                 ),
               )
             : Row(
@@ -84,7 +90,7 @@ class LargeButton extends StatelessWidget {
                     child: Text(
                       text,
                       style: responsive.getBodyStyle(
-                        color: textColor ?? Colors.white,
+                        color: buttonColors.textColor,
                         fontWeight: FontWeight.w600,
                       ),
                       overflow: TextOverflow.ellipsis,

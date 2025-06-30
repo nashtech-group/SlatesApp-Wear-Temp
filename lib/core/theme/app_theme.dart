@@ -6,33 +6,33 @@ class AppTheme {
   // ====================
   // BRAND COLORS FROM LOGO
   // ====================
-  
+
   // Primary teal/blue from logo curve
   static const Color primaryTeal = Color(0xFF1B7A8C);
   static const Color primaryTealLight = Color(0xFF4DA6B8);
   static const Color primaryTealDark = Color(0xFF0F5A68);
-  
+
   // Secondary colors derived from logo
   static const Color secondaryBlue = Color(0xFF2196F3);
   static const Color accentCyan = Color(0xFF00BCD4);
-  
+
   // Neutral colors for text (matching logo)
   static const Color darkGrey = Color(0xFF2C2C2C); // Logo text color
   static const Color mediumGrey = Color(0xFF666666);
   static const Color lightGrey = Color(0xFFE0E0E0);
-  
+
   // Success, warning, error colors
   static const Color successGreen = Color(0xFF4CAF50);
   static const Color warningOrange = Color(0xFFFF9800);
   static const Color errorRed = Color(0xFFF44336);
-  
+
   // ====================
   // LIGHT THEME
   // ====================
   static ThemeData lightTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
-    
+
     // Color scheme
     colorScheme: const ColorScheme.light(
       primary: primaryTeal,
@@ -50,7 +50,7 @@ class AppTheme {
       error: errorRed,
       onError: Colors.white,
     ),
-    
+
     // App bar theme
     appBarTheme: const AppBarTheme(
       backgroundColor: primaryTeal,
@@ -65,14 +65,14 @@ class AppTheme {
         fontFamily: 'Inter',
       ),
     ),
-    
+
     // Elevated button theme
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         backgroundColor: primaryTeal,
         foregroundColor: Colors.white,
         elevation: 2,
-        shadowColor: primaryTeal.withValues(alpha:0.3),
+        shadowColor: primaryTeal.withValues(alpha: 0.3),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
@@ -84,7 +84,7 @@ class AppTheme {
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       ),
     ),
-    
+
     // Text button theme
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
@@ -96,7 +96,7 @@ class AppTheme {
         ),
       ),
     ),
-    
+
     // Outlined button theme
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
@@ -113,7 +113,7 @@ class AppTheme {
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       ),
     ),
-    
+
     // Input decoration theme
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
@@ -148,17 +148,17 @@ class AppTheme {
         fontFamily: 'Inter',
       ),
     ),
-    
+
     // Card theme
     cardTheme: CardThemeData(
       elevation: 2,
-      shadowColor: Colors.black.withValues(alpha:0.1),
+      shadowColor: Colors.black.withValues(alpha: 0.1),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
       ),
       color: Colors.white,
     ),
-    
+
     // Text theme
     textTheme: const TextTheme(
       headlineLarge: TextStyle(
@@ -234,7 +234,7 @@ class AppTheme {
         fontFamily: 'Inter',
       ),
     ),
-    
+
     // Checkbox theme
     checkboxTheme: CheckboxThemeData(
       fillColor: WidgetStateProperty.resolveWith((states) {
@@ -246,7 +246,7 @@ class AppTheme {
       checkColor: WidgetStateProperty.all(Colors.white),
       side: const BorderSide(color: mediumGrey),
     ),
-    
+
     // Switch theme
     switchTheme: SwitchThemeData(
       thumbColor: WidgetStateProperty.resolveWith((states) {
@@ -262,19 +262,19 @@ class AppTheme {
         return lightGrey;
       }),
     ),
-    
+
     // Progress indicator theme
     progressIndicatorTheme: const ProgressIndicatorThemeData(
       color: primaryTeal,
     ),
-    
+
     // Floating action button theme
     floatingActionButtonTheme: const FloatingActionButtonThemeData(
       backgroundColor: primaryTeal,
       foregroundColor: Colors.white,
       elevation: 4,
     ),
-    
+
     // Bottom navigation bar theme
     bottomNavigationBarTheme: const BottomNavigationBarThemeData(
       backgroundColor: Colors.white,
@@ -282,24 +282,24 @@ class AppTheme {
       unselectedItemColor: mediumGrey,
       type: BottomNavigationBarType.fixed,
     ),
-    
+
     // Scaffold background
     scaffoldBackgroundColor: const Color(0xFFFAFAFA),
-    
+
     // Divider theme
     dividerTheme: const DividerThemeData(
       color: lightGrey,
       thickness: 1,
     ),
   );
-  
+
   // ====================
   // DARK THEME
   // ====================
   static ThemeData darkTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
-    
+
     // Color scheme
     colorScheme: const ColorScheme.dark(
       primary: primaryTealLight,
@@ -317,7 +317,7 @@ class AppTheme {
       error: Color(0xFFEF5350),
       onError: Colors.white,
     ),
-    
+
     // App bar theme
     appBarTheme: const AppBarTheme(
       backgroundColor: Color(0xFF1E1E1E),
@@ -332,14 +332,14 @@ class AppTheme {
         fontFamily: 'Inter',
       ),
     ),
-    
+
     // Elevated button theme
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         backgroundColor: primaryTealLight,
         foregroundColor: Colors.white,
         elevation: 2,
-        shadowColor: primaryTealLight.withValues(alpha:0.3),
+        shadowColor: primaryTealLight.withValues(alpha: 0.3),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
@@ -351,7 +351,7 @@ class AppTheme {
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       ),
     ),
-    
+
     // Text button theme
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
@@ -363,7 +363,7 @@ class AppTheme {
         ),
       ),
     ),
-    
+
     // Outlined button theme
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
@@ -380,7 +380,7 @@ class AppTheme {
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       ),
     ),
-    
+
     // Input decoration theme
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
@@ -415,17 +415,17 @@ class AppTheme {
         fontFamily: 'Inter',
       ),
     ),
-    
+
     // Card theme
     cardTheme: CardThemeData(
       elevation: 2,
-      shadowColor: Colors.black.withValues(alpha:0.3),
+      shadowColor: Colors.black.withValues(alpha: 0.3),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
       ),
       color: const Color(0xFF1E1E1E),
     ),
-    
+
     // Text theme
     textTheme: const TextTheme(
       headlineLarge: TextStyle(
@@ -501,7 +501,7 @@ class AppTheme {
         fontFamily: 'Inter',
       ),
     ),
-    
+
     // Checkbox theme
     checkboxTheme: CheckboxThemeData(
       fillColor: WidgetStateProperty.resolveWith((states) {
@@ -513,7 +513,7 @@ class AppTheme {
       checkColor: WidgetStateProperty.all(Colors.white),
       side: const BorderSide(color: Color(0xFFB0B0B0)),
     ),
-    
+
     // Switch theme
     switchTheme: SwitchThemeData(
       thumbColor: WidgetStateProperty.resolveWith((states) {
@@ -524,24 +524,24 @@ class AppTheme {
       }),
       trackColor: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
-          return primaryTealLight.withValues(alpha:0.5);
+          return primaryTealLight.withValues(alpha: 0.5);
         }
         return const Color(0xFF404040);
       }),
     ),
-    
+
     // Progress indicator theme
     progressIndicatorTheme: const ProgressIndicatorThemeData(
       color: primaryTealLight,
     ),
-    
+
     // Floating action button theme
     floatingActionButtonTheme: const FloatingActionButtonThemeData(
       backgroundColor: primaryTealLight,
       foregroundColor: Colors.white,
       elevation: 4,
     ),
-    
+
     // Bottom navigation bar theme
     bottomNavigationBarTheme: const BottomNavigationBarThemeData(
       backgroundColor: Color(0xFF1E1E1E),
@@ -549,10 +549,10 @@ class AppTheme {
       unselectedItemColor: Color(0xFFB0B0B0),
       type: BottomNavigationBarType.fixed,
     ),
-    
+
     // Scaffold background
     scaffoldBackgroundColor: const Color(0xFF121212),
-    
+
     // Divider theme
     dividerTheme: const DividerThemeData(
       color: Color(0xFF404040),
@@ -563,23 +563,23 @@ class AppTheme {
   // ====================
   // HELPER METHODS
   // ====================
-  
+
   /// Get theme based on brightness
   static ThemeData getTheme(Brightness brightness) {
     return brightness == Brightness.dark ? darkTheme : lightTheme;
   }
-  
+
   /// Get primary color based on brightness
   static Color getPrimaryColor(Brightness brightness) {
     return brightness == Brightness.dark ? primaryTealLight : primaryTeal;
   }
-  
+
   /// Get logo text color based on theme
   static Color getLogoTextColor(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return isDark ? Colors.white : darkGrey;
   }
-  
+
   /// Get brand gradient decoration
   static BoxDecoration getBrandGradientDecoration({
     BorderRadius? borderRadius,
@@ -589,31 +589,155 @@ class AppTheme {
       gradient: LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: colors ?? [
-          primaryTeal,
-          primaryTealLight,
-          secondaryBlue.withValues(alpha: 0.8),
-        ],
+        colors: colors ??
+            [
+              primaryTeal,
+              primaryTealLight,
+              secondaryBlue.withValues(alpha: 0.8),
+            ],
       ),
       borderRadius: borderRadius ?? BorderRadius.circular(16),
     );
   }
-  
+
   /// Get surface color with elevation
   static Color getSurfaceColor(BuildContext context, {double elevation = 0}) {
     final theme = Theme.of(context);
     final baseColor = theme.colorScheme.surface;
-    
+
     if (elevation == 0) return baseColor;
-    
-    final overlayColor = theme.brightness == Brightness.dark 
-        ? Colors.white 
-        : Colors.black;
-    
+
+    final overlayColor =
+        theme.brightness == Brightness.dark ? Colors.white : Colors.black;
+
     final opacity = (elevation / 24).clamp(0.0, 1.0) * 0.05;
     return Color.alphaBlend(
       overlayColor.withValues(alpha: opacity),
       baseColor,
     );
   }
+
+  // ====================
+  // BUTTON COLOR HELPERS
+  // ====================
+
+  /// Get button colors for different states - ensures consistency across all custom buttons
+  static ButtonColors getButtonColors(
+    BuildContext context, {
+    Color? customBackgroundColor,
+    Color? customTextColor,
+  }) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return ButtonColors(
+      backgroundColor: customBackgroundColor ?? colorScheme.primary,
+      textColor: customTextColor ?? colorScheme.onPrimary,
+      loadingSpinnerColor:
+          theme.progressIndicatorTheme.color ?? colorScheme.primary,
+      disabledBackgroundColor: colorScheme.outline,
+      disabledTextColor: colorScheme.onSurface.withValues(alpha: 0.38),
+    );
+  }
+
+  /// Get loading spinner color that contrasts well in both light and dark themes
+  static Color getLoadingSpinnerColor(BuildContext context,
+      {bool isDisabled = false}) {
+    final theme = Theme.of(context);
+
+    if (isDisabled) {
+      // For disabled state, use a color that contrasts with the disabled background
+      return theme.brightness == Brightness.dark
+          ? theme.colorScheme.onSurface.withValues(alpha: 0.6)
+          : theme.colorScheme.onSurface.withValues(alpha: 0.4);
+    }
+
+    // For normal state, use theme's progress indicator color
+    return theme.progressIndicatorTheme.color ?? theme.colorScheme.primary;
+  }
+
+  /// Get button style that works with your theme system
+  static ButtonStyle getCustomButtonStyle(
+    BuildContext context, {
+    Color? backgroundColor,
+    Color? textColor,
+    BorderRadius? borderRadius,
+    EdgeInsets? padding,
+  }) {
+    final theme = Theme.of(context);
+    final buttonColors = getButtonColors(
+      context,
+      customBackgroundColor: backgroundColor,
+      customTextColor: textColor,
+    );
+
+    return ElevatedButton.styleFrom(
+      backgroundColor: buttonColors.backgroundColor,
+      foregroundColor: buttonColors.textColor,
+      disabledBackgroundColor: buttonColors.disabledBackgroundColor,
+      disabledForegroundColor: buttonColors.disabledTextColor,
+      shape: RoundedRectangleBorder(
+        borderRadius: borderRadius ?? BorderRadius.circular(12),
+      ),
+      elevation: 2,
+      shadowColor: theme.shadowColor.withValues(alpha: 0.2),
+      padding:
+          padding ?? const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+    );
+  }
+
+  // ====================
+  // BUTTON VARIANTS
+  // ====================
+
+  /// Primary button style (uses your brand colors)
+  static ButtonStyle primaryButtonStyle(BuildContext context,
+      {BorderRadius? borderRadius}) {
+    return getCustomButtonStyle(context, borderRadius: borderRadius);
+  }
+
+  /// Secondary button style (uses secondary colors)
+  static ButtonStyle secondaryButtonStyle(BuildContext context,
+      {BorderRadius? borderRadius}) {
+    final theme = Theme.of(context);
+    return getCustomButtonStyle(
+      context,
+      backgroundColor: theme.colorScheme.secondary,
+      textColor: theme.colorScheme.onSecondary,
+      borderRadius: borderRadius,
+    );
+  }
+
+  /// Destructive button style (for delete, cancel actions)
+  static ButtonStyle destructiveButtonStyle(BuildContext context,
+      {BorderRadius? borderRadius}) {
+    final theme = Theme.of(context);
+    return getCustomButtonStyle(
+      context,
+      backgroundColor: theme.colorScheme.error,
+      textColor: theme.colorScheme.onError,
+      borderRadius: borderRadius,
+    );
+  }
+}
+
+// ====================
+// HELPER DATA CLASS
+// ====================
+
+/// Data class to hold button color information
+class ButtonColors {
+  final Color backgroundColor;
+  final Color textColor;
+  final Color loadingSpinnerColor;
+  final Color disabledBackgroundColor;
+  final Color disabledTextColor;
+
+  const ButtonColors({
+    required this.backgroundColor,
+    required this.textColor,
+    required this.loadingSpinnerColor,
+    required this.disabledBackgroundColor,
+    required this.disabledTextColor,
+  });
 }
