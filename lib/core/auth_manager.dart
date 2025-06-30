@@ -533,7 +533,7 @@ class AuthManager {
     if (expiry != null) {
       // Extend session by the specified hours
       final newExpiry = DateTime.now().add(
-        Duration(hours: AppConstants.sessionExtensionHours),
+        const Duration(hours: AppConstants.sessionExtensionHours),
       );
       await saveTokenExpiry(newExpiry);
       await _secureStorage.write(

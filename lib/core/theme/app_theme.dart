@@ -1,6 +1,7 @@
 // lib/core/theme/app_theme.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:slates_app_wear/core/utils/responsive_utils.dart';
 
 class AppTheme {
   // ====================
@@ -27,537 +28,315 @@ class AppTheme {
   static const Color errorRed = Color(0xFFF44336);
 
   // ====================
-  // LIGHT THEME
+  // RESPONSIVE THEME BUILDERS
   // ====================
-  static ThemeData lightTheme = ThemeData(
-    useMaterial3: true,
-    brightness: Brightness.light,
 
-    // Color scheme
-    colorScheme: const ColorScheme.light(
-      primary: primaryTeal,
-      primaryContainer: primaryTealLight,
-      onPrimary: Colors.white,
-      onPrimaryContainer: darkGrey,
-      secondary: secondaryBlue,
-      secondaryContainer: Color(0xFFE3F2FD),
-      onSecondary: Colors.white,
-      onSecondaryContainer: darkGrey,
-      tertiary: accentCyan,
-      surface: Colors.white,
-      onSurface: darkGrey,
-      onBackground: darkGrey,
-      error: errorRed,
-      onError: Colors.white,
-    ),
+  /// Create responsive light theme
+  static ThemeData lightTheme(BuildContext context) {
+    final responsive = ResponsiveUtils(context);
+    return _buildTheme(context, responsive, Brightness.light);
+  }
 
-    // App bar theme
-    appBarTheme: const AppBarTheme(
-      backgroundColor: primaryTeal,
-      foregroundColor: Colors.white,
-      elevation: 0,
-      centerTitle: true,
-      systemOverlayStyle: SystemUiOverlayStyle.light,
-      titleTextStyle: TextStyle(
-        color: Colors.white,
-        fontSize: 20,
-        fontWeight: FontWeight.w600,
-        fontFamily: 'Inter',
-      ),
-    ),
+  /// Create responsive dark theme
+  static ThemeData darkTheme(BuildContext context) {
+    final responsive = ResponsiveUtils(context);
+    return _buildTheme(context, responsive, Brightness.dark);
+  }
 
-    // Elevated button theme
-    elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: primaryTeal,
+  /// Build theme with responsive components
+  static ThemeData _buildTheme(BuildContext context, ResponsiveUtils responsive, Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
+    
+    return ThemeData(
+      useMaterial3: true,
+      brightness: brightness,
+
+      // Color scheme
+      colorScheme: isDark ? _darkColorScheme : _lightColorScheme,
+
+      // App bar theme with responsive sizing
+      appBarTheme: AppBarTheme(
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : primaryTeal,
         foregroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+        systemOverlayStyle: SystemUiOverlayStyle.light,
+        titleTextStyle: responsive.getTitleStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w600,
+        )?.copyWith(fontFamily: 'Inter'),
+      ),
+
+      // Responsive elevated button theme
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: isDark ? primaryTealLight : primaryTeal,
+          foregroundColor: Colors.white,
+          elevation: 2,
+          shadowColor: (isDark ? primaryTealLight : primaryTeal).withValues(alpha: 0.3),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(responsive.borderRadius),
+          ),
+          textStyle: responsive.getBodyStyle(
+            fontWeight: FontWeight.w600,
+          )?.copyWith(fontFamily: 'Inter'),
+          padding: responsive.buttonPadding,
+        ),
+      ),
+
+      // Responsive text button theme
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: isDark ? primaryTealLight : primaryTeal,
+          textStyle: responsive.getCaptionStyle(
+            fontWeight: FontWeight.w500,
+          )?.copyWith(fontFamily: 'Inter'),
+          padding: responsive.buttonPadding * 0.75,
+        ),
+      ),
+
+      // Responsive outlined button theme
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: isDark ? primaryTealLight : primaryTeal,
+          side: BorderSide(color: isDark ? primaryTealLight : primaryTeal),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(responsive.borderRadius),
+          ),
+          textStyle: responsive.getBodyStyle(
+            fontWeight: FontWeight.w600,
+          )?.copyWith(fontFamily: 'Inter'),
+          padding: responsive.buttonPadding,
+        ),
+      ),
+
+      // Responsive input decoration theme
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: isDark ? const Color(0xFF2C2C2C) : const Color(0xFFF5F5F5),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(responsive.borderRadius),
+          borderSide: BorderSide(color: isDark ? const Color(0xFF404040) : lightGrey),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(responsive.borderRadius),
+          borderSide: BorderSide(color: isDark ? const Color(0xFF404040) : lightGrey),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(responsive.borderRadius),
+          borderSide: BorderSide(
+            color: isDark ? primaryTealLight : primaryTeal, 
+            width: 2
+          ),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(responsive.borderRadius),
+          borderSide: BorderSide(color: isDark ? const Color(0xFFEF5350) : errorRed),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(responsive.borderRadius),
+          borderSide: BorderSide(
+            color: isDark ? const Color(0xFFEF5350) : errorRed, 
+            width: 2
+          ),
+        ),
+        contentPadding: responsive.inputPadding,
+        labelStyle: responsive.getBodyStyle(
+          color: isDark ? const Color(0xFFB0B0B0) : mediumGrey,
+        )?.copyWith(fontFamily: 'Inter'),
+        hintStyle: responsive.getBodyStyle(
+          color: isDark ? const Color(0xFFB0B0B0) : mediumGrey,
+        )?.copyWith(fontFamily: 'Inter'),
+      ),
+
+      // Responsive card theme
+      cardTheme: CardThemeData(
         elevation: 2,
-        shadowColor: primaryTeal.withValues(alpha: 0.3),
+        shadowColor: Colors.black.withValues(alpha: isDark ? 0.3 : 0.1),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(responsive.borderRadius),
         ),
-        textStyle: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          fontFamily: 'Inter',
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
       ),
-    ),
 
-    // Text button theme
-    textButtonTheme: TextButtonThemeData(
-      style: TextButton.styleFrom(
-        foregroundColor: primaryTeal,
-        textStyle: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-          fontFamily: 'Inter',
-        ),
-      ),
-    ),
+      // Responsive text theme
+      textTheme: _buildResponsiveTextTheme(responsive, isDark),
 
-    // Outlined button theme
-    outlinedButtonTheme: OutlinedButtonThemeData(
-      style: OutlinedButton.styleFrom(
-        foregroundColor: primaryTeal,
-        side: const BorderSide(color: primaryTeal),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        textStyle: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          fontFamily: 'Inter',
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      // Responsive checkbox theme
+      checkboxTheme: CheckboxThemeData(
+        fillColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return isDark ? primaryTealLight : primaryTeal;
+          }
+          return Colors.transparent;
+        }),
+        checkColor: WidgetStateProperty.all(Colors.white),
+        side: BorderSide(color: isDark ? const Color(0xFFB0B0B0) : mediumGrey),
       ),
-    ),
 
-    // Input decoration theme
-    inputDecorationTheme: InputDecorationTheme(
-      filled: true,
-      fillColor: const Color(0xFFF5F5F5),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: lightGrey),
+      // Responsive switch theme
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return isDark ? primaryTealLight : primaryTeal;
+          }
+          return isDark ? const Color(0xFFB0B0B0) : mediumGrey;
+        }),
+        trackColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return isDark 
+                ? primaryTealLight.withValues(alpha: 0.5) 
+                : primaryTealLight;
+          }
+          return isDark ? const Color(0xFF404040) : lightGrey;
+        }),
       ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: lightGrey),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: primaryTeal, width: 2),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: errorRed),
-      ),
-      focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: errorRed, width: 2),
-      ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      labelStyle: const TextStyle(
-        color: mediumGrey,
-        fontFamily: 'Inter',
-      ),
-      hintStyle: const TextStyle(
-        color: mediumGrey,
-        fontFamily: 'Inter',
-      ),
-    ),
 
-    // Card theme
-    cardTheme: CardThemeData(
-      elevation: 2,
-      shadowColor: Colors.black.withValues(alpha: 0.1),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+      // Progress indicator theme
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: isDark ? primaryTealLight : primaryTeal,
       ),
-      color: Colors.white,
-    ),
 
-    // Text theme
-    textTheme: const TextTheme(
-      headlineLarge: TextStyle(
-        fontSize: 32,
+      // Floating action button theme
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: isDark ? primaryTealLight : primaryTeal,
+        foregroundColor: Colors.white,
+        elevation: 4,
+      ),
+
+      // Bottom navigation bar theme
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        selectedItemColor: isDark ? primaryTealLight : primaryTeal,
+        unselectedItemColor: isDark ? const Color(0xFFB0B0B0) : mediumGrey,
+        type: BottomNavigationBarType.fixed,
+      ),
+
+      // Scaffold background
+      scaffoldBackgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFFAFAFA),
+
+      // Responsive divider theme
+      dividerTheme: DividerThemeData(
+        color: isDark ? const Color(0xFF404040) : lightGrey,
+        thickness: 1,
+      ),
+    );
+  }
+
+  /// Build responsive text theme
+  static TextTheme _buildResponsiveTextTheme(ResponsiveUtils responsive, bool isDark) {
+    final textColor = isDark ? Colors.white : darkGrey;
+    final secondaryTextColor = isDark ? const Color(0xFFB0B0B0) : mediumGrey;
+
+    return TextTheme(
+      headlineLarge: responsive.getHeadlineStyle(
+        color: textColor,
         fontWeight: FontWeight.bold,
-        color: darkGrey,
-        fontFamily: 'Inter',
-      ),
-      headlineMedium: TextStyle(
-        fontSize: 28,
+        baseFontSize: 32,
+      )?.copyWith(fontFamily: 'Inter'),
+      
+      headlineMedium: responsive.getHeadlineStyle(
+        color: textColor,
         fontWeight: FontWeight.bold,
-        color: darkGrey,
-        fontFamily: 'Inter',
-      ),
-      headlineSmall: TextStyle(
-        fontSize: 24,
+        baseFontSize: 28,
+      )?.copyWith(fontFamily: 'Inter'),
+      
+      headlineSmall: responsive.getHeadlineStyle(
+        color: textColor,
         fontWeight: FontWeight.w600,
-        color: darkGrey,
-        fontFamily: 'Inter',
-      ),
-      titleLarge: TextStyle(
-        fontSize: 22,
+        baseFontSize: 24,
+      )?.copyWith(fontFamily: 'Inter'),
+      
+      titleLarge: responsive.getTitleStyle(
+        color: textColor,
         fontWeight: FontWeight.w600,
-        color: darkGrey,
-        fontFamily: 'Inter',
-      ),
-      titleMedium: TextStyle(
-        fontSize: 16,
+        baseFontSize: 22,
+      )?.copyWith(fontFamily: 'Inter'),
+      
+      titleMedium: responsive.getTitleStyle(
+        color: textColor,
         fontWeight: FontWeight.w500,
-        color: darkGrey,
-        fontFamily: 'Inter',
-      ),
-      titleSmall: TextStyle(
-        fontSize: 14,
+        baseFontSize: 16,
+      )?.copyWith(fontFamily: 'Inter'),
+      
+      titleSmall: responsive.getTitleStyle(
+        color: secondaryTextColor,
         fontWeight: FontWeight.w500,
-        color: mediumGrey,
-        fontFamily: 'Inter',
-      ),
-      bodyLarge: TextStyle(
-        fontSize: 16,
+        baseFontSize: 14,
+      )?.copyWith(fontFamily: 'Inter'),
+      
+      bodyLarge: responsive.getBodyStyle(
+        color: textColor,
         fontWeight: FontWeight.normal,
-        color: darkGrey,
-        fontFamily: 'Inter',
-      ),
-      bodyMedium: TextStyle(
-        fontSize: 14,
+        baseFontSize: 16,
+      )?.copyWith(fontFamily: 'Inter'),
+      
+      bodyMedium: responsive.getBodyStyle(
+        color: textColor,
         fontWeight: FontWeight.normal,
-        color: darkGrey,
-        fontFamily: 'Inter',
-      ),
-      bodySmall: TextStyle(
-        fontSize: 12,
+        baseFontSize: 14,
+      )?.copyWith(fontFamily: 'Inter'),
+      
+      bodySmall: responsive.getBodyStyle(
+        color: secondaryTextColor,
         fontWeight: FontWeight.normal,
-        color: mediumGrey,
-        fontFamily: 'Inter',
-      ),
-      labelLarge: TextStyle(
-        fontSize: 14,
+        baseFontSize: 12,
+      )?.copyWith(fontFamily: 'Inter'),
+      
+      labelLarge: responsive.getCaptionStyle(
+        color: textColor,
         fontWeight: FontWeight.w500,
-        color: darkGrey,
-        fontFamily: 'Inter',
-      ),
-      labelMedium: TextStyle(
-        fontSize: 12,
+        baseFontSize: 14,
+      )?.copyWith(fontFamily: 'Inter'),
+      
+      labelMedium: responsive.getCaptionStyle(
+        color: secondaryTextColor,
         fontWeight: FontWeight.w500,
-        color: mediumGrey,
-        fontFamily: 'Inter',
-      ),
-      labelSmall: TextStyle(
-        fontSize: 11,
+        baseFontSize: 12,
+      )?.copyWith(fontFamily: 'Inter'),
+      
+      labelSmall: responsive.getCaptionStyle(
+        color: secondaryTextColor,
         fontWeight: FontWeight.w500,
-        color: mediumGrey,
-        fontFamily: 'Inter',
-      ),
-    ),
+        baseFontSize: 11,
+      )?.copyWith(fontFamily: 'Inter'),
+    );
+  }
 
-    // Checkbox theme
-    checkboxTheme: CheckboxThemeData(
-      fillColor: WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.selected)) {
-          return primaryTeal;
-        }
-        return Colors.transparent;
-      }),
-      checkColor: WidgetStateProperty.all(Colors.white),
-      side: const BorderSide(color: mediumGrey),
-    ),
+  // ====================
+  // COLOR SCHEMES
+  // ====================
 
-    // Switch theme
-    switchTheme: SwitchThemeData(
-      thumbColor: WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.selected)) {
-          return primaryTeal;
-        }
-        return mediumGrey;
-      }),
-      trackColor: WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.selected)) {
-          return primaryTealLight;
-        }
-        return lightGrey;
-      }),
-    ),
-
-    // Progress indicator theme
-    progressIndicatorTheme: const ProgressIndicatorThemeData(
-      color: primaryTeal,
-    ),
-
-    // Floating action button theme
-    floatingActionButtonTheme: const FloatingActionButtonThemeData(
-      backgroundColor: primaryTeal,
-      foregroundColor: Colors.white,
-      elevation: 4,
-    ),
-
-    // Bottom navigation bar theme
-    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-      backgroundColor: Colors.white,
-      selectedItemColor: primaryTeal,
-      unselectedItemColor: mediumGrey,
-      type: BottomNavigationBarType.fixed,
-    ),
-
-    // Scaffold background
-    scaffoldBackgroundColor: const Color(0xFFFAFAFA),
-
-    // Divider theme
-    dividerTheme: const DividerThemeData(
-      color: lightGrey,
-      thickness: 1,
-    ),
+  static const ColorScheme _lightColorScheme = ColorScheme.light(
+    primary: primaryTeal,
+    primaryContainer: primaryTealLight,
+    onPrimary: Colors.white,
+    onPrimaryContainer: darkGrey,
+    secondary: secondaryBlue,
+    secondaryContainer: Color(0xFFE3F2FD),
+    onSecondary: Colors.white,
+    onSecondaryContainer: darkGrey,
+    tertiary: accentCyan,
+    surface: Colors.white,
+    onSurface: darkGrey,
+    error: errorRed,
+    onError: Colors.white,
   );
 
-  // ====================
-  // DARK THEME
-  // ====================
-  static ThemeData darkTheme = ThemeData(
-    useMaterial3: true,
-    brightness: Brightness.dark,
-
-    // Color scheme
-    colorScheme: const ColorScheme.dark(
-      primary: primaryTealLight,
-      primaryContainer: primaryTealDark,
-      onPrimary: Colors.white,
-      onPrimaryContainer: Colors.white,
-      secondary: secondaryBlue,
-      secondaryContainer: Color(0xFF1565C0),
-      onSecondary: Colors.white,
-      onSecondaryContainer: Colors.white,
-      tertiary: accentCyan,
-      surface: Color(0xFF1E1E1E),
-      onSurface: Colors.white,
-      onBackground: Colors.white,
-      error: Color(0xFFEF5350),
-      onError: Colors.white,
-    ),
-
-    // App bar theme
-    appBarTheme: const AppBarTheme(
-      backgroundColor: Color(0xFF1E1E1E),
-      foregroundColor: Colors.white,
-      elevation: 0,
-      centerTitle: true,
-      systemOverlayStyle: SystemUiOverlayStyle.light,
-      titleTextStyle: TextStyle(
-        color: Colors.white,
-        fontSize: 20,
-        fontWeight: FontWeight.w600,
-        fontFamily: 'Inter',
-      ),
-    ),
-
-    // Elevated button theme
-    elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: primaryTealLight,
-        foregroundColor: Colors.white,
-        elevation: 2,
-        shadowColor: primaryTealLight.withValues(alpha: 0.3),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        textStyle: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          fontFamily: 'Inter',
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      ),
-    ),
-
-    // Text button theme
-    textButtonTheme: TextButtonThemeData(
-      style: TextButton.styleFrom(
-        foregroundColor: primaryTealLight,
-        textStyle: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-          fontFamily: 'Inter',
-        ),
-      ),
-    ),
-
-    // Outlined button theme
-    outlinedButtonTheme: OutlinedButtonThemeData(
-      style: OutlinedButton.styleFrom(
-        foregroundColor: primaryTealLight,
-        side: const BorderSide(color: primaryTealLight),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        textStyle: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          fontFamily: 'Inter',
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      ),
-    ),
-
-    // Input decoration theme
-    inputDecorationTheme: InputDecorationTheme(
-      filled: true,
-      fillColor: const Color(0xFF2C2C2C),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFF404040)),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFF404040)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: primaryTealLight, width: 2),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFFEF5350)),
-      ),
-      focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFFEF5350), width: 2),
-      ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      labelStyle: const TextStyle(
-        color: Color(0xFFB0B0B0),
-        fontFamily: 'Inter',
-      ),
-      hintStyle: const TextStyle(
-        color: Color(0xFFB0B0B0),
-        fontFamily: 'Inter',
-      ),
-    ),
-
-    // Card theme
-    cardTheme: CardThemeData(
-      elevation: 2,
-      shadowColor: Colors.black.withValues(alpha: 0.3),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      color: const Color(0xFF1E1E1E),
-    ),
-
-    // Text theme
-    textTheme: const TextTheme(
-      headlineLarge: TextStyle(
-        fontSize: 32,
-        fontWeight: FontWeight.bold,
-        color: Colors.white,
-        fontFamily: 'Inter',
-      ),
-      headlineMedium: TextStyle(
-        fontSize: 28,
-        fontWeight: FontWeight.bold,
-        color: Colors.white,
-        fontFamily: 'Inter',
-      ),
-      headlineSmall: TextStyle(
-        fontSize: 24,
-        fontWeight: FontWeight.w600,
-        color: Colors.white,
-        fontFamily: 'Inter',
-      ),
-      titleLarge: TextStyle(
-        fontSize: 22,
-        fontWeight: FontWeight.w600,
-        color: Colors.white,
-        fontFamily: 'Inter',
-      ),
-      titleMedium: TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w500,
-        color: Colors.white,
-        fontFamily: 'Inter',
-      ),
-      titleSmall: TextStyle(
-        fontSize: 14,
-        fontWeight: FontWeight.w500,
-        color: Color(0xFFB0B0B0),
-        fontFamily: 'Inter',
-      ),
-      bodyLarge: TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.normal,
-        color: Colors.white,
-        fontFamily: 'Inter',
-      ),
-      bodyMedium: TextStyle(
-        fontSize: 14,
-        fontWeight: FontWeight.normal,
-        color: Colors.white,
-        fontFamily: 'Inter',
-      ),
-      bodySmall: TextStyle(
-        fontSize: 12,
-        fontWeight: FontWeight.normal,
-        color: Color(0xFFB0B0B0),
-        fontFamily: 'Inter',
-      ),
-      labelLarge: TextStyle(
-        fontSize: 14,
-        fontWeight: FontWeight.w500,
-        color: Colors.white,
-        fontFamily: 'Inter',
-      ),
-      labelMedium: TextStyle(
-        fontSize: 12,
-        fontWeight: FontWeight.w500,
-        color: Color(0xFFB0B0B0),
-        fontFamily: 'Inter',
-      ),
-      labelSmall: TextStyle(
-        fontSize: 11,
-        fontWeight: FontWeight.w500,
-        color: Color(0xFFB0B0B0),
-        fontFamily: 'Inter',
-      ),
-    ),
-
-    // Checkbox theme
-    checkboxTheme: CheckboxThemeData(
-      fillColor: WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.selected)) {
-          return primaryTealLight;
-        }
-        return Colors.transparent;
-      }),
-      checkColor: WidgetStateProperty.all(Colors.white),
-      side: const BorderSide(color: Color(0xFFB0B0B0)),
-    ),
-
-    // Switch theme
-    switchTheme: SwitchThemeData(
-      thumbColor: WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.selected)) {
-          return primaryTealLight;
-        }
-        return const Color(0xFFB0B0B0);
-      }),
-      trackColor: WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.selected)) {
-          return primaryTealLight.withValues(alpha: 0.5);
-        }
-        return const Color(0xFF404040);
-      }),
-    ),
-
-    // Progress indicator theme
-    progressIndicatorTheme: const ProgressIndicatorThemeData(
-      color: primaryTealLight,
-    ),
-
-    // Floating action button theme
-    floatingActionButtonTheme: const FloatingActionButtonThemeData(
-      backgroundColor: primaryTealLight,
-      foregroundColor: Colors.white,
-      elevation: 4,
-    ),
-
-    // Bottom navigation bar theme
-    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-      backgroundColor: Color(0xFF1E1E1E),
-      selectedItemColor: primaryTealLight,
-      unselectedItemColor: Color(0xFFB0B0B0),
-      type: BottomNavigationBarType.fixed,
-    ),
-
-    // Scaffold background
-    scaffoldBackgroundColor: const Color(0xFF121212),
-
-    // Divider theme
-    dividerTheme: const DividerThemeData(
-      color: Color(0xFF404040),
-      thickness: 1,
-    ),
+  static const ColorScheme _darkColorScheme = ColorScheme.dark(
+    primary: primaryTealLight,
+    primaryContainer: primaryTealDark,
+    onPrimary: Colors.white,
+    onPrimaryContainer: Colors.white,
+    secondary: secondaryBlue,
+    secondaryContainer: Color(0xFF1565C0),
+    onSecondary: Colors.white,
+    onSecondaryContainer: Colors.white,
+    tertiary: accentCyan,
+    surface: Color(0xFF1E1E1E),
+    onSurface: Colors.white,
+    error: Color(0xFFEF5350),
+    onError: Colors.white,
   );
 
   // ====================
@@ -565,8 +344,8 @@ class AppTheme {
   // ====================
 
   /// Get theme based on brightness
-  static ThemeData getTheme(Brightness brightness) {
-    return brightness == Brightness.dark ? darkTheme : lightTheme;
+  static ThemeData getTheme(BuildContext context, Brightness brightness) {
+    return brightness == Brightness.dark ? darkTheme(context) : lightTheme(context);
   }
 
   /// Get primary color based on brightness
@@ -580,11 +359,13 @@ class AppTheme {
     return isDark ? Colors.white : darkGrey;
   }
 
-  /// Get brand gradient decoration
-  static BoxDecoration getBrandGradientDecoration({
+  /// Get responsive brand gradient decoration
+  static BoxDecoration getBrandGradientDecoration(
+    BuildContext context, {
     BorderRadius? borderRadius,
     List<Color>? colors,
   }) {
+    final responsive = context.responsive;
     return BoxDecoration(
       gradient: LinearGradient(
         begin: Alignment.topLeft,
@@ -596,7 +377,7 @@ class AppTheme {
               secondaryBlue.withValues(alpha: 0.8),
             ],
       ),
-      borderRadius: borderRadius ?? BorderRadius.circular(16),
+      borderRadius: borderRadius ?? BorderRadius.circular(responsive.borderRadius),
     );
   }
 
@@ -618,11 +399,11 @@ class AppTheme {
   }
 
   // ====================
-  // BUTTON COLOR HELPERS
+  // RESPONSIVE BUTTON HELPERS
   // ====================
 
-  /// Get button colors for different states - ensures consistency across all custom buttons
-  static ButtonColors getButtonColors(
+  /// Get responsive button colors for different states
+  static ButtonColors getResponsiveButtonColors(
     BuildContext context, {
     Color? customBackgroundColor,
     Color? customTextColor,
@@ -640,24 +421,22 @@ class AppTheme {
     );
   }
 
-  /// Get loading spinner color that contrasts well in both light and dark themes
-  static Color getLoadingSpinnerColor(BuildContext context,
+  /// Get responsive loading spinner color
+  static Color getResponsiveLoadingSpinnerColor(BuildContext context,
       {bool isDisabled = false}) {
     final theme = Theme.of(context);
 
     if (isDisabled) {
-      // For disabled state, use a color that contrasts with the disabled background
       return theme.brightness == Brightness.dark
           ? theme.colorScheme.onSurface.withValues(alpha: 0.6)
           : theme.colorScheme.onSurface.withValues(alpha: 0.4);
     }
 
-    // For normal state, use theme's progress indicator color
     return theme.progressIndicatorTheme.color ?? theme.colorScheme.primary;
   }
 
-  /// Get button style that works with your theme system
-  static ButtonStyle getCustomButtonStyle(
+  /// Get responsive button style
+  static ButtonStyle getResponsiveButtonStyle(
     BuildContext context, {
     Color? backgroundColor,
     Color? textColor,
@@ -665,7 +444,8 @@ class AppTheme {
     EdgeInsets? padding,
   }) {
     final theme = Theme.of(context);
-    final buttonColors = getButtonColors(
+    final responsive = context.responsive;
+    final buttonColors = getResponsiveButtonColors(
       context,
       customBackgroundColor: backgroundColor,
       customTextColor: textColor,
@@ -677,47 +457,115 @@ class AppTheme {
       disabledBackgroundColor: buttonColors.disabledBackgroundColor,
       disabledForegroundColor: buttonColors.disabledTextColor,
       shape: RoundedRectangleBorder(
-        borderRadius: borderRadius ?? BorderRadius.circular(12),
+        borderRadius: borderRadius ?? BorderRadius.circular(responsive.borderRadius),
       ),
       elevation: 2,
       shadowColor: theme.shadowColor.withValues(alpha: 0.2),
-      padding:
-          padding ?? const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      padding: padding ?? responsive.buttonPadding,
+      textStyle: responsive.getBodyStyle(fontWeight: FontWeight.w600),
     );
   }
 
   // ====================
-  // BUTTON VARIANTS
+  // RESPONSIVE BUTTON VARIANTS
   // ====================
 
-  /// Primary button style (uses your brand colors)
-  static ButtonStyle primaryButtonStyle(BuildContext context,
-      {BorderRadius? borderRadius}) {
-    return getCustomButtonStyle(context, borderRadius: borderRadius);
+  /// Responsive primary button style
+  static ButtonStyle responsivePrimaryButtonStyle(BuildContext context) {
+    return getResponsiveButtonStyle(context);
   }
 
-  /// Secondary button style (uses secondary colors)
-  static ButtonStyle secondaryButtonStyle(BuildContext context,
-      {BorderRadius? borderRadius}) {
+  /// Responsive secondary button style
+  static ButtonStyle responsiveSecondaryButtonStyle(BuildContext context) {
     final theme = Theme.of(context);
-    return getCustomButtonStyle(
+    return getResponsiveButtonStyle(
       context,
       backgroundColor: theme.colorScheme.secondary,
       textColor: theme.colorScheme.onSecondary,
-      borderRadius: borderRadius,
     );
   }
 
-  /// Destructive button style (for delete, cancel actions)
-  static ButtonStyle destructiveButtonStyle(BuildContext context,
-      {BorderRadius? borderRadius}) {
+  /// Responsive destructive button style
+  static ButtonStyle responsiveDestructiveButtonStyle(BuildContext context) {
     final theme = Theme.of(context);
-    return getCustomButtonStyle(
+    return getResponsiveButtonStyle(
       context,
       backgroundColor: theme.colorScheme.error,
       textColor: theme.colorScheme.onError,
-      borderRadius: borderRadius,
     );
+  }
+
+  // ====================
+  // RESPONSIVE COMPONENT HELPERS
+  // ====================
+
+  /// Get responsive input decoration
+  static InputDecoration getResponsiveInputDecoration(
+    BuildContext context, {
+    String? labelText,
+    String? hintText,
+    Widget? prefixIcon,
+    Widget? suffixIcon,
+  }) {
+    final theme = Theme.of(context);
+    final responsive = context.responsive;
+
+    return InputDecoration(
+      labelText: labelText,
+      hintText: hintText,
+      prefixIcon: prefixIcon,
+      suffixIcon: suffixIcon,
+      filled: true,
+      fillColor: theme.inputDecorationTheme.fillColor,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(responsive.borderRadius),
+        borderSide: theme.inputDecorationTheme.border?.borderSide ?? BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(responsive.borderRadius),
+        borderSide: theme.inputDecorationTheme.enabledBorder?.borderSide ?? BorderSide.none,
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(responsive.borderRadius),
+        borderSide: theme.inputDecorationTheme.focusedBorder?.borderSide ?? 
+            BorderSide(color: theme.colorScheme.primary, width: 2),
+      ),
+      contentPadding: responsive.inputPadding,
+      labelStyle: responsive.getBodyStyle(),
+      hintStyle: responsive.getBodyStyle(),
+    );
+  }
+
+  /// Get responsive card decoration
+  static BoxDecoration getResponsiveCardDecoration(
+    BuildContext context, {
+    Color? backgroundColor,
+    double? elevation,
+  }) {
+    final theme = Theme.of(context);
+    final responsive = context.responsive;
+
+    return BoxDecoration(
+      color: backgroundColor ?? theme.cardTheme.color,
+      borderRadius: BorderRadius.circular(responsive.borderRadius),
+      boxShadow: elevation != null ? [
+        BoxShadow(
+          color: theme.shadowColor.withValues(alpha: 0.1),
+          blurRadius: elevation * 2,
+          offset: Offset(0, elevation),
+        ),
+      ] : null,
+    );
+  }
+
+  /// Get responsive container padding
+  static EdgeInsets getResponsiveContainerPadding(BuildContext context) {
+    return context.responsive.containerPadding;
+  }
+
+  /// Get responsive form padding
+  static EdgeInsets getResponsiveFormPadding(BuildContext context) {
+    return context.responsive.formPadding;
   }
 }
 

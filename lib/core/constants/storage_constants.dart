@@ -151,29 +151,29 @@ class StorageConstants {
   
   /// Get user-specific key
   static String getUserKey(String baseKey, String userId) {
-    return '${userPrefix}${userId}_$baseKey';
+    return '$userPrefix${userId}_$baseKey';
   }
   
   /// Get guard-specific key
   static String getGuardKey(String baseKey, String guardId) {
-    return '${guardPrefix}${guardId}_$baseKey';
+    return '$guardPrefix${guardId}_$baseKey';
   }
   
   /// Get admin-specific key
   static String getAdminKey(String baseKey, String adminId) {
-    return '${adminPrefix}${adminId}_$baseKey';
+    return '$adminPrefix${adminId}_$baseKey';
   }
   
   /// Get temporary key with timestamp
   static String getTempKey(String baseKey) {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
-    return '${tempPrefix}${timestamp}_$baseKey';
+    return '$tempPrefix${timestamp}_$baseKey';
   }
   
   /// Get backup key with timestamp
   static String getBackupKey(String baseKey) {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
-    return '${backupPrefix}${timestamp}_$baseKey';
+    return '$backupPrefix${timestamp}_$baseKey';
   }
   
   /// Get cache key with prefix

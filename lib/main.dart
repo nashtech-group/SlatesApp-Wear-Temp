@@ -10,16 +10,16 @@ import 'routes/app_routes.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Initialize theme provider
   final themeProvider = ThemeProvider();
   await themeProvider.initTheme();
-  
+
   // Set preferred orientations for wearable
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
   ]);
-  
+
   // Configure system UI for wearable
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -28,7 +28,7 @@ void main() async {
       systemNavigationBarColor: Colors.transparent,
     ),
   );
-  
+
   runApp(
     ChangeNotifierProvider.value(
       value: themeProvider,
@@ -46,27 +46,33 @@ class SlatesApp extends StatelessWidget {
       builder: (context, themeProvider, child) {
         return AppRepositories(
           appBlocs: AppBlocs(
-            app: MaterialApp(
-              title: 'SlatesApp Wear',
-              debugShowCheckedModeBanner: false,
-              
-              // Theme configuration
-              theme: AppTheme.lightTheme,
-              darkTheme: AppTheme.darkTheme,
-              themeMode: themeProvider.themeMode,
-              
-              // Navigation
-              initialRoute: RouteConstants.splash,
-              onGenerateRoute: AppRoutes.generateRoute,
-              
-              // Builder for global configurations
-              builder: (context, child) {
-                // Configure text scale factor for wearable
-                return MediaQuery(
-                  data: MediaQuery.of(context).copyWith(
-                    textScaleFactor: MediaQuery.of(context).textScaleFactor.clamp(0.8, 1.2),
-                  ),
-                  child: child!,
+            app: Builder(
+              builder: (context) {
+                return MaterialApp(
+                  title: 'SlatesApp Wear',
+                  debugShowCheckedModeBanner: false,
+
+                  theme: AppTheme.lightTheme(context),
+                  darkTheme: AppTheme.darkTheme(context),
+                  themeMode: themeProvider.themeMode,
+
+                  // Navigation
+                  initialRoute: RouteConstants.splash,
+                  onGenerateRoute: AppRoutes.generateRoute,
+
+                  // Builder for global configurations
+                  builder: (context, child) {
+                    // Configure text scale factor for wearable (using updated API)
+                    return MediaQuery(
+                      data: MediaQuery.of(context).copyWith(
+                        textScaler: MediaQuery.of(context).textScaler.clamp(
+                              minScaleFactor: 0.8,
+                              maxScaleFactor: 1.2,
+                            ),
+                      ),
+                      child: child!,
+                    );
+                  },
                 );
               },
             ),

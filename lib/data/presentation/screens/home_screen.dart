@@ -14,7 +14,7 @@ import 'package:slates_app_wear/data/presentation/screens/widgets/common/role_ba
 import 'package:slates_app_wear/data/presentation/screens/widgets/wearable/large_button.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+  const HomeScreen({super.key});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -161,7 +161,7 @@ class _LoadingHomeScreen extends StatelessWidget {
         centerTitle: true,
       ),
       body: Container(
-        decoration: AppTheme.getBrandGradientDecoration(),
+        decoration: AppTheme.getBrandGradientDecoration(context),
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,

@@ -36,15 +36,15 @@ class LargeButton extends StatelessWidget {
     final buttonHeight = height ?? responsive.buttonHeight;
     final loadingIndicatorSize = responsive.iconSize;
     
-    // Get theme-aware button colors
-    final buttonColors = AppTheme.getButtonColors(
+    // Get theme-aware button colors 
+    final buttonColors = AppTheme.getResponsiveButtonColors(
       context,
       customBackgroundColor: backgroundColor,
       customTextColor: textColor,
     );
     
-    // Get loading spinner color (handles disabled state automatically)
-    final loadingSpinnerColor = AppTheme.getLoadingSpinnerColor(
+    // Get loading spinner color 
+    final loadingSpinnerColor = AppTheme.getResponsiveLoadingSpinnerColor(
       context, 
       isDisabled: isLoading,
     );
@@ -57,7 +57,7 @@ class LargeButton extends StatelessWidget {
           HapticFeedback.lightImpact();
           onPressed?.call();
         },
-        style: style ?? AppTheme.getCustomButtonStyle(
+        style: style ?? AppTheme.getResponsiveButtonStyle(
           context,
           backgroundColor: backgroundColor,
           textColor: textColor,
