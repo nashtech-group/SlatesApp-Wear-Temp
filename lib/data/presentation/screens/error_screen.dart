@@ -1,6 +1,6 @@
-
 import 'package:flutter/material.dart';
 import 'package:slates_app_wear/core/constants/app_constants.dart';
+import 'package:slates_app_wear/core/utils/responsive_utils.dart';
 
 class ErrorScreen extends StatelessWidget {
   final String title;
@@ -68,9 +68,10 @@ class ErrorScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final responsive = context.responsive;
     
     return Scaffold(
-      appBar: AppBar(
+      appBar: responsive.isWearable ? null : AppBar(
         title: const Text(AppConstants.appTitle),
         backgroundColor: theme.colorScheme.surface,
         foregroundColor: theme.colorScheme.onSurface,
@@ -78,186 +79,328 @@ class ErrorScreen extends StatelessWidget {
         automaticallyImplyLeading: _shouldShowBackButton(context),
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Error Icon
-              Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: _getIconBackgroundColor(theme),
-                ),
-                child: Icon(
-                  icon ?? Icons.error_outline,
-                  size: 64,
-                  color: _getIconColor(theme),
-                ),
-              ),
-              
-              const SizedBox(height: 32),
-              
-              // Error Title
-              Text(
-                title,
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.onSurface,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              
-              const SizedBox(height: 16),
-              
-              // Error Message
-              Text(
-                message,
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha:0.7),
-                  height: 1.5,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              
-              // Error Code (if provided)
-              if (errorCode != null) ...[
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.errorContainer.withValues(alpha:0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: theme.colorScheme.error.withValues(alpha:0.3),
-                    ),
-                  ),
-                  child: Text(
-                    'Error Code: $errorCode',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.error,
-                      fontFamily: 'monospace',
-                    ),
-                  ),
-                ),
-              ],
-              
-              const SizedBox(height: 48),
-              
-              // Action Buttons
-              Column(
-                children: [
-                  // Primary Action Button
-                  if (onRetry != null || onCustomAction != null)
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: onCustomAction ?? onRetry,
-                        icon: Icon(_getPrimaryActionIcon()),
-                        label: Text(
-                          actionButtonText ?? 
-                          (onRetry != null ? 'Try Again' : 'Continue'),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                    ),
-                  
-                  // Secondary Action Button
-                  if (onGoHome != null || _shouldShowGoHomeButton(context)) ...[
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: TextButton.icon(
-                        onPressed: onGoHome ?? () => _goToHome(context),
-                        icon: const Icon(Icons.home_outlined),
-                        label: const Text('Go to Home'),
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                  
-                  // Back Button (if no custom actions)
-                  if (onRetry == null && 
-                      onCustomAction == null && 
-                      onGoHome == null &&
-                      _shouldShowBackButton(context)) ...[
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: TextButton.icon(
-                        onPressed: () => Navigator.of(context).pop(),
-                        icon: const Icon(Icons.arrow_back),
-                        label: const Text('Go Back'),
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-              
-              const SizedBox(height: 24),
-              
-              // Support Information
-              _buildSupportInfo(context),
-            ],
-          ),
-        ),
+        child: _buildResponsiveLayout(context, theme, responsive),
       ),
     );
   }
 
-  Widget _buildSupportInfo(BuildContext context) {
-    final theme = Theme.of(context);
-    
+  Widget _buildResponsiveLayout(BuildContext context, ThemeData theme, ResponsiveUtils responsive) {
+    if (responsive.isWearable) {
+      return _buildWearableLayout(context, theme, responsive);
+    }
+    return _buildMobileLayout(context, theme, responsive);
+  }
+
+  Widget _buildWearableLayout(BuildContext context, ThemeData theme, ResponsiveUtils responsive) {
+    return SingleChildScrollView(
+      padding: responsive.containerPadding,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Compact error icon
+          _buildErrorIcon(theme, responsive),
+          
+          responsive.largeSpacer,
+          
+          // Error title
+          _buildErrorTitle(theme, responsive),
+          
+          responsive.mediumSpacer,
+          
+          // Error message
+          _buildErrorMessage(theme, responsive),
+          
+          // Error code (if provided)
+          if (errorCode != null) ...[
+            responsive.smallSpacer,
+            _buildErrorCode(theme, responsive),
+          ],
+          
+          responsive.largeSpacer,
+          
+          // Action buttons
+          _buildActionButtons(context, responsive),
+          
+          responsive.mediumSpacer,
+          
+          // Compact support info
+          _buildCompactSupportInfo(context, theme, responsive),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileLayout(BuildContext context, ThemeData theme, ResponsiveUtils responsive) {
+    return Padding(
+      padding: responsive.containerPadding,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Error Icon
+          _buildErrorIcon(theme, responsive),
+          
+          responsive.extraLargeSpacer,
+          
+          // Error Title
+          _buildErrorTitle(theme, responsive),
+          
+          responsive.mediumSpacer,
+          
+          // Error Message
+          _buildErrorMessage(theme, responsive),
+          
+          // Error Code (if provided)
+          if (errorCode != null) ...[
+            responsive.smallSpacer,
+            _buildErrorCode(theme, responsive),
+          ],
+          
+          SizedBox(height: responsive.extraLargeSpacing * 1.2),
+          
+          // Action Buttons
+          _buildActionButtons(context, responsive),
+          
+          responsive.largeSpacer,
+          
+          // Support Information
+          _buildSupportInfo(context, theme, responsive),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorIcon(ThemeData theme, ResponsiveUtils responsive) {
+    final iconContainerSize = responsive.getResponsiveValue(
+      wearable: 80.0,
+      smallMobile: 100.0,
+      mobile: 120.0,
+      tablet: 140.0,
+    );
+
+    final iconSize = responsive.getResponsiveValue(
+      wearable: 40.0,
+      smallMobile: 48.0,
+      mobile: 64.0,
+      tablet: 72.0,
+    );
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      width: iconContainerSize,
+      height: iconContainerSize,
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha:0.3),
-        borderRadius: BorderRadius.circular(12),
+        shape: BoxShape.circle,
+        color: _getIconBackgroundColor(theme),
+      ),
+      child: Icon(
+        icon ?? Icons.error_outline,
+        size: iconSize,
+        color: _getIconColor(theme),
+      ),
+    );
+  }
+
+  Widget _buildErrorTitle(ThemeData theme, ResponsiveUtils responsive) {
+    return Text(
+      title,
+      style: responsive.getHeadlineStyle(
+        fontWeight: FontWeight.bold,
+        color: theme.colorScheme.onSurface,
+      ),
+      textAlign: TextAlign.center,
+    );
+  }
+
+  Widget _buildErrorMessage(ThemeData theme, ResponsiveUtils responsive) {
+    return Text(
+      message,
+      style: responsive.getBodyStyle(
+        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+      )?.copyWith(height: 1.5),
+      textAlign: TextAlign.center,
+    );
+  }
+
+  Widget _buildErrorCode(ThemeData theme, ResponsiveUtils responsive) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: responsive.padding * 0.6,
+        vertical: responsive.smallSpacing,
+      ),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.errorContainer.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(responsive.borderRadius),
         border: Border.all(
-          color: theme.colorScheme.outline.withValues(alpha:0.2),
+          color: theme.colorScheme.error.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Text(
+        'Error Code: $errorCode',
+        style: responsive.getCaptionStyle(
+          color: theme.colorScheme.error,
+        )?.copyWith(fontFamily: 'monospace'),
+      ),
+    );
+  }
+
+  Widget _buildActionButtons(BuildContext context, ResponsiveUtils responsive) {
+    return Column(
+      children: [
+        // Primary Action Button
+        if (onRetry != null || onCustomAction != null)
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: onCustomAction ?? onRetry,
+              icon: Icon(
+                _getPrimaryActionIcon(),
+                size: responsive.iconSize,
+              ),
+              label: Text(
+                actionButtonText ?? 
+                (onRetry != null ? 'Try Again' : 'Continue'),
+                style: responsive.getBodyStyle(),
+              ),
+              style: ElevatedButton.styleFrom(
+                padding: EdgeInsets.symmetric(
+                  vertical: responsive.isWearable ? 12 : 16,
+                  horizontal: responsive.padding,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(responsive.borderRadius),
+                ),
+              ),
+            ),
+          ),
+        
+        // Secondary Action Button
+        if (onGoHome != null || _shouldShowGoHomeButton(context)) ...[
+          responsive.smallSpacer,
+          SizedBox(
+            width: double.infinity,
+            child: TextButton.icon(
+              onPressed: onGoHome ?? () => _goToHome(context),
+              icon: Icon(
+                Icons.home_outlined,
+                size: responsive.iconSize,
+              ),
+              label: Text(
+                'Go to Home',
+                style: responsive.getBodyStyle(),
+              ),
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.symmetric(
+                  vertical: responsive.isWearable ? 12 : 16,
+                  horizontal: responsive.padding,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(responsive.borderRadius),
+                ),
+              ),
+            ),
+          ),
+        ],
+        
+        // Back Button (if no custom actions)
+        if (onRetry == null && 
+            onCustomAction == null && 
+            onGoHome == null &&
+            _shouldShowBackButton(context)) ...[
+          responsive.smallSpacer,
+          SizedBox(
+            width: double.infinity,
+            child: TextButton.icon(
+              onPressed: () => Navigator.of(context).pop(),
+              icon: Icon(
+                Icons.arrow_back,
+                size: responsive.iconSize,
+              ),
+              label: Text(
+                'Go Back',
+                style: responsive.getBodyStyle(),
+              ),
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.symmetric(
+                  vertical: responsive.isWearable ? 12 : 16,
+                  horizontal: responsive.padding,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(responsive.borderRadius),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildSupportInfo(BuildContext context, ThemeData theme, ResponsiveUtils responsive) {
+    return Container(
+      padding: responsive.formPadding,
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(responsive.borderRadius),
+        border: Border.all(
+          color: theme.colorScheme.outline.withValues(alpha: 0.2),
         ),
       ),
       child: Column(
         children: [
           Icon(
             Icons.support_agent,
-            size: 24,
+            size: responsive.largeIconSize,
             color: theme.colorScheme.onSurfaceVariant,
           ),
-          const SizedBox(height: 8),
+          responsive.smallSpacer,
           Text(
             'Need Help?',
-            style: theme.textTheme.titleSmall?.copyWith(
+            style: responsive.getTitleStyle(
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: responsive.smallSpacing * 0.5),
           Text(
             'Contact support at ${AppConstants.supportEmail}',
-            style: theme.textTheme.bodySmall?.copyWith(
+            style: responsive.getCaptionStyle(
               color: theme.colorScheme.onSurfaceVariant,
             ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompactSupportInfo(BuildContext context, ThemeData theme, ResponsiveUtils responsive) {
+    return Container(
+      padding: EdgeInsets.all(responsive.padding * 0.75),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(responsive.borderRadius),
+        border: Border.all(
+          color: theme.colorScheme.outline.withValues(alpha: 0.2),
+        ),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.support_agent,
+            size: responsive.iconSize,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          SizedBox(height: responsive.smallSpacing * 0.5),
+          Text(
+            'Need Help?',
+            style: responsive.getCaptionStyle(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          SizedBox(height: responsive.smallSpacing * 0.25),
+          Text(
+            AppConstants.supportEmail,
+            style: responsive.getCaptionStyle(
+              color: theme.colorScheme.onSurfaceVariant,
+            )?.copyWith(fontSize: responsive.isWearable ? 8 : 10),
             textAlign: TextAlign.center,
           ),
         ],
@@ -268,13 +411,13 @@ class ErrorScreen extends StatelessWidget {
   Color _getIconBackgroundColor(ThemeData theme) {
     switch (title.toLowerCase()) {
       case 'unauthorized':
-        return theme.colorScheme.errorContainer.withValues(alpha:0.1);
+        return theme.colorScheme.errorContainer.withValues(alpha: 0.1);
       case 'network error':
-        return theme.colorScheme.primaryContainer.withValues(alpha:0.1);
+        return theme.colorScheme.primaryContainer.withValues(alpha: 0.1);
       case 'offline mode':
-        return theme.colorScheme.secondaryContainer.withValues(alpha:0.1);
+        return theme.colorScheme.secondaryContainer.withValues(alpha: 0.1);
       default:
-        return theme.colorScheme.surfaceContainerHighest.withValues(alpha:0.3);
+        return theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3);
     }
   }
 
@@ -381,24 +524,29 @@ class ErrorScreen extends StatelessWidget {
     String? errorCode,
     VoidCallback? onRetry,
   }) {
+    final responsive = context.responsive;
+    final theme = Theme.of(context);
+    
     return showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(responsive.borderRadius),
         ),
+        contentPadding: responsive.formPadding,
         title: Row(
           children: [
             Icon(
               Icons.error_outline,
-              color: Theme.of(context).colorScheme.error,
+              color: theme.colorScheme.error,
+              size: responsive.largeIconSize,
             ),
-            const SizedBox(width: 12),
+            responsive.smallHorizontalSpacer,
             Expanded(
               child: Text(
                 title,
-                style: Theme.of(context).textTheme.titleLarge,
+                style: responsive.getTitleStyle(),
               ),
             ),
           ],
@@ -409,19 +557,19 @@ class ErrorScreen extends StatelessWidget {
           children: [
             Text(
               message,
-              style: Theme.of(context).textTheme.bodyMedium,
+              style: responsive.getBodyStyle(),
             ),
             if (errorCode != null) ...[
-              const SizedBox(height: 12),
+              responsive.smallSpacer,
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: EdgeInsets.all(responsive.padding * 0.5),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.errorContainer.withValues(alpha:0.1),
-                  borderRadius: BorderRadius.circular(8),
+                  color: theme.colorScheme.errorContainer.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(responsive.borderRadius),
                 ),
                 child: Text(
                   'Error Code: $errorCode',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  style: responsive.getCaptionStyle()?.copyWith(
                     fontFamily: 'monospace',
                   ),
                 ),
@@ -436,11 +584,17 @@ class ErrorScreen extends StatelessWidget {
                 Navigator.of(context).pop();
                 onRetry();
               },
-              child: const Text('Try Again'),
+              child: Text(
+                'Try Again',
+                style: responsive.getBodyStyle(),
+              ),
             ),
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
+            child: Text(
+              'OK',
+              style: responsive.getBodyStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -455,6 +609,7 @@ class ErrorScreen extends StatelessWidget {
     Duration duration = const Duration(seconds: 4),
   }) {
     final theme = Theme.of(context);
+    final responsive = context.responsive;
     
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -463,13 +618,13 @@ class ErrorScreen extends StatelessWidget {
             Icon(
               Icons.error_outline,
               color: theme.colorScheme.onError,
-              size: 20,
+              size: responsive.iconSize,
             ),
-            const SizedBox(width: 12),
+            responsive.smallHorizontalSpacer,
             Expanded(
               child: Text(
                 message,
-                style: TextStyle(
+                style: responsive.getCaptionStyle(
                   color: theme.colorScheme.onError,
                 ),
               ),
@@ -479,8 +634,9 @@ class ErrorScreen extends StatelessWidget {
         backgroundColor: theme.colorScheme.error,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(responsive.borderRadius),
         ),
+        margin: responsive.containerPadding,
         action: onRetry != null
             ? SnackBarAction(
                 label: 'Retry',

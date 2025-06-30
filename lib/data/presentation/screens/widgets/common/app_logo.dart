@@ -7,11 +7,11 @@ class AppLogo extends StatelessWidget {
   final bool showSubtitle;
 
   const AppLogo({
-    Key? key,
+    super.key,
     this.size = 80,
     this.showText = true,
     this.showSubtitle = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +27,7 @@ class AppLogo extends StatelessWidget {
             borderRadius: BorderRadius.circular(size * 0.2),
             boxShadow: [
               BoxShadow(
-                color: Theme.of(context).shadowColor.withOpacity(0.1),
+                color: Theme.of(context).shadowColor.withValues(alpha:0.1),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -55,7 +55,7 @@ class AppLogo extends StatelessWidget {
           if (showSubtitle) ...[
             SizedBox(height: size * 0.05),
             Text(
-              'Security Management',
+              'Guard Monitor',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     fontSize: size * 0.15,
                     color: Theme.of(context).colorScheme.onSurfaceVariant,

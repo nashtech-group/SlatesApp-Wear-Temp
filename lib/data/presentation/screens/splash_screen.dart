@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:slates_app_wear/blocs/auth_bloc/auth_bloc.dart';
 import 'package:slates_app_wear/core/constants/app_constants.dart';
 import 'package:slates_app_wear/core/constants/route_constants.dart';
+import 'package:slates_app_wear/core/utils/responsive_utils.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -17,71 +18,6 @@ class _SplashScreenState extends State<SplashScreen>
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
   late Animation<Offset> _slideAnimation;
-
-  // Responsive properties
-  bool get _isWearable {
-    final size = MediaQuery.of(context).size;
-    return size.width < 250 || size.height < 250;
-  }
-
-  bool get _isSmallMobile {
-    final size = MediaQuery.of(context).size;
-    return size.width < 360 || size.height < 640;
-  }
-
-  double get _logoSize {
-    if (_isWearable) return 80.0;
-    if (_isSmallMobile) return 120.0;
-    return 150.0;
-  }
-
-  double get _logoRadius {
-    if (_isWearable) return 20.0;
-    if (_isSmallMobile) return 25.0;
-    return 30.0;
-  }
-
-  double get _logoPadding {
-    if (_isWearable) return 12.0;
-    if (_isSmallMobile) return 16.0;
-    return 20.0;
-  }
-
-  double get _spacing {
-    if (_isWearable) return 16.0;
-    if (_isSmallMobile) return 24.0;
-    return 40.0;
-  }
-
-  double get _smallSpacing {
-    if (_isWearable) return 4.0;
-    if (_isSmallMobile) return 6.0;
-    return 8.0;
-  }
-
-  double get _loadingSpacing {
-    if (_isWearable) return 24.0;
-    if (_isSmallMobile) return 40.0;
-    return 60.0;
-  }
-
-  double get _loadingSize {
-    if (_isWearable) return 20.0;
-    if (_isSmallMobile) return 25.0;
-    return 30.0;
-  }
-
-  double get _loadingStrokeWidth {
-    if (_isWearable) return 2.0;
-    if (_isSmallMobile) return 2.5;
-    return 3.0;
-  }
-
-  EdgeInsets get _containerPadding {
-    if (_isWearable) return const EdgeInsets.all(8.0);
-    if (_isSmallMobile) return const EdgeInsets.all(12.0);
-    return const EdgeInsets.all(16.0);
-  }
 
   @override
   void initState() {
@@ -142,6 +78,8 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    final responsive = context.responsive;
+
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
         if (state is AuthAuthenticated || state is AuthOfflineMode) {
@@ -169,8 +107,8 @@ class _SplashScreenState extends State<SplashScreen>
               width: double.infinity,
               height: double.infinity,
               child: Padding(
-                padding: _containerPadding,
-                child: _buildResponsiveLayout(),
+                padding: responsive.containerPadding,
+                child: _buildResponsiveLayout(responsive),
               ),
             ),
           ),
@@ -179,14 +117,14 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 
-  Widget _buildResponsiveLayout() {
-    if (_isWearable) {
-      return _buildWearableLayout();
+  Widget _buildResponsiveLayout(ResponsiveUtils responsive) {
+    if (responsive.isWearable) {
+      return _buildWearableLayout(responsive);
     }
-    return _buildMobileLayout();
+    return _buildMobileLayout(responsive);
   }
 
-  Widget _buildWearableLayout() {
+  Widget _buildWearableLayout(ResponsiveUtils responsive) {
     return SingleChildScrollView(
       child: ConstrainedBox(
         constraints: BoxConstraints(
@@ -199,54 +137,54 @@ class _SplashScreenState extends State<SplashScreen>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             // Compact logo
-            _buildAnimatedLogo(),
+            _buildAnimatedLogo(responsive),
 
-            SizedBox(height: _spacing * 0.8),
+            SizedBox(height: responsive.largeSpacing * 0.8),
 
             // Compact title
-            _buildAnimatedTitle(),
+            _buildAnimatedTitle(responsive),
 
-            SizedBox(height: _loadingSpacing * 0.8),
+            SizedBox(height: responsive.extraLargeSpacing * 0.8),
 
             // Loading indicator
-            _buildLoadingIndicator(),
+            _buildLoadingIndicator(responsive),
 
-            SizedBox(height: _spacing * 0.5),
+            responsive.largeSpacer,
 
             // Loading text
-            _buildLoadingText(),
+            _buildLoadingText(responsive),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildMobileLayout() {
+  Widget _buildMobileLayout(ResponsiveUtils responsive) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         // Logo with animations
-        _buildAnimatedLogo(),
+        _buildAnimatedLogo(responsive),
 
-        SizedBox(height: _spacing),
+        responsive.extraLargeSpacer,
 
         // App title with slide animation
-        _buildAnimatedTitle(),
+        _buildAnimatedTitle(responsive),
 
-        SizedBox(height: _loadingSpacing),
+        SizedBox(height: responsive.extraLargeSpacing * 1.5),
 
         // Loading indicator
-        _buildLoadingIndicator(),
+        _buildLoadingIndicator(responsive),
 
-        SizedBox(height: _spacing * 0.5),
+        responsive.largeSpacer,
 
         // Loading text
-        _buildLoadingText(),
+        _buildLoadingText(responsive),
       ],
     );
   }
 
-  Widget _buildAnimatedLogo() {
+  Widget _buildAnimatedLogo(ResponsiveUtils responsive) {
     return AnimatedBuilder(
       animation: _animationController,
       builder: (context, child) {
@@ -255,20 +193,21 @@ class _SplashScreenState extends State<SplashScreen>
           child: ScaleTransition(
             scale: _scaleAnimation,
             child: Container(
-              width: _logoSize,
-              height: _logoSize,
+              width: responsive.splashLogoSize,
+              height: responsive.splashLogoSize,
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(_logoRadius),
+                borderRadius:
+                    BorderRadius.circular(responsive.largeBorderRadius),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.2),
-                    blurRadius: _isWearable ? 10 : 20,
-                    offset: Offset(0, _isWearable ? 5 : 10),
+                    blurRadius: responsive.isWearable ? 10 : 20,
+                    offset: Offset(0, responsive.isWearable ? 5 : 10),
                   ),
                 ],
               ),
-              padding: EdgeInsets.all(_logoPadding),
+              padding: EdgeInsets.all(responsive.padding),
               child: Image.asset(
                 'assets/images/applogo.png',
                 fit: BoxFit.contain,
@@ -280,7 +219,7 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 
-  Widget _buildAnimatedTitle() {
+  Widget _buildAnimatedTitle(ResponsiveUtils responsive) {
     return SlideTransition(
       position: _slideAnimation,
       child: FadeTransition(
@@ -289,13 +228,18 @@ class _SplashScreenState extends State<SplashScreen>
           children: [
             Text(
               AppConstants.appTitle,
-              style: _getHeadlineStyle(),
+              style: responsive.getHeadlineStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
               textAlign: TextAlign.center,
             ),
-            SizedBox(height: _smallSpacing),
+            responsive.smallSpacer,
             Text(
               AppConstants.appSubtitle,
-              style: _getSubtitleStyle(),
+              style: responsive.getTitleStyle(
+                color: Colors.white.withValues(alpha: 0.9),
+              ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -304,85 +248,44 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 
-  Widget _buildLoadingIndicator() {
+  Widget _buildLoadingIndicator(ResponsiveUtils responsive) {
+    final loadingSize = responsive.getResponsiveValue(
+      wearable: 20.0,
+      smallMobile: 25.0,
+      mobile: 30.0,
+      tablet: 35.0,
+    );
+
+    final strokeWidth = responsive.getResponsiveValue(
+      wearable: 2.0,
+      smallMobile: 2.5,
+      mobile: 3.0,
+      tablet: 3.5,
+    );
+
     return FadeTransition(
       opacity: _fadeAnimation,
       child: SizedBox(
-        width: _loadingSize,
-        height: _loadingSize,
+        width: loadingSize,
+        height: loadingSize,
         child: CircularProgressIndicator(
           valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-          strokeWidth: _loadingStrokeWidth,
+          strokeWidth: strokeWidth,
         ),
       ),
     );
   }
 
-  Widget _buildLoadingText() {
+  Widget _buildLoadingText(ResponsiveUtils responsive) {
     return FadeTransition(
       opacity: _fadeAnimation,
       child: Text(
         'Initializing...',
-        style: _getLoadingTextStyle(),
+        style: responsive.getBodyStyle(
+          color: Colors.white.withValues(alpha: 0.8),
+        ),
         textAlign: TextAlign.center,
       ),
     );
-  }
-
-  TextStyle? _getHeadlineStyle() {
-    if (_isWearable) {
-      return Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          );
-    } else if (_isSmallMobile) {
-      return Theme.of(context).textTheme.headlineSmall?.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 22,
-          );
-    } else {
-      return Theme.of(context).textTheme.headlineMedium?.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          );
-    }
-  }
-
-  TextStyle? _getSubtitleStyle() {
-    if (_isWearable) {
-      return Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Colors.white.withValues(alpha: 0.9),
-            fontSize: 12,
-          );
-    } else if (_isSmallMobile) {
-      return Theme.of(context).textTheme.titleSmall?.copyWith(
-            color: Colors.white.withValues(alpha: 0.9),
-            fontSize: 14,
-          );
-    } else {
-      return Theme.of(context).textTheme.titleMedium?.copyWith(
-            color: Colors.white.withValues(alpha: 0.9),
-          );
-    }
-  }
-
-  TextStyle? _getLoadingTextStyle() {
-    if (_isWearable) {
-      return Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Colors.white.withValues(alpha: 0.8),
-            fontSize: 10,
-          );
-    } else if (_isSmallMobile) {
-      return Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Colors.white.withValues(alpha: 0.8),
-            fontSize: 12,
-          );
-    } else {
-      return Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Colors.white.withValues(alpha: 0.8),
-          );
-    }
   }
 }

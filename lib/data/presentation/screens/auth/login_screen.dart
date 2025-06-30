@@ -6,6 +6,7 @@ import 'package:slates_app_wear/core/auth_manager.dart';
 import 'package:slates_app_wear/core/constants/route_constants.dart';
 import 'package:slates_app_wear/core/theme/app_theme.dart';
 import 'package:slates_app_wear/core/utils/validators.dart';
+import 'package:slates_app_wear/core/utils/responsive_utils.dart';
 import 'package:slates_app_wear/data/presentation/screens/widgets/common/app_logo.dart';
 import 'package:slates_app_wear/data/presentation/screens/widgets/wearable/large_button.dart';
 import 'package:slates_app_wear/data/presentation/screens/widgets/wearable/pin_input.dart';
@@ -30,47 +31,6 @@ class _LoginScreenState extends State<LoginScreen>
 
   late AnimationController _slideController;
   late Animation<Offset> _slideAnimation;
-
-  // Responsive properties
-  bool get _isWearable {
-    final size = MediaQuery.of(context).size;
-    return size.width < 250 || size.height < 250;
-  }
-
-  bool get _isSmallMobile {
-    final size = MediaQuery.of(context).size;
-    return size.width < 360 || size.height < 640;
-  }
-
-  double get _responsivePadding {
-    if (_isWearable) return 8.0;
-    if (_isSmallMobile) return 16.0;
-    return 20.0;
-  }
-
-  double get _responsiveSpacing {
-    if (_isWearable) return 8.0;
-    if (_isSmallMobile) return 12.0;
-    return 16.0;
-  }
-
-  double get _responsiveLargeSpacing {
-    if (_isWearable) return 16.0;
-    if (_isSmallMobile) return 20.0;
-    return 24.0;
-  }
-
-  double get _logoSize {
-    if (_isWearable) return 60.0;
-    if (_isSmallMobile) return 80.0;
-    return 120.0;
-  }
-
-  double get _buttonHeight {
-    if (_isWearable) return 36.0;
-    if (_isSmallMobile) return 44.0;
-    return 48.0;
-  }
 
   @override
   void initState() {
@@ -120,6 +80,8 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   Widget build(BuildContext context) {
+    final responsive = context.responsive;
+
     return WearableScaffold(
       body: BlocConsumer<AuthBloc, AuthState>(
         listener: (context, state) {
@@ -147,10 +109,11 @@ class _LoginScreenState extends State<LoginScreen>
             ),
             child: SafeArea(
               child: Padding(
-                padding: EdgeInsets.all(_responsivePadding),
+                padding: responsive.containerPadding,
                 child: Form(
                   key: _formKey,
-                  child: _buildResponsiveLayout(context, state, isLoading),
+                  child: _buildResponsiveLayout(
+                      context, state, isLoading, responsive),
                 ),
               ),
             ),
@@ -160,16 +123,16 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  Widget _buildResponsiveLayout(
-      BuildContext context, AuthState state, bool isLoading) {
-    if (_isWearable) {
-      return _buildWearableLayout(context, state, isLoading);
+  Widget _buildResponsiveLayout(BuildContext context, AuthState state,
+      bool isLoading, ResponsiveUtils responsive) {
+    if (responsive.isWearable) {
+      return _buildWearableLayout(context, state, isLoading, responsive);
     }
-    return _buildMobileLayout(context, state, isLoading);
+    return _buildMobileLayout(context, state, isLoading, responsive);
   }
 
-  Widget _buildWearableLayout(
-      BuildContext context, AuthState state, bool isLoading) {
+  Widget _buildWearableLayout(BuildContext context, AuthState state,
+      bool isLoading, ResponsiveUtils responsive) {
     return SingleChildScrollView(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -177,27 +140,27 @@ class _LoginScreenState extends State<LoginScreen>
           // Compact logo
           SlideTransition(
             position: _slideAnimation,
-            child: AppLogo(size: _logoSize),
+            child: AppLogo(size: responsive.logoSize),
           ),
 
-          SizedBox(height: _responsiveSpacing),
+          responsive.mediumSpacer,
 
           // Compact login type toggle
-          _buildCompactLoginTypeToggle(),
-          SizedBox(height: _responsiveSpacing),
+          _buildCompactLoginTypeToggle(responsive),
+          responsive.mediumSpacer,
 
           // Identifier input
-          _buildResponsiveIdentifierInput(),
-          SizedBox(height: _responsiveSpacing * 0.75),
+          _buildResponsiveIdentifierInput(responsive),
+          SizedBox(height: responsive.mediumSpacing * 0.75),
 
           // PIN input
           _buildResponsivePinInput(),
-          SizedBox(height: _responsiveSpacing),
+          responsive.mediumSpacer,
 
           // Remember device (guards only)
-          if (_isGuardLogin) _buildCompactRememberDevice(),
+          if (_isGuardLogin) _buildCompactRememberDevice(responsive),
 
-          SizedBox(height: _responsiveLargeSpacing),
+          responsive.largeSpacer,
 
           // Login button
           _buildResponsiveLoginButton(isLoading),
@@ -205,88 +168,91 @@ class _LoginScreenState extends State<LoginScreen>
           // Status indicators
           if (state is AuthOfflineMode)
             Padding(
-              padding: EdgeInsets.only(top: _responsiveSpacing),
-              child: _buildCompactOfflineIndicator(),
+              padding: EdgeInsets.only(top: responsive.mediumSpacing),
+              child: _buildCompactOfflineIndicator(responsive),
             ),
 
           // Clear data button (guards)
           if (_isGuardLogin && _lastEmployeeId != null)
             Padding(
-              padding: EdgeInsets.only(top: _responsiveSpacing * 0.5),
-              child: _buildCompactClearDataButton(),
+              padding: EdgeInsets.only(top: responsive.smallSpacing),
+              child: _buildCompactClearDataButton(responsive),
             ),
         ],
       ),
     );
   }
 
-  Widget _buildMobileLayout(
-      BuildContext context, AuthState state, bool isLoading) {
+  Widget _buildMobileLayout(BuildContext context, AuthState state,
+      bool isLoading, ResponsiveUtils responsive) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         // App Logo
         SlideTransition(
           position: _slideAnimation,
-          child: AppLogo(size: _logoSize),
+          child: AppLogo(size: responsive.logoSize),
         ),
 
-        SizedBox(height: _responsiveLargeSpacing * 1.3),
+        SizedBox(height: responsive.largeSpacing * 1.3),
 
         // Login Type Toggle
-        _buildLoginTypeToggle(),
-        SizedBox(height: _responsiveLargeSpacing),
+        _buildLoginTypeToggle(responsive),
+        responsive.largeSpacer,
 
         // Identifier Input
-        _buildResponsiveIdentifierInput(),
-        SizedBox(height: _responsiveSpacing),
+        _buildResponsiveIdentifierInput(responsive),
+        responsive.mediumSpacer,
 
         // PIN Input
         _buildResponsivePinInput(),
-        SizedBox(height: _responsiveLargeSpacing * 0.8),
+        SizedBox(height: responsive.largeSpacing * 0.8),
 
         // Remember Device (for guards only)
-        if (_isGuardLogin) _buildRememberDevice(),
+        if (_isGuardLogin) _buildRememberDevice(responsive),
 
-        SizedBox(height: _responsiveLargeSpacing * 1.2),
+        SizedBox(height: responsive.largeSpacing * 1.2),
 
         // Login Button
         _buildResponsiveLoginButton(isLoading),
 
         // Offline Status Indicator
-        if (state is AuthOfflineMode) _buildOfflineIndicator(),
+        if (state is AuthOfflineMode) _buildOfflineIndicator(responsive),
 
         // Clear Saved Data Button (for guards)
         if (_isGuardLogin && _lastEmployeeId != null) ...[
-          SizedBox(height: _responsiveSpacing),
-          _buildClearDataButton(),
+          responsive.mediumSpacer,
+          _buildClearDataButton(responsive),
         ],
       ],
     );
   }
 
-  Widget _buildCompactLoginTypeToggle() {
+  Widget _buildCompactLoginTypeToggle(ResponsiveUtils responsive) {
     return Container(
-      height: _buttonHeight,
+      height: responsive.buttonHeight,
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(_isWearable ? 20 : 30),
+        borderRadius: BorderRadius.circular(responsive.largeBorderRadius),
         border: Border.all(
           color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
         ),
       ),
       child: Row(
         children: [
-          Expanded(child: _buildToggleOption(true, 'Guard', Icons.security)),
           Expanded(
               child: _buildToggleOption(
-                  false, 'Admin', Icons.admin_panel_settings)),
+                  true, 'Guard', Icons.security, responsive)),
+          Expanded(
+              child: _buildToggleOption(
+                  false, 'Admin', Icons.admin_panel_settings, responsive)),
         ],
       ),
     );
   }
 
-  Widget _buildToggleOption(bool isGuard, String label, IconData icon) {
+  Widget _buildToggleOption(
+      bool isGuard, String label, IconData icon, ResponsiveUtils responsive) {
     final isSelected = _isGuardLogin == isGuard;
     return GestureDetector(
       onTap: () {
@@ -294,34 +260,33 @@ class _LoginScreenState extends State<LoginScreen>
         setState(() => _isGuardLogin = isGuard);
       },
       child: Container(
-        height: _buttonHeight,
+        height: responsive.buttonHeight,
         decoration: BoxDecoration(
           color: isSelected
               ? Theme.of(context).colorScheme.primary
               : Colors.transparent,
-          borderRadius: BorderRadius.circular(_isWearable ? 20 : 30),
+          borderRadius: BorderRadius.circular(responsive.largeBorderRadius),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               icon,
-              size: _isWearable ? 14 : 18,
+              size: responsive.iconSize,
               color: isSelected
                   ? Colors.white
                   : Theme.of(context).colorScheme.onSurface,
             ),
-            if (!_isWearable) ...[
-              const SizedBox(width: 8),
+            if (!responsive.isWearable) ...[
+              responsive.smallHorizontalSpacer,
               Text(
                 label,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: isSelected
-                          ? Colors.white
-                          : Theme.of(context).colorScheme.onSurface,
-                      fontWeight: FontWeight.w600,
-                      fontSize: _isSmallMobile ? 13 : null,
-                    ),
+                style: responsive.getTitleStyle(
+                  color: isSelected
+                      ? Colors.white
+                      : Theme.of(context).colorScheme.onSurface,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ],
@@ -330,11 +295,11 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  Widget _buildLoginTypeToggle() {
+  Widget _buildLoginTypeToggle(ResponsiveUtils responsive) {
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(responsive.largeBorderRadius),
         border: Border.all(
           color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
         ),
@@ -348,34 +313,34 @@ class _LoginScreenState extends State<LoginScreen>
                 setState(() => _isGuardLogin = true);
               },
               child: Container(
-                padding:
-                    EdgeInsets.symmetric(vertical: _isSmallMobile ? 12 : 14),
+                padding: EdgeInsets.symmetric(
+                    vertical: responsive.isSmallMobile ? 12 : 14),
                 decoration: BoxDecoration(
                   color: _isGuardLogin
                       ? Theme.of(context).colorScheme.primary
                       : Colors.transparent,
-                  borderRadius: BorderRadius.circular(30),
+                  borderRadius:
+                      BorderRadius.circular(responsive.largeBorderRadius),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
                       Icons.security,
-                      size: _isSmallMobile ? 16 : 18,
+                      size: responsive.iconSize,
                       color: _isGuardLogin
                           ? Colors.white
                           : Theme.of(context).colorScheme.onSurface,
                     ),
-                    const SizedBox(width: 8),
+                    responsive.smallHorizontalSpacer,
                     Text(
                       'Guard',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: _isGuardLogin
-                                ? Colors.white
-                                : Theme.of(context).colorScheme.onSurface,
-                            fontWeight: FontWeight.w600,
-                            fontSize: _isSmallMobile ? 13 : null,
-                          ),
+                      style: responsive.getTitleStyle(
+                        color: _isGuardLogin
+                            ? Colors.white
+                            : Theme.of(context).colorScheme.onSurface,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
@@ -389,34 +354,34 @@ class _LoginScreenState extends State<LoginScreen>
                 setState(() => _isGuardLogin = false);
               },
               child: Container(
-                padding:
-                    EdgeInsets.symmetric(vertical: _isSmallMobile ? 12 : 14),
+                padding: EdgeInsets.symmetric(
+                    vertical: responsive.isSmallMobile ? 12 : 14),
                 decoration: BoxDecoration(
                   color: !_isGuardLogin
                       ? Theme.of(context).colorScheme.primary
                       : Colors.transparent,
-                  borderRadius: BorderRadius.circular(30),
+                  borderRadius:
+                      BorderRadius.circular(responsive.largeBorderRadius),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
                       Icons.admin_panel_settings,
-                      size: _isSmallMobile ? 16 : 18,
+                      size: responsive.iconSize,
                       color: !_isGuardLogin
                           ? Colors.white
                           : Theme.of(context).colorScheme.onSurface,
                     ),
-                    const SizedBox(width: 8),
+                    responsive.smallHorizontalSpacer,
                     Text(
                       'Admin',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: !_isGuardLogin
-                                ? Colors.white
-                                : Theme.of(context).colorScheme.onSurface,
-                            fontWeight: FontWeight.w600,
-                            fontSize: _isSmallMobile ? 13 : null,
-                          ),
+                      style: responsive.getTitleStyle(
+                        color: !_isGuardLogin
+                            ? Colors.white
+                            : Theme.of(context).colorScheme.onSurface,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
@@ -428,36 +393,31 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  Widget _buildResponsiveIdentifierInput() {
+  Widget _buildResponsiveIdentifierInput(ResponsiveUtils responsive) {
     return TextFormField(
       controller: _identifierController,
       enabled: !(_isGuardLogin && _lastEmployeeId != null && _rememberDevice),
       decoration: InputDecoration(
         labelText: _isGuardLogin ? 'Employee ID' : 'Email Address',
         hintText: _isGuardLogin ? 'ABC-123' : 'user@company.com',
-        labelStyle: _isWearable ? Theme.of(context).textTheme.bodySmall : null,
-        hintStyle: _isWearable ? Theme.of(context).textTheme.bodySmall : null,
-        contentPadding: EdgeInsets.symmetric(
-          horizontal: _isWearable ? 12 : 16,
-          vertical: _isWearable ? 8 : 16,
-        ),
+        labelStyle: responsive.isWearable ? responsive.getCaptionStyle() : null,
+        hintStyle: responsive.isWearable ? responsive.getCaptionStyle() : null,
+        contentPadding: responsive.inputPadding,
         prefixIcon: Icon(
           _isGuardLogin ? Icons.badge : Icons.email_outlined,
           color: Theme.of(context).colorScheme.primary,
-          size: _isWearable ? 18 : 24,
+          size: responsive.largeIconSize,
         ),
         suffixIcon:
             (_isGuardLogin && _lastEmployeeId != null && _rememberDevice)
                 ? Icon(
                     Icons.lock_outline,
                     color: Theme.of(context).colorScheme.outline,
-                    size: _isWearable ? 16 : 20,
+                    size: responsive.iconSize,
                   )
                 : null,
       ),
-      style: _isWearable
-          ? Theme.of(context).textTheme.bodySmall
-          : Theme.of(context).textTheme.bodyLarge,
+      style: responsive.getBodyStyle(),
       textCapitalization: _isGuardLogin
           ? TextCapitalization.characters
           : TextCapitalization.none,
@@ -489,11 +449,11 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  Widget _buildCompactRememberDevice() {
+  Widget _buildCompactRememberDevice(ResponsiveUtils responsive) {
     return Row(
       children: [
         Transform.scale(
-          scale: _isWearable ? 0.8 : 1.0,
+          scale: responsive.isWearable ? 0.8 : 1.0,
           child: Checkbox(
             value: _rememberDevice,
             onChanged: (value) {
@@ -513,16 +473,14 @@ class _LoginScreenState extends State<LoginScreen>
         Expanded(
           child: Text(
             'Remember device',
-            style: _isWearable
-                ? Theme.of(context).textTheme.bodySmall
-                : Theme.of(context).textTheme.bodyMedium,
+            style: responsive.getBodyStyle(),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildRememberDevice() {
+  Widget _buildRememberDevice(ResponsiveUtils responsive) {
     return Row(
       children: [
         Checkbox(
@@ -543,9 +501,7 @@ class _LoginScreenState extends State<LoginScreen>
         Expanded(
           child: Text(
             'Remember this device',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontSize: _isSmallMobile ? 13 : null,
-                ),
+            style: responsive.getBodyStyle(),
           ),
         ),
       ],
@@ -562,15 +518,15 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  Widget _buildCompactOfflineIndicator() {
+  Widget _buildCompactOfflineIndicator(ResponsiveUtils responsive) {
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: _isWearable ? 8 : 16,
-        vertical: _isWearable ? 4 : 10,
+        horizontal: responsive.padding * 0.5,
+        vertical: responsive.smallSpacing,
       ),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.errorContainer,
-        borderRadius: BorderRadius.circular(_isWearable ? 8 : 12),
+        borderRadius: BorderRadius.circular(responsive.borderRadius),
         border: Border.all(
           color: Theme.of(context).colorScheme.error.withValues(alpha: 0.3),
         ),
@@ -580,19 +536,15 @@ class _LoginScreenState extends State<LoginScreen>
         children: [
           Icon(
             Icons.wifi_off,
-            size: _isWearable ? 12 : 18,
+            size: responsive.iconSize,
             color: Theme.of(context).colorScheme.onErrorContainer,
           ),
-          SizedBox(width: _isWearable ? 4 : 8),
+          responsive.smallHorizontalSpacer,
           Text(
-            _isWearable ? 'Offline' : 'Offline Mode Active',
-            style: (_isWearable
-                    ? Theme.of(context).textTheme.bodySmall
-                    : Theme.of(context).textTheme.bodySmall)
-                ?.copyWith(
+            responsive.isWearable ? 'Offline' : 'Offline Mode Active',
+            style: responsive.getCaptionStyle(
               color: Theme.of(context).colorScheme.onErrorContainer,
               fontWeight: FontWeight.w500,
-              fontSize: _isWearable ? 10 : null,
             ),
           ),
         ],
@@ -600,13 +552,13 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  Widget _buildOfflineIndicator() {
+  Widget _buildOfflineIndicator(ResponsiveUtils responsive) {
     return Container(
-      margin: EdgeInsets.only(top: _responsiveSpacing),
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      margin: EdgeInsets.only(top: responsive.mediumSpacing),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.errorContainer,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(responsive.borderRadius),
         border: Border.all(
           color: Theme.of(context).colorScheme.error.withValues(alpha: 0.3),
         ),
@@ -616,64 +568,55 @@ class _LoginScreenState extends State<LoginScreen>
         children: [
           Icon(
             Icons.wifi_off,
-            size: 18,
+            size: responsive.iconSize,
             color: Theme.of(context).colorScheme.onErrorContainer,
           ),
-          const SizedBox(width: 8),
+          responsive.smallHorizontalSpacer,
           Text(
             'Offline Mode Active',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onErrorContainer,
-                  fontWeight: FontWeight.w500,
-                  fontSize: _isSmallMobile ? 12 : null,
-                ),
+            style: responsive.getCaptionStyle(
+              color: Theme.of(context).colorScheme.onErrorContainer,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildCompactClearDataButton() {
+  Widget _buildCompactClearDataButton(ResponsiveUtils responsive) {
     return TextButton.icon(
       onPressed: _clearSavedData,
       style: TextButton.styleFrom(
-        padding: EdgeInsets.symmetric(
-          horizontal: _isWearable ? 8 : 16,
-          vertical: _isWearable ? 4 : 8,
-        ),
+        padding: responsive.buttonPadding * 0.5,
       ),
       icon: Icon(
         Icons.delete_outline,
-        size: _isWearable ? 12 : 16,
+        size: responsive.iconSize,
         color: Theme.of(context).colorScheme.error,
       ),
       label: Text(
-        _isWearable ? 'Clear' : 'Clear Saved Data',
-        style: (_isWearable
-                ? Theme.of(context).textTheme.bodySmall
-                : Theme.of(context).textTheme.bodySmall)
-            ?.copyWith(
+        responsive.isWearable ? 'Clear' : 'Clear Saved Data',
+        style: responsive.getCaptionStyle(
           color: Theme.of(context).colorScheme.error,
-          fontSize: _isWearable ? 10 : null,
         ),
       ),
     );
   }
 
-  Widget _buildClearDataButton() {
+  Widget _buildClearDataButton(ResponsiveUtils responsive) {
     return TextButton.icon(
       onPressed: _clearSavedData,
       icon: Icon(
         Icons.delete_outline,
-        size: 16,
+        size: responsive.iconSize,
         color: Theme.of(context).colorScheme.error,
       ),
       label: Text(
         'Clear Saved Data',
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.error,
-              fontSize: _isSmallMobile ? 12 : null,
-            ),
+        style: responsive.getCaptionStyle(
+          color: Theme.of(context).colorScheme.error,
+        ),
       ),
     );
   }
@@ -709,6 +652,7 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   void _showErrorSnackBar(String message) {
+    final responsive = context.responsive;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
@@ -716,32 +660,30 @@ class _LoginScreenState extends State<LoginScreen>
             Icon(
               Icons.error_outline,
               color: Colors.white,
-              size: _isWearable ? 16 : 20,
+              size: responsive.iconSize,
             ),
-            SizedBox(width: _isWearable ? 8 : 12),
+            SizedBox(width: responsive.smallSpacing),
             Expanded(
               child: Text(
                 message,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: _isWearable ? 12 : 14,
-                ),
+                style: responsive.getCaptionStyle(color: Colors.white),
               ),
             ),
           ],
         ),
         backgroundColor: Theme.of(context).colorScheme.error,
-        duration: Duration(seconds: _isWearable ? 3 : 4),
+        duration: Duration(seconds: responsive.isWearable ? 3 : 4),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(_isWearable ? 8 : 12),
+          borderRadius: BorderRadius.circular(responsive.borderRadius),
         ),
-        margin: EdgeInsets.all(_isWearable ? 8 : 16),
+        margin: EdgeInsets.all(responsive.padding),
       ),
     );
   }
 
   void _showSuccessSnackBar(String message) {
+    final responsive = context.responsive;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
@@ -749,16 +691,13 @@ class _LoginScreenState extends State<LoginScreen>
             Icon(
               Icons.check_circle_outline,
               color: Colors.white,
-              size: _isWearable ? 16 : 20,
+              size: responsive.iconSize,
             ),
-            SizedBox(width: _isWearable ? 8 : 12),
+            SizedBox(width: responsive.smallSpacing),
             Expanded(
               child: Text(
                 message,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: _isWearable ? 12 : 14,
-                ),
+                style: responsive.getCaptionStyle(color: Colors.white),
               ),
             ),
           ],
@@ -767,9 +706,9 @@ class _LoginScreenState extends State<LoginScreen>
         duration: const Duration(seconds: 3),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(_isWearable ? 8 : 12),
+          borderRadius: BorderRadius.circular(responsive.borderRadius),
         ),
-        margin: EdgeInsets.all(_isWearable ? 8 : 16),
+        margin: EdgeInsets.all(responsive.padding),
       ),
     );
   }

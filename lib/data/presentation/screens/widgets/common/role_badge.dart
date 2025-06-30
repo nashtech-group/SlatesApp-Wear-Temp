@@ -7,10 +7,10 @@ class RoleBadge extends StatelessWidget {
   final bool compact;
 
   const RoleBadge({
-    Key? key,
+    super.key,
     required this.role,
     this.compact = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
