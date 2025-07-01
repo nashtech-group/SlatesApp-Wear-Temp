@@ -28,7 +28,8 @@ class _PinInputFieldState extends State<PinInputField> {
   void initState() {
     super.initState();
     _focusNodes = List.generate(widget.length, (index) => FocusNode());
-    _controllers = List.generate(widget.length, (index) => TextEditingController());
+    _controllers =
+        List.generate(widget.length, (index) => TextEditingController());
 
     widget.controller.addListener(_onMainControllerChanged);
 
@@ -91,7 +92,7 @@ class _PinInputFieldState extends State<PinInputField> {
   @override
   Widget build(BuildContext context) {
     final responsive = context.responsive;
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -120,13 +121,15 @@ class _PinInputFieldState extends State<PinInputField> {
                 decoration: InputDecoration(
                   counterText: '',
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(responsive.borderRadius),
+                    borderRadius:
+                        BorderRadius.circular(responsive.borderRadius),
                     borderSide: BorderSide(
                       color: Theme.of(context).colorScheme.outline,
                     ),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(responsive.borderRadius),
+                    borderRadius:
+                        BorderRadius.circular(responsive.borderRadius),
                     borderSide: BorderSide(
                       color: Theme.of(context).colorScheme.primary,
                       width: 2,
@@ -138,7 +141,7 @@ class _PinInputFieldState extends State<PinInputField> {
                     vertical: responsive.getResponsiveValue(
                       wearable: 8.0,
                       smallMobile: 12.0,
-                      mobile: 16.0,
+                      mobile: 14.0,
                       tablet: 20.0,
                     ),
                   ),
