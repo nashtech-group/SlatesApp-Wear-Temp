@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'dart:developer';
 import 'package:slates_app_wear/core/auth_manager.dart';
-import 'package:slates_app_wear/core/constants/app_constants.dart';
-import 'package:slates_app_wear/data/models/roster/comprehensive_guard_duty_response_model.dart';
 import 'package:slates_app_wear/data/repositories/roster_repository/roster_provider.dart';
 import 'offline_storage_service.dart';
 import 'connectivity_service.dart';
