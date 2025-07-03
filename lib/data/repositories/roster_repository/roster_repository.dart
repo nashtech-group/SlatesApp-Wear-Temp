@@ -44,9 +44,17 @@ class RosterRepository {
   /// Initialize repository and services
   Future<void> initialize() async {
     try {
+      // Initialize notification service first
+      final notificationInitialized = await _notificationService.initialize();
+      if (!notificationInitialized) {
+        log('Warning: NotificationService failed to initialize');
+      }
+
+      // Initialize other services
       _syncService.initialize();
       await _syncService.scheduleSyncReminders();
       _connectivity.startMonitoring();
+      
       log('RosterRepository initialized successfully');
     } catch (e) {
       log('Failed to initialize RosterRepository: $e');
@@ -96,11 +104,17 @@ class RosterRepository {
           await _offlineStorage.cacheRosterData(guardId, rosterResponse);
           log('Roster data cached for offline access');
 
+          // Schedule duty notifications for upcoming duties
+          await _scheduleDutyNotificationsFromRoster(rosterResponse);
+
           return rosterResponse;
         } catch (e) {
           if (e is ApiErrorModel) rethrow;
           log('Online roster fetch failed, trying offline: $e');
         }
+      } else {
+        // Show offline mode notification
+        await _notificationService.showOfflineModeNotification();
       }
 
       // Try offline cache
@@ -179,7 +193,14 @@ class RosterRepository {
 
           // Cache successful submission
           await _offlineStorage.cacheSubmissionRecord(requestData, response);
-          log('Submission record cached');
+          
+          // Show sync completed notification
+          final totalItems = (rosterUpdates?.length ?? 0) + 
+                           (movements?.length ?? 0) + 
+                           (perimeterChecks?.length ?? 0);
+          await _notificationService.showSyncCompletedNotification(totalItems, 0);
+          
+          log('Submission record cached and sync notification shown');
 
           return response;
         } catch (e) {
@@ -191,6 +212,9 @@ class RosterRepository {
       // Cache for later sync
       log('Caching submission for offline sync');
       await _offlineStorage.cachePendingSubmission(requestData);
+      
+      // Check days since last sync and show reminder if needed
+      await _checkAndShowSyncReminder();
       
       return ComprehensiveGuardDutyResponseModel(
         message: 'Data cached for sync when online',
@@ -208,6 +232,124 @@ class RosterRepository {
         status: 'error',
         message: 'Unexpected error: ${e.toString()}',
       );
+    }
+  }
+
+  /// Schedule duty notifications for upcoming duties in roster
+  Future<void> _scheduleDutyNotificationsFromRoster(RosterResponseModel rosterResponse) async {
+    try {
+      final now = DateTime.now();
+      final upcomingDuties = rosterResponse.data.where((rosterUser) {
+        // Only schedule for duties that haven't started yet
+        return rosterUser.startsAt.isAfter(now);
+      }).toList();
+
+      for (final rosterUser in upcomingDuties) {
+        final scheduledIds = await _notificationService.scheduleDutyNotifications(
+          rosterUser: rosterUser,
+          site: rosterUser.site,
+        );
+        
+        if (scheduledIds.isNotEmpty) {
+          log('Scheduled ${scheduledIds.length} notifications for duty at ${rosterUser.site.name}');
+        }
+      }
+    } catch (e) {
+      log('Failed to schedule duty notifications: $e');
+    }
+  }
+
+  /// Check sync status and show reminder if needed
+  Future<void> _checkAndShowSyncReminder() async {
+    try {
+      final syncStatus = await _syncService.getSyncStatus();
+      final daysSinceSync = syncStatus['daysSinceLastSync'] as int? ?? 0;
+      
+      // Show sync reminder based on days since last sync
+      if (daysSinceSync >= 5) {
+        await _notificationService.showSyncRequiredNotification(daysSinceSync);
+        log('Sync reminder shown for $daysSinceSync days since last sync');
+      }
+    } catch (e) {
+      log('Failed to check sync status: $e');
+    }
+  }
+
+  /// Show checkpoint completion notification
+  Future<void> showCheckpointCompletionNotification({
+    required String checkpointName,
+    required String siteName,
+  }) async {
+    try {
+      await _notificationService.showCheckpointCompletionAlert(
+        checkpointName: checkpointName,
+        siteName: siteName,
+      );
+      log('Checkpoint completion notification shown: $checkpointName at $siteName');
+    } catch (e) {
+      log('Failed to show checkpoint completion notification: $e');
+    }
+  }
+
+  /// Show position alert for static duty
+  Future<void> showPositionAlert({
+    required String message,
+    required bool isReturnAlert,
+  }) async {
+    try {
+      await _notificationService.showPositionAlert(
+        message: message,
+        isReturnAlert: isReturnAlert,
+      );
+      log('Position alert shown: $message');
+    } catch (e) {
+      log('Failed to show position alert: $e');
+    }
+  }
+
+  /// Show battery alert
+  Future<void> showBatteryAlert({
+    required String message,
+    required int batteryLevel,
+  }) async {
+    try {
+      await _notificationService.showBatteryAlert(
+        message: message,
+        batteryLevel: batteryLevel,
+      );
+      log('Battery alert shown: $message (Battery: $batteryLevel%)');
+    } catch (e) {
+      log('Failed to show battery alert: $e');
+    }
+  }
+
+  /// Show emergency notification
+  Future<void> showEmergencyNotification({
+    required String title,
+    required String message,
+    Map<String, dynamic>? payload,
+  }) async {
+    try {
+      await _notificationService.showEmergencyNotification(
+        title: title,
+        message: message,
+        payload: payload,
+      );
+      log('Emergency notification shown: $title');
+    } catch (e) {
+      log('Failed to show emergency notification: $e');
+    }
+  }
+
+  /// Cancel duty notifications for a specific roster user
+  Future<void> cancelDutyNotifications(List<int> notificationIds) async {
+    try {
+      for (final id in notificationIds) {
+        await _notificationService.cancelNotification(id);
+      }
+      log('Cancelled ${notificationIds.length} duty notifications');
+    } catch (e) {
+      log('Failed to cancel duty notifications: $e');
     }
   }
 
@@ -268,7 +410,12 @@ class RosterRepository {
           throw ApiErrorModel.fromJson(decodedData);
         }
 
-        return RosterResponseModel.fromJson(decodedData);
+        final rosterResponse = RosterResponseModel.fromJson(decodedData);
+        
+        // Schedule notifications for any new duties found
+        await _scheduleDutyNotificationsFromRoster(rosterResponse);
+        
+        return rosterResponse;
       }
 
       // Fallback to cached data with manual pagination
@@ -323,7 +470,12 @@ class RosterRepository {
           throw ApiErrorModel.fromJson(decodedData);
         }
 
-        return RosterResponseModel.fromJson(decodedData);
+        final rosterResponse = RosterResponseModel.fromJson(decodedData);
+        
+        // Schedule notifications for upcoming duties
+        await _scheduleDutyNotificationsFromRoster(rosterResponse);
+        
+        return rosterResponse;
       }
 
       throw ApiErrorModel(
@@ -372,7 +524,12 @@ class RosterRepository {
           throw ApiErrorModel.fromJson(decodedData);
         }
 
-        return RosterResponseModel.fromJson(decodedData);
+        final rosterResponse = RosterResponseModel.fromJson(decodedData);
+        
+        // Schedule notifications for upcoming duties in the range
+        await _scheduleDutyNotificationsFromRoster(rosterResponse);
+        
+        return rosterResponse;
       }
 
       throw ApiErrorModel(
@@ -415,6 +572,9 @@ class RosterRepository {
             (decodedData.containsKey("status") && decodedData["status"] == "error")) {
           throw ApiErrorModel.fromJson(decodedData);
         }
+
+        // Show sync success notification
+        await _notificationService.showSyncCompletedNotification(updates.length, 0);
 
         return ComprehensiveGuardDutyResponseModel.fromJson(decodedData);
       }
@@ -462,6 +622,9 @@ class RosterRepository {
           throw ApiErrorModel.fromJson(decodedData);
         }
 
+        // Show sync success notification
+        await _notificationService.showSyncCompletedNotification(movements.length, 0);
+
         return ComprehensiveGuardDutyResponseModel.fromJson(decodedData);
       }
 
@@ -507,6 +670,9 @@ class RosterRepository {
             (decodedData.containsKey("status") && decodedData["status"] == "error")) {
           throw ApiErrorModel.fromJson(decodedData);
         }
+
+        // Show sync success notification
+        await _notificationService.showSyncCompletedNotification(perimeterChecks.length, 0);
 
         return ComprehensiveGuardDutyResponseModel.fromJson(decodedData);
       }
@@ -563,7 +729,14 @@ class RosterRepository {
   Future<bool> syncPendingSubmissions() async {
     try {
       log('Starting manual sync of pending submissions');
-      return await _syncService.manualSync();
+      final result = await _syncService.manualSync();
+      
+      if (result) {
+        // Show sync success notification
+        await _notificationService.showSyncCompletedNotification(1, 0);
+      }
+      
+      return result;
     } catch (e) {
       log('Failed to sync pending submissions: $e');
       return false;
@@ -574,7 +747,15 @@ class RosterRepository {
   Future<Map<String, dynamic>> forceSyncAll() async {
     try {
       log('Starting force sync of all pending data');
-      return await _syncService.forceSyncAll();
+      final result = await _syncService.forceSyncAll();
+      
+      final successCount = result['totalSuccess'] as int? ?? 0;
+      final failureCount = result['totalFailure'] as int? ?? 0;
+      
+      // Show sync completed notification
+      await _notificationService.showSyncCompletedNotification(successCount, failureCount);
+      
+      return result;
     } catch (e) {
       log('Failed to force sync all data: $e');
       return {
@@ -602,7 +783,15 @@ class RosterRepository {
   /// Get sync status for UI
   Future<Map<String, dynamic>> getSyncStatus() async {
     try {
-      return await _syncService.getSyncStatus();
+      final status = await _syncService.getSyncStatus();
+      
+      // Show sync reminder if needed
+      final daysSinceSync = status['daysSinceLastSync'] as int? ?? 0;
+      if (daysSinceSync >= 5) {
+        await _notificationService.showSyncRequiredNotification(daysSinceSync);
+      }
+      
+      return status;
     } catch (e) {
       log('Failed to get sync status: $e');
       return {
@@ -777,6 +966,7 @@ class RosterRepository {
     try {
       _syncService.dispose();
       _connectivity.dispose();
+      _notificationService.dispose();
       log('RosterRepository disposed successfully');
     } catch (e) {
       log('Error disposing RosterRepository: $e');

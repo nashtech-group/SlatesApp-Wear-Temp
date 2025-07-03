@@ -5,6 +5,7 @@ import 'package:slates_app_wear/core/constants/route_constants.dart';
 import 'package:slates_app_wear/data/presentation/screens/auth/login_screen.dart';
 import 'package:slates_app_wear/data/presentation/screens/error_screen.dart';
 import 'package:slates_app_wear/data/presentation/screens/home_screen.dart';
+import 'package:slates_app_wear/data/presentation/screens/notifications/notification_center_page.dart';
 import 'package:slates_app_wear/data/presentation/screens/splash_screen.dart';
 
 class AppRoutes {
@@ -35,6 +36,17 @@ class AppRoutes {
           ),
           settings: settings,
         );
+      case RouteConstants.notifications:
+        return MaterialPageRoute(
+          builder: (_) => const NotificationCenterPage(),
+          settings: settings,
+        );
+
+      // case RouteConstants.notificationSettings:
+      //   return MaterialPageRoute(
+      //     builder: (_) => const NotificationSettingsPage(),
+      //     settings: settings,
+      //   );
 
       case RouteConstants.unauthorized:
         return MaterialPageRoute(

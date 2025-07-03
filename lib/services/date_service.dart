@@ -1,31 +1,51 @@
+import 'package:intl/intl.dart';
+import 'package:slates_app_wear/core/constants/app_constants.dart';
+
 class DateService {
   static final DateService _instance = DateService._internal();
   factory DateService() => _instance;
   DateService._internal();
 
-  /// Get today's date in dd-MM-yyyy format (API format)
+  // Date formatters 
+  static final DateFormat _apiDateFormatter = DateFormat(AppConstants.dateFormat);
+  static final DateFormat _displayDateFormatter = DateFormat(AppConstants.shortDateFormat);
+  static final DateFormat _timeFormatter = DateFormat(AppConstants.timeFormat);
+  static final DateFormat _dateTimeFormatter = DateFormat(AppConstants.dateTimeFormat);
+  static final DateFormat _longDateFormatter = DateFormat(AppConstants.longDateFormat);
+
+  /// Get today's date in API format (dd-MM-yyyy)
   String getTodayFormattedDate() {
     final today = DateTime.now();
     return formatDateForApi(today);
   }
 
-  /// Format date for API (dd-MM-yyyy)
+  /// Format date for API using AppConstants.dateFormat (dd-MM-yyyy)
   String formatDateForApi(DateTime date) {
-    return '${date.day.toString().padLeft(2, '0')}-${date.month.toString().padLeft(2, '0')}-${date.year}';
+    return _apiDateFormatter.format(date);
   }
 
-  /// Format date for display (dd/MM/yyyy)
+  /// Format date for display using AppConstants.shortDateFormat (dd/MM/yyyy)
   String formatDateForDisplay(DateTime date) {
-    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+    return _displayDateFormatter.format(date);
   }
 
-  /// Format time for display (HH:mm)
+  /// Format date for long display using AppConstants.longDateFormat
+  String formatDateForLongDisplay(DateTime date) {
+    return _longDateFormatter.format(date);
+  }
+
+  /// Format time for display using AppConstants.timeFormat (HH:mm)
   String formatTimeForDisplay(DateTime dateTime) {
-    return '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+    return _timeFormatter.format(dateTime);
   }
 
-  /// Format date and time for display
+  /// Format date and time for display using AppConstants.dateTimeFormat
   String formatDateTimeForDisplay(DateTime dateTime) {
+    return _dateTimeFormatter.format(dateTime);
+  }
+
+  /// Format date and time separately for display
+  String formatDateTimeForDisplaySeparate(DateTime dateTime) {
     return '${formatDateForDisplay(dateTime)} ${formatTimeForDisplay(dateTime)}';
   }
 
@@ -81,5 +101,68 @@ class DateService {
         return 'in ${difference.inDays} days';
       }
     }
+  }
+
+  /// Parse API date string to DateTime
+  DateTime? parseApiDate(String dateString) {
+    try {
+      return _apiDateFormatter.parse(dateString);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Parse display date string to DateTime
+  DateTime? parseDisplayDate(String dateString) {
+    try {
+      return _displayDateFormatter.parse(dateString);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Parse date time string to DateTime
+  DateTime? parseDateTime(String dateTimeString) {
+    try {
+      return _dateTimeFormatter.parse(dateTimeString);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Get formatted date range string
+  String getFormattedDateRange(DateTime startDate, DateTime endDate) {
+    if (isToday(startDate) && isToday(endDate)) {
+      return 'Today';
+    } else if (startDate.year == endDate.year && 
+               startDate.month == endDate.month && 
+               startDate.day == endDate.day) {
+      return formatDateForDisplay(startDate);
+    } else {
+      return '${formatDateForDisplay(startDate)} - ${formatDateForDisplay(endDate)}';
+    }
+  }
+
+  /// Get current timestamp in API format
+  String getCurrentApiTimestamp() {
+    return _dateTimeFormatter.format(DateTime.now());
+  }
+
+  /// Format duration in human readable format
+  String formatDuration(Duration duration) {
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60);
+    
+    if (hours > 0) {
+      return '${hours}h ${minutes}m';
+    } else {
+      return '${minutes}m';
+    }
+  }
+
+  /// Get time difference string between two dates
+  String getTimeDifference(DateTime startTime, DateTime endTime) {
+    final difference = endTime.difference(startTime);
+    return formatDuration(difference);
   }
 }

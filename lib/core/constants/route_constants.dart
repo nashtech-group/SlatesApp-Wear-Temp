@@ -5,6 +5,11 @@ class RouteConstants {
   static const String register = '/register';
   static const String forgotPassword = '/forgot-password';
   
+  // Notification routes
+  static const String notifications = '/notifications';
+  static const String notificationSettings = '/notification-settings';
+  static const String notificationHistory = '/notification-history';
+
   // Main app routes
   static const String home = '/home';
   static const String dashboard = '/dashboard';

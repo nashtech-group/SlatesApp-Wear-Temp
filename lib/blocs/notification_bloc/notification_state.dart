@@ -9,6 +9,8 @@ abstract class NotificationState extends Equatable {
 
 class NotificationInitial extends NotificationState {}
 
+class NotificationLoading extends NotificationState {}
+
 class NotificationInitialized extends NotificationState {
   final bool permissionGranted;
 
@@ -57,7 +59,7 @@ class NotificationHistoryLoaded extends NotificationState {
 
 class NotificationUpdated extends NotificationState {
   final AppNotification notification;
-  final String action; // 'read', 'deleted', etc.
+  final String action; // 'marked_read', 'deleted', 'cancelled', etc.
 
   const NotificationUpdated({
     required this.notification,
@@ -66,6 +68,32 @@ class NotificationUpdated extends NotificationState {
 
   @override
   List<Object?> get props => [notification, action];
+}
+
+class NotificationBulkActionCompleted extends NotificationState {
+  final String action; // 'cancelled_all', 'marked_all_read', etc.
+  final int affectedCount;
+
+  const NotificationBulkActionCompleted({
+    required this.action,
+    required this.affectedCount,
+  });
+
+  @override
+  List<Object?> get props => [action, affectedCount];
+}
+
+class PendingNotificationsLoaded extends NotificationState {
+  final List<PendingNotificationRequest> pendingNotifications;
+  final int count;
+
+  const PendingNotificationsLoaded({
+    required this.pendingNotifications,
+    required this.count,
+  });
+
+  @override
+  List<Object?> get props => [pendingNotifications, count];
 }
 
 class NotificationError extends NotificationState {

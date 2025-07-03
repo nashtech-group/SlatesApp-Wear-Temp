@@ -8,6 +8,8 @@ import 'core/theme/theme_provider.dart';
 import 'core/constants/route_constants.dart';
 import 'core/utils/responsive_utils.dart';
 import 'routes/app_routes.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:timezone/data/latest.dart' as tz;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,6 +18,12 @@ void main() async {
   final themeProvider = ThemeProvider();
   await themeProvider.initTheme();
   
+  // Initialize Firebase
+  await Firebase.initializeApp();
+  
+  // Initialize timezone data
+  tz.initializeTimeZones();
+
   // Set preferred orientations for wearable
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,

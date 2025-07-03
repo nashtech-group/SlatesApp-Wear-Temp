@@ -29,29 +29,18 @@ class ShowLocalNotification extends NotificationEvent {
   final String body;
   final NotificationType type;
   final Map<String, dynamic>? payload;
+  final Importance? importance;
 
   const ShowLocalNotification({
     required this.title,
     required this.body,
     required this.type,
     this.payload,
+    this.importance,
   });
 
   @override
-  List<Object?> get props => [title, body, type, payload];
-}
-
-class ScheduleBatteryAlert extends NotificationEvent {
-  final DateTime dutyStartTime;
-  final String siteName;
-
-  const ScheduleBatteryAlert({
-    required this.dutyStartTime,
-    required this.siteName,
-  });
-
-  @override
-  List<Object?> get props => [dutyStartTime, siteName];
+  List<Object?> get props => [title, body, type, payload, importance];
 }
 
 class ShowSyncReminder extends NotificationEvent {
@@ -61,6 +50,19 @@ class ShowSyncReminder extends NotificationEvent {
 
   @override
   List<Object?> get props => [daysSinceSync];
+}
+
+class ShowSyncCompleted extends NotificationEvent {
+  final int successCount;
+  final int failureCount;
+
+  const ShowSyncCompleted({
+    required this.successCount,
+    required this.failureCount,
+  });
+
+  @override
+  List<Object?> get props => [successCount, failureCount];
 }
 
 class ShowCheckpointCompletionAlert extends NotificationEvent {
@@ -87,6 +89,38 @@ class ShowPositionAlert extends NotificationEvent {
 
   @override
   List<Object?> get props => [message, isReturnAlert];
+}
+
+class ShowBatteryAlert extends NotificationEvent {
+  final String message;
+  final int batteryLevel;
+
+  const ShowBatteryAlert({
+    required this.message,
+    required this.batteryLevel,
+  });
+
+  @override
+  List<Object?> get props => [message, batteryLevel];
+}
+
+class ShowEmergencyAlert extends NotificationEvent {
+  final String title;
+  final String message;
+  final Map<String, dynamic>? payload;
+
+  const ShowEmergencyAlert({
+    required this.title,
+    required this.message,
+    this.payload,
+  });
+
+  @override
+  List<Object?> get props => [title, message, payload];
+}
+
+class ShowOfflineModeAlert extends NotificationEvent {
+  const ShowOfflineModeAlert();
 }
 
 class AddNotificationToHistory extends NotificationEvent {
@@ -141,4 +175,12 @@ class CancelScheduledNotification extends NotificationEvent {
 
   @override
   List<Object?> get props => [notificationId];
+}
+
+class CancelAllScheduledNotifications extends NotificationEvent {
+  const CancelAllScheduledNotifications();
+}
+
+class GetPendingNotifications extends NotificationEvent {
+  const GetPendingNotifications();
 }
