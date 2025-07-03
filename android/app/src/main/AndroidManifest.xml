@@ -10,18 +10,18 @@
     <uses-permission android:name="android.permission.INTERNET" />
     
     <application
-        android:label="slates_app_wear"
+        android:label="SlatesApp"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <!-- Notification icon -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"
-            android:resource="@drawable/ic_notification" />
+            android:resource="@drawable/ic_launcher" />
         
         <!-- Notification color -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_color"
-            android:resource="@color/notification_color" />
+            android:resource="@color/colorAccent" />
         
         <!-- Boot receiver for scheduled notifications -->
         <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
@@ -41,7 +41,7 @@
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
             </intent-filter>
         </service>
-        
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
