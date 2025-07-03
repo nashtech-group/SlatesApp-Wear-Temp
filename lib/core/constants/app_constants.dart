@@ -14,22 +14,6 @@ class AppConstants {
   // UI/UX CONSTANTS
   // ====================
   static const int splashScreenDuration = 3; // in seconds
-  static const String dateFormat = 'dd-MM-yyyy';
-  static const String timeFormat = 'HH:mm';
-  static const String dateTimeFormat = 'dd-MM-yyyy HH:mm';
-  static const String shortDateFormat = 'dd/MM';
-  static const String longDateFormat = 'EEEE, MMMM dd, yyyy';
-  static const String apiDateTimeFormat = 'yyyy-MM-dd HH:mm:ss'; // For API timestamps
-  static const String iso8601Format = 'yyyy-MM-ddTHH:mm:ss.SSSZ'; // ISO 8601 format
-  static const String monthYearFormat = 'MMMM yyyy'; // January 2024
-  static const String dayMonthFormat = 'dd MMM'; // 15 Jan
-  static const String timeWithSecondsFormat = 'HH:mm:ss'; // 14:30:25
-  static const String twelveHourTimeFormat = 'h:mm a'; // 2:30 PM
-  static const String shortMonthFormat = 'MMM dd'; // Jan 15
-  static const String yearOnlyFormat = 'yyyy'; // 2024
-  static const String monthOnlyFormat = 'MMMM'; // January
-  static const String weekdayFormat = 'EEEE'; // Monday
-  static const String shortWeekdayFormat = 'EEE'; // Mon
 
   // Animation durations
   static const int shortAnimationDuration = 200; // milliseconds
@@ -400,13 +384,6 @@ class AppConstants {
                 : '')
             .join(' ');
     }
-  }
-
-  /// Check if app version is compatible
-  static bool isCompatibleVersion(String version) {
-    // Simple version compatibility check
-    // In production, implement proper semantic versioning comparison
-    return version == appVersion;
   }
 
   /// Get formatted app version

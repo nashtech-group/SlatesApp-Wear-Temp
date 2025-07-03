@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:slates_app_wear/blocs/notification_bloc/notification_bloc.dart';
 import 'package:slates_app_wear/core/utils/notification_utils.dart';
 import 'package:slates_app_wear/data/models/notification_model.dart';
-
+import 'package:slates_app_wear/services/date_service.dart';
 
 class NotificationCenterPage extends StatefulWidget {
   const NotificationCenterPage({super.key});
@@ -49,6 +49,7 @@ class _NotificationCenterPageState extends State<NotificationCenterPage>
           IconButton(
             icon: const Icon(Icons.filter_list),
             onPressed: _showFilterDialog,
+            tooltip: 'Filter notifications',
           ),
           IconButton(
             icon: const Icon(Icons.mark_email_read),
@@ -57,21 +58,51 @@ class _NotificationCenterPageState extends State<NotificationCenterPage>
                     const MarkAllNotificationsAsRead(),
                   );
             },
+            tooltip: 'Mark all as read',
           ),
           PopupMenuButton<String>(
             onSelected: _handleMenuAction,
+            tooltip: 'More options',
             itemBuilder: (context) => [
               const PopupMenuItem(
                 value: 'clear_all',
-                child: Text('Clear All'),
+                child: Row(
+                  children: [
+                    Icon(Icons.clear_all),
+                    SizedBox(width: 8),
+                    Text('Clear All'),
+                  ],
+                ),
               ),
               const PopupMenuItem(
                 value: 'settings',
-                child: Text('Notification Settings'),
+                child: Row(
+                  children: [
+                    Icon(Icons.settings),
+                    SizedBox(width: 8),
+                    Text('Notification Settings'),
+                  ],
+                ),
               ),
               const PopupMenuItem(
                 value: 'pending',
-                child: Text('View Pending'),
+                child: Row(
+                  children: [
+                    Icon(Icons.schedule),
+                    SizedBox(width: 8),
+                    Text('View Pending'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'statistics',
+                child: Row(
+                  children: [
+                    Icon(Icons.analytics),
+                    SizedBox(width: 8),
+                    Text('Statistics'),
+                  ],
+                ),
               ),
             ],
           ),
@@ -87,8 +118,8 @@ class _NotificationCenterPageState extends State<NotificationCenterPage>
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showTestNotificationDialog,
-        child: const Icon(Icons.add),
         tooltip: 'Test Notification',
+        child: const Icon(Icons.add),
       ),
     );
   }
@@ -101,6 +132,12 @@ class _NotificationCenterPageState extends State<NotificationCenterPage>
             SnackBar(
               content: Text(state.message),
               backgroundColor: Colors.red,
+              action: SnackBarAction(
+                label: 'Retry',
+                onPressed: () {
+                  context.read<NotificationBloc>().add(const GetNotificationHistory());
+                },
+              ),
             ),
           );
         } else if (state is NotificationScheduled) {
@@ -114,7 +151,16 @@ class _NotificationCenterPageState extends State<NotificationCenterPage>
       },
       builder: (context, state) {
         if (state is NotificationLoading) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('Loading notifications...'),
+              ],
+            ),
+          );
         }
 
         if (state is NotificationHistoryLoaded) {
@@ -131,8 +177,7 @@ class _NotificationCenterPageState extends State<NotificationCenterPage>
                   NotificationUtils.filterUrgentNotifications(notifications);
               break;
             case NotificationFilter.all:
-            default:
-              break;
+            break;
           }
 
           // Apply type filter if selected
@@ -151,29 +196,96 @@ class _NotificationCenterPageState extends State<NotificationCenterPage>
             return _buildEmptyState(filter);
           }
 
+          // Group notifications by date for better organization
+          final groupedNotifications = NotificationUtils.groupNotificationsByDate(notifications);
+          
           return Column(
             children: [
               if (state.unreadCount > 0)
                 _buildUnreadCountBanner(state.unreadCount),
+              if (_selectedFilter != null)
+                _buildFilterBanner(),
               Expanded(
-                child: ListView.builder(
-                  itemCount: notifications.length,
-                  itemBuilder: (context, index) {
-                    final notification = notifications[index];
-                    return NotificationListTile(
-                      notification: notification,
-                      onTap: () => _handleNotificationTap(notification),
-                      onMarkRead: () => _markAsRead(notification.id),
-                      onDelete: () => _deleteNotification(notification.id),
-                    );
-                  },
-                ),
+                child: groupedNotifications.length <= 3 
+                  ? _buildSimpleList(notifications)
+                  : _buildGroupedList(groupedNotifications),
               ),
             ],
           );
         }
 
-        return const Center(child: Text('Loading notifications...'));
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 64, color: Colors.grey),
+              const SizedBox(height: 16),
+              Text(
+                'Unable to load notifications',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () {
+                  context.read<NotificationBloc>().add(const GetNotificationHistory());
+                },
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSimpleList(List<AppNotification> notifications) {
+    return ListView.builder(
+      itemCount: notifications.length,
+      itemBuilder: (context, index) {
+        final notification = notifications[index];
+        return NotificationListTile(
+          notification: notification,
+          onTap: () => _handleNotificationTap(notification),
+          onMarkRead: () => _markAsRead(notification.id),
+          onDelete: () => _deleteNotification(notification.id),
+        );
+      },
+    );
+  }
+
+  Widget _buildGroupedList(Map<String, List<AppNotification>> groupedNotifications) {
+    return ListView.builder(
+      itemCount: groupedNotifications.length,
+      itemBuilder: (context, index) {
+        final entry = groupedNotifications.entries.elementAt(index);
+        final dateGroup = entry.key;
+        final notifications = entry.value;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Date header
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: Theme.of(context).dividerColor.withValues(alpha:0.1),
+              child: Text(
+                dateGroup,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).primaryColor,
+                ),
+              ),
+            ),
+            // Notifications for this date
+            ...notifications.map((notification) => NotificationListTile(
+              notification: notification,
+              onTap: () => _handleNotificationTap(notification),
+              onMarkRead: () => _markAsRead(notification.id),
+              onDelete: () => _deleteNotification(notification.id),
+            )),
+          ],
+        );
       },
     );
   }
@@ -182,26 +294,73 @@ class _NotificationCenterPageState extends State<NotificationCenterPage>
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
-      color: Colors.blue.withOpacity(0.1),
+      decoration: BoxDecoration(
+        color: Colors.blue.withValues(alpha:0.1),
+        border: Border(
+          bottom: BorderSide(color: Colors.blue.withValues(alpha:0.2)),
+        ),
+      ),
       child: Row(
         children: [
           Icon(Icons.notifications_active, color: Colors.blue[700]),
           const SizedBox(width: 8),
-          Text(
-            '$unreadCount unread notification${unreadCount == 1 ? '' : 's'}',
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              color: Colors.blue[700],
+          Expanded(
+            child: Text(
+              '$unreadCount unread notification${unreadCount == 1 ? '' : 's'}',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Colors.blue[700],
+              ),
             ),
           ),
-          const Spacer(),
-          TextButton(
+          TextButton.icon(
             onPressed: () {
               context.read<NotificationBloc>().add(
                     const MarkAllNotificationsAsRead(),
                   );
             },
-            child: const Text('Mark All Read'),
+            icon: const Icon(Icons.done_all, size: 16),
+            label: const Text('Mark All Read'),
+            style: TextButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterBanner() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.orange.withValues(alpha:0.1),
+        border: Border(
+          bottom: BorderSide(color: Colors.orange.withValues(alpha:0.2)),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.filter_list, color: Colors.orange[700], size: 20),
+          const SizedBox(width: 8),
+          Text(
+            'Filtered by: ${_selectedFilter!.name}',
+            style: TextStyle(
+              fontWeight: FontWeight.w500,
+              color: Colors.orange[700],
+            ),
+          ),
+          const Spacer(),
+          TextButton(
+            onPressed: () {
+              setState(() => _selectedFilter = null);
+              _applyFilter();
+            },
+            style: TextButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+            ),
+            child: const Text('Clear Filter'),
           ),
         ],
       ),
@@ -221,8 +380,7 @@ class _NotificationCenterPageState extends State<NotificationCenterPage>
         break;
       case NotificationFilter.urgent:
         title = 'No Urgent Notifications';
-        subtitle =
-            'Everything looks good. No urgent notifications at this time.';
+        subtitle = 'Everything looks good. No urgent notifications at this time.';
         icon = Icons.check_circle_outline;
         break;
       case NotificationFilter.all:
@@ -234,26 +392,37 @@ class _NotificationCenterPageState extends State<NotificationCenterPage>
     }
 
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 64, color: Colors.grey[400]),
-          const SizedBox(height: 16),
-          Text(
-            title,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: Colors.grey[600],
-                ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            subtitle,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.grey[500],
-                ),
-            textAlign: TextAlign.center,
-          ),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 80, color: Colors.grey[400]),
+            const SizedBox(height: 24),
+            Text(
+              title,
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: Colors.grey[600],
+                  ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              subtitle,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.grey[500],
+                  ),
+              textAlign: TextAlign.center,
+            ),
+            if (filter == NotificationFilter.all) ...[
+              const SizedBox(height: 24),
+              OutlinedButton.icon(
+                onPressed: _showTestNotificationDialog,
+                icon: const Icon(Icons.add),
+                label: const Text('Create Test Notification'),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -263,34 +432,44 @@ class _NotificationCenterPageState extends State<NotificationCenterPage>
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Filter Notifications'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              title: const Text('All Types'),
-              leading: Radio<NotificationType?>(
-                value: null,
-                groupValue: _selectedFilter,
-                onChanged: (value) {
-                  setState(() => _selectedFilter = value);
-                  Navigator.pop(context);
-                  _applyFilter();
-                },
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: const Text('All Types'),
+                leading: Radio<NotificationType?>(
+                  value: null,
+                  groupValue: _selectedFilter,
+                  onChanged: (value) {
+                    setState(() => _selectedFilter = value);
+                    Navigator.pop(context);
+                    _applyFilter();
+                  },
+                ),
+                contentPadding: EdgeInsets.zero,
               ),
-            ),
-            ...NotificationType.values.map((type) => ListTile(
-                  title: Text(type.displayName),
-                  leading: Radio<NotificationType?>(
-                    value: type,
-                    groupValue: _selectedFilter,
-                    onChanged: (value) {
-                      setState(() => _selectedFilter = value);
-                      Navigator.pop(context);
-                      _applyFilter();
-                    },
-                  ),
-                )),
-          ],
+              const Divider(),
+              ...NotificationType.values.map((type) => ListTile(
+                    title: Text(type.name),
+                    leading: Radio<NotificationType?>(
+                      value: type,
+                      groupValue: _selectedFilter,
+                      onChanged: (value) {
+                        setState(() => _selectedFilter = value);
+                        Navigator.pop(context);
+                        _applyFilter();
+                      },
+                    ),
+                    trailing: Icon(
+                      NotificationUtils.getNotificationIcon(type),
+                      color: NotificationUtils.getNotificationColor(type),
+                      size: 20,
+                    ),
+                    contentPadding: EdgeInsets.zero,
+                  )),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -319,6 +498,9 @@ class _NotificationCenterPageState extends State<NotificationCenterPage>
       case 'pending':
         _showPendingNotifications();
         break;
+      case 'statistics':
+        _showNotificationStatistics();
+        break;
     }
   }
 
@@ -341,7 +523,14 @@ class _NotificationCenterPageState extends State<NotificationCenterPage>
               context.read<NotificationBloc>().add(
                     const ClearAllNotifications(),
                   );
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('All notifications cleared'),
+                  backgroundColor: Colors.green,
+                ),
+              );
             },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('Clear All'),
           ),
         ],
@@ -359,12 +548,25 @@ class _NotificationCenterPageState extends State<NotificationCenterPage>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Pending Notifications'),
+        title: const Row(
+          children: [
+            Icon(Icons.schedule),
+            SizedBox(width: 8),
+            Text('Pending Notifications'),
+          ],
+        ),
         content: BlocBuilder<NotificationBloc, NotificationState>(
           builder: (context, state) {
             if (state is PendingNotificationsLoaded) {
               if (state.pendingNotifications.isEmpty) {
-                return const Text('No pending notifications scheduled.');
+                return const Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.check_circle_outline, size: 48, color: Colors.green),
+                    SizedBox(height: 16),
+                    Text('No pending notifications scheduled.'),
+                  ],
+                );
               }
 
               return SizedBox(
@@ -374,30 +576,120 @@ class _NotificationCenterPageState extends State<NotificationCenterPage>
                   itemCount: state.pendingNotifications.length,
                   itemBuilder: (context, index) {
                     final pending = state.pendingNotifications[index];
-                    return ListTile(
-                      title: Text(pending.title ?? 'No Title'),
-                      subtitle: Text(pending.body ?? 'No Content'),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.cancel),
-                        onPressed: () {
-                          context.read<NotificationBloc>().add(
-                                CancelScheduledNotification(
-                                    notificationId: pending.id),
-                              );
-                        },
+                    return Card(
+                      child: ListTile(
+                        title: Text(pending.title ?? 'No Title'),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(pending.body ?? 'No Content'),
+                            // if (pending.scheduledDate != null) ...[
+                            //   const SizedBox(height: 4),
+                            //   Text(
+                            //     'Scheduled: ${_dateService.formatTimestampSmart(pending.scheduledDate!)}',
+                            //     style: Theme.of(context).textTheme.bodySmall,
+                            //   ),
+                            // ],
+                          ],
+                        ),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.cancel, color: Colors.red),
+                          onPressed: () {
+                            context.read<NotificationBloc>().add(
+                                  CancelScheduledNotification(
+                                      notificationId: pending.id),
+                                );
+                          },
+                          tooltip: 'Cancel notification',
+                        ),
                       ),
                     );
                   },
                 ),
               );
             }
-            return const CircularProgressIndicator();
+            return const Center(child: CircularProgressIndicator());
           },
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showNotificationStatistics() {
+    context.read<NotificationBloc>().add(const GetNotificationHistory());
+
+    showDialog(
+      context: context,
+      builder: (context) => BlocBuilder<NotificationBloc, NotificationState>(
+        builder: (context, state) {
+          if (state is NotificationHistoryLoaded) {
+            final stats = NotificationUtils.getNotificationStatistics(state.notifications);
+            
+            return AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.analytics),
+                  SizedBox(width: 8),
+                  Text('Notification Statistics'),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildStatItem('Total Notifications', '${stats['total']}'),
+                    _buildStatItem('Unread', '${stats['unread']}'),
+                    _buildStatItem('Urgent', '${stats['urgent']}'),
+                    _buildStatItem('Today', '${stats['todaysCount']}'),
+                    _buildStatItem('This Week', '${stats['thisWeeksCount']}'),
+                    const SizedBox(height: 16),
+                    Text(
+                      'By Type:',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 8),
+                    ...(stats['byType'] as Map<String, int>).entries.map(
+                      (entry) => _buildStatItem(
+                        entry.key.replaceAll('_', ' ').toUpperCase(),
+                        '${entry.value}',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Close'),
+                ),
+              ],
+            );
+          }
+          return const AlertDialog(
+            content: Center(child: CircularProgressIndicator()),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildStatItem(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label),
+          Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.bold),
           ),
         ],
       ),
@@ -418,6 +710,10 @@ class _NotificationCenterPageState extends State<NotificationCenterPage>
     if (actions.isNotEmpty) {
       showModalBottomSheet(
         context: context,
+        isScrollControlled: true,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        ),
         builder: (context) => NotificationActionSheet(
           notification: notification,
           actions: actions,
@@ -452,12 +748,12 @@ class NotificationListTile extends StatelessWidget {
   final VoidCallback? onDelete;
 
   const NotificationListTile({
-    Key? key,
+    super.key,
     required this.notification,
     this.onTap,
     this.onMarkRead,
     this.onDelete,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -472,11 +768,21 @@ class NotificationListTile extends StatelessWidget {
       background: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
-        color: Colors.red,
-        child: const Icon(Icons.delete, color: Colors.white),
+        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.red,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.delete, color: Colors.white),
+            Text('Delete', style: TextStyle(color: Colors.white, fontSize: 12)),
+          ],
+        ),
       ),
       confirmDismiss: (direction) async {
-        return await showDialog(
+        return await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
             title: const Text('Delete Notification'),
@@ -489,6 +795,7 @@ class NotificationListTile extends StatelessWidget {
               ),
               TextButton(
                 onPressed: () => Navigator.pop(context, true),
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
                 child: const Text('Delete'),
               ),
             ],
@@ -499,10 +806,16 @@ class NotificationListTile extends StatelessWidget {
       child: Card(
         margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         elevation: notification.isRead ? 1 : 3,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: isUrgent 
+            ? const BorderSide(color: Colors.red, width: 1)
+            : BorderSide.none,
+        ),
         child: ListTile(
           leading: CircleAvatar(
-            backgroundColor: color.withOpacity(0.2),
-            child: Icon(icon, color: color),
+            backgroundColor: color.withValues(alpha:0.2),
+            child: Icon(icon, color: color, size: 20),
           ),
           title: Text(
             notification.title,
@@ -510,6 +823,8 @@ class NotificationListTile extends StatelessWidget {
               fontWeight:
                   notification.isRead ? FontWeight.normal : FontWeight.bold,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
           subtitle: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -522,25 +837,32 @@ class NotificationListTile extends StatelessWidget {
               const SizedBox(height: 4),
               Row(
                 children: [
+                  Icon(
+                    Icons.access_time,
+                    size: 12,
+                    color: Colors.grey[600],
+                  ),
+                  const SizedBox(width: 4),
                   Text(
-                    NotificationUtils.getRelativeTimeString(
-                        notification.timestamp),
+                    NotificationUtils.formatNotificationTimestamp(notification.timestamp),
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                   if (isUrgent) ...[
                     const SizedBox(width: 8),
                     const Icon(Icons.priority_high,
-                        color: Colors.red, size: 16),
+                        color: Colors.red, size: 14),
                     const Text('Urgent',
-                        style: TextStyle(color: Colors.red, fontSize: 12)),
+                        style: TextStyle(color: Colors.red, fontSize: 11)),
                   ],
                 ],
               ),
             ],
           ),
-          trailing: notification.isRead
-              ? null
-              : Container(
+          trailing: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (!notification.isRead)
+                Container(
                   width: 8,
                   height: 8,
                   decoration: BoxDecoration(
@@ -548,6 +870,14 @@ class NotificationListTile extends StatelessWidget {
                     shape: BoxShape.circle,
                   ),
                 ),
+              const SizedBox(height: 4),
+              Icon(
+                Icons.more_vert,
+                size: 16,
+                color: Colors.grey[400],
+              ),
+            ],
+          ),
           onTap: onTap,
           onLongPress: () => _showContextMenu(context),
         ),
@@ -558,10 +888,31 @@ class NotificationListTile extends StatelessWidget {
   void _showContextMenu(BuildContext context) {
     showModalBottomSheet(
       context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
       builder: (context) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            ListTile(
+              leading: Icon(
+                NotificationUtils.getNotificationIcon(notification.type),
+                color: NotificationUtils.getNotificationColor(notification.type),
+              ),
+              title: Text(notification.title),
+              subtitle: Text(notification.type.name),
+            ),
+            const Divider(),
             if (!notification.isRead)
               ListTile(
                 leading: const Icon(Icons.mark_email_read),
@@ -572,21 +923,22 @@ class NotificationListTile extends StatelessWidget {
                 },
               ),
             ListTile(
-              leading: const Icon(Icons.delete),
-              title: const Text('Delete'),
-              onTap: () {
-                Navigator.pop(context);
-                onDelete?.call();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.info),
+              leading: const Icon(Icons.info_outline),
               title: const Text('View Details'),
               onTap: () {
                 Navigator.pop(context);
                 _showDetails(context);
               },
             ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline, color: Colors.red),
+              title: const Text('Delete', style: TextStyle(color: Colors.red)),
+              onTap: () {
+                Navigator.pop(context);
+                onDelete?.call();
+              },
+            ),
+            const SizedBox(height: 8),
           ],
         ),
       ),
@@ -594,46 +946,81 @@ class NotificationListTile extends StatelessWidget {
   }
 
   void _showDetails(BuildContext context) {
+    final dateService = DateService();
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(notification.title),
+        title: Row(
+          children: [
+            Icon(
+              NotificationUtils.getNotificationIcon(notification.type),
+              color: NotificationUtils.getNotificationColor(notification.type),
+            ),
+            const SizedBox(width: 8),
+            Expanded(child: Text(notification.title)),
+          ],
+        ),
         content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Type: ${notification.type.displayName}'),
-              const SizedBox(height: 8),
-              Text(
-                  'Time: ${NotificationUtils.formatDateTime(notification.timestamp)}'),
-              const SizedBox(height: 8),
-              Text('Status: ${notification.isRead ? 'Read' : 'Unread'}'),
-              if (notification.siteName != null) ...[
-                const SizedBox(height: 8),
-                Text('Site: ${notification.siteName}'),
-              ],
-              if (notification.dutyTime != null) ...[
-                const SizedBox(height: 8),
-                Text(
-                    'Duty Time: ${NotificationUtils.formatDateTime(notification.dutyTime!)}'),
-              ],
+              _buildDetailRow('Type', notification.type.name),
+              _buildDetailRow(
+                'Time',
+                dateService.formatDateTimeForDisplay(notification.timestamp),
+              ),
+              _buildDetailRow(
+                'Status',
+                notification.isRead ? 'Read' : 'Unread',
+              ),
+              if (notification.siteName != null)
+                _buildDetailRow('Site', notification.siteName!),
+              if (notification.dutyTime != null)
+                _buildDetailRow(
+                  'Duty Time',
+                  dateService.formatDateTimeForDisplay(notification.dutyTime!),
+                ),
               const SizedBox(height: 16),
-              const Text('Message:',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text(
+                'Message:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 4),
               Text(notification.body),
               if (notification.payload != null) ...[
                 const SizedBox(height: 16),
-                const Text('Additional Data:',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
+                const Text(
+                  'Additional Data:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
                 const SizedBox(height: 4),
-                Text(notification.payload.toString()),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    notification.payload.toString(),
+                    style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                  ),
+                ),
               ],
             ],
           ),
         ),
         actions: [
+          if (!notification.isRead)
+            TextButton.icon(
+              onPressed: () {
+                Navigator.pop(context);
+                onMarkRead?.call();
+              },
+              icon: const Icon(Icons.mark_email_read),
+              label: const Text('Mark as Read'),
+            ),
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Close'),
@@ -642,11 +1029,30 @@ class NotificationListTile extends StatelessWidget {
       ),
     );
   }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 80,
+            child: Text(
+              '$label:',
+              style: const TextStyle(fontWeight: FontWeight.w500),
+            ),
+          ),
+          Expanded(child: Text(value)),
+        ],
+      ),
+    );
+  }
 }
 
 /// Test notification dialog for development/testing
 class TestNotificationDialog extends StatefulWidget {
-  const TestNotificationDialog({Key? key}) : super(key: key);
+  const TestNotificationDialog({super.key});
 
   @override
   State<TestNotificationDialog> createState() => _TestNotificationDialogState();
@@ -657,37 +1063,74 @@ class _TestNotificationDialogState extends State<TestNotificationDialog> {
   final _titleController = TextEditingController(text: 'Test Notification');
   final _bodyController =
       TextEditingController(text: 'This is a test notification message');
+  bool _scheduleForLater = false;
+  DateTime? _scheduledTime;
+  final DateService _dateService = DateService();
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Test Notification'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          DropdownButtonFormField<NotificationType>(
-            value: _selectedType,
-            onChanged: (value) => setState(() => _selectedType = value!),
-            items: NotificationType.values.map((type) {
-              return DropdownMenuItem(
-                value: type,
-                child: Text(type.displayName),
-              );
-            }).toList(),
-            decoration: const InputDecoration(labelText: 'Type'),
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _titleController,
-            decoration: const InputDecoration(labelText: 'Title'),
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _bodyController,
-            decoration: const InputDecoration(labelText: 'Message'),
-            maxLines: 3,
-          ),
-        ],
+      title: const Text('Create Test Notification'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DropdownButtonFormField<NotificationType>(
+              value: _selectedType,
+              onChanged: (value) => setState(() => _selectedType = value!),
+              items: NotificationType.values.map((type) {
+                return DropdownMenuItem(
+                  value: type,
+                  child: Row(
+                    children: [
+                      Icon(
+                        NotificationUtils.getNotificationIcon(type),
+                        size: 16,
+                        color: NotificationUtils.getNotificationColor(type),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(type.name),
+                    ],
+                  ),
+                );
+              }).toList(),
+              decoration: const InputDecoration(labelText: 'Type'),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _titleController,
+              decoration: const InputDecoration(labelText: 'Title'),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _bodyController,
+              decoration: const InputDecoration(labelText: 'Message'),
+              maxLines: 3,
+            ),
+            const SizedBox(height: 16),
+            SwitchListTile(
+              title: const Text('Schedule for later'),
+              value: _scheduleForLater,
+              onChanged: (value) => setState(() => _scheduleForLater = value),
+              contentPadding: EdgeInsets.zero,
+            ),
+            if (_scheduleForLater) ...[
+              const SizedBox(height: 8),
+              ListTile(
+                title: Text(_scheduledTime != null 
+                  ? _dateService.formatDateTimeForDisplay(_scheduledTime!)
+                  : 'Select time'),
+                trailing: const Icon(Icons.access_time),
+                onTap: _selectScheduledTime,
+                contentPadding: EdgeInsets.zero,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(4),
+                  side: BorderSide(color: Colors.grey[300]!),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
       actions: [
         TextButton(
@@ -695,20 +1138,58 @@ class _TestNotificationDialogState extends State<TestNotificationDialog> {
           child: const Text('Cancel'),
         ),
         TextButton(
-          onPressed: () {
-            context.read<NotificationBloc>().add(
-                  ShowLocalNotification(
-                    title: _titleController.text,
-                    body: _bodyController.text,
-                    type: _selectedType,
-                  ),
-                );
-            Navigator.pop(context);
-          },
-          child: const Text('Send'),
+          onPressed: _canSendNotification() ? _sendTestNotification : null,
+          child: Text(_scheduleForLater ? 'Schedule' : 'Send'),
         ),
       ],
     );
+  }
+
+  bool _canSendNotification() {
+    return _titleController.text.isNotEmpty &&
+           _bodyController.text.isNotEmpty &&
+           (!_scheduleForLater || _scheduledTime != null);
+  }
+
+  void _sendTestNotification() {
+    context.read<NotificationBloc>().add(
+          ShowLocalNotification(
+            title: _titleController.text,
+            body: _bodyController.text,
+            type: _selectedType,
+           // scheduledDate: _scheduleForLater ? _scheduledTime : null,
+          ),
+        );
+    Navigator.pop(context);
+  }
+
+  Future<void> _selectScheduledTime() async {
+    final now = DateTime.now();
+    final date = await showDatePicker(
+      context: context,
+      initialDate: now.add(const Duration(hours: 1)),
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 30)),
+    );
+    
+    if (date != null) {
+      final time = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.fromDateTime(now.add(const Duration(hours: 1))),
+      );
+      
+      if (time != null) {
+        setState(() {
+          _scheduledTime = DateTime(
+            date.year,
+            date.month,
+            date.day,
+            time.hour,
+            time.minute,
+          );
+        });
+      }
+    }
   }
 
   @override
@@ -736,6 +1217,17 @@ class NotificationActionSheet extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // Handle bar
+          Container(
+            width: 40,
+            height: 4,
+            margin: const EdgeInsets.symmetric(vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          // Notification header
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -743,10 +1235,14 @@ class NotificationActionSheet extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Icon(
-                  NotificationUtils.getNotificationIcon(notification.type),
-                  color:
-                      NotificationUtils.getNotificationColor(notification.type),
+                CircleAvatar(
+                  backgroundColor: NotificationUtils
+                      .getNotificationColor(notification.type)
+                      .withValues(alpha:0.2),
+                  child: Icon(
+                    NotificationUtils.getNotificationIcon(notification.type),
+                    color: NotificationUtils.getNotificationColor(notification.type),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -756,6 +1252,8 @@ class NotificationActionSheet extends StatelessWidget {
                       Text(
                         notification.title,
                         style: const TextStyle(fontWeight: FontWeight.bold),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       Text(
                         notification.body,
@@ -769,22 +1267,44 @@ class NotificationActionSheet extends StatelessWidget {
               ],
             ),
           ),
+          // Action buttons
           ...actions.map((action) => ListTile(
+                leading: _getActionIcon(action['id']!),
                 title: Text(action['title']!),
                 onTap: () {
                   Navigator.pop(context);
                   _handleAction(context, action['id']!);
                 },
               )),
+          const SizedBox(height: 8),
         ],
       ),
     );
   }
 
+  Icon _getActionIcon(String actionId) {
+    switch (actionId) {
+      case 'open_map':
+        return const Icon(Icons.map);
+      case 'sync_now':
+        return const Icon(Icons.sync);
+      case 'respond':
+        return const Icon(Icons.emergency, color: Colors.red);
+      case 'call_emergency':
+        return const Icon(Icons.phone, color: Colors.red);
+      case 'battery_settings':
+        return const Icon(Icons.battery_std);
+      case 'view_sync_status':
+        return const Icon(Icons.info_outline);
+      case 'view_details':
+      default:
+        return const Icon(Icons.info_outline);
+    }
+  }
+
   void _handleAction(BuildContext context, String actionId) {
     switch (actionId) {
       case 'open_map':
-        // Navigate to site map
         Navigator.pushNamed(
           context,
           '/site_map',
@@ -795,17 +1315,29 @@ class NotificationActionSheet extends StatelessWidget {
         );
         break;
       case 'sync_now':
-        // Trigger sync
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Sync started...')),
+          const SnackBar(
+            content: Row(
+              children: [
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                SizedBox(width: 12),
+                Text('Sync started...'),
+              ],
+            ),
+          ),
         );
         break;
       case 'respond':
-        // Handle emergency response
         Navigator.pushNamed(context, '/emergency_response');
         break;
+      case 'call_emergency':
+        _showEmergencyCallDialog(context);
+        break;
       case 'view_details':
-        // Show notification details
         _showNotificationDetails(context);
         break;
       default:
@@ -814,6 +1346,42 @@ class NotificationActionSheet extends StatelessWidget {
         );
         break;
     }
+  }
+
+  void _showEmergencyCallDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.warning, color: Colors.red),
+            SizedBox(width: 8),
+            Text('Emergency Call'),
+          ],
+        ),
+        content: const Text('Do you want to call emergency services?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // Implement emergency call functionality
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Emergency call initiated'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Call'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showNotificationDetails(BuildContext context) {

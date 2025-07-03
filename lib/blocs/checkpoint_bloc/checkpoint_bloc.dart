@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:developer';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:geolocator/geolocator.dart';
@@ -177,9 +176,9 @@ class CheckpointBloc extends Bloc<CheckpointEvent, CheckpointState> {
       _completionTimes[event.checkpoint.id] = DateTime.now();
 
       final completedCount = _completionStatus.values.where((completed) => completed).length;
-      final progressPercentage = (_checkpoints.length > 0) 
+      final progressPercentage = (_checkpoints.isNotEmpty) 
           ? (completedCount / _checkpoints.length) * 100 
-          : 0;
+          : 0.0;
       final isAllCompleted = completedCount == _checkpoints.length;
 
       CheckPointModel? nextCheckpoint;
@@ -332,9 +331,9 @@ class CheckpointBloc extends Bloc<CheckpointEvent, CheckpointState> {
     Emitter<CheckpointState> emit,
   ) async {
     final completedCount = _completionStatus.values.where((completed) => completed).length;
-    final progressPercentage = (_checkpoints.length > 0) 
+    final progressPercentage = (_checkpoints.isNotEmpty) 
         ? (completedCount / _checkpoints.length) * 100 
-        : 0;
+        : 0.0;
 
     final completedCheckpoints = _checkpoints.where(
       (checkpoint) => _completionStatus[checkpoint.id] == true,
@@ -402,15 +401,11 @@ class CheckpointBloc extends Bloc<CheckpointEvent, CheckpointState> {
   int get completedCheckpointsCount => 
       _completionStatus.values.where((completed) => completed).length;
   
-  double get progressPercentage => (_checkpoints.length > 0) 
+  double get progressPercentage => (_checkpoints.isNotEmpty) 
       ? (completedCheckpointsCount / _checkpoints.length) * 100 
       : 0;
   
   bool get isAllCheckpointsCompleted => 
       completedCheckpointsCount == _checkpoints.length;
 
-  @override
-  Future<void> close() {
-    return super.close();
-  }
 }

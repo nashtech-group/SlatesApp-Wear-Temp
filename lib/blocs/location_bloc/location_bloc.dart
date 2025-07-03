@@ -30,7 +30,6 @@ class LocationBloc extends Bloc<LocationEvent, LocationState> {
   
   // Settings
   int _updateIntervalSeconds = AppConstants.locationUpdateIntervalSeconds;
-  double _accuracyThreshold = AppConstants.highAccuracyThreshold;
 
   LocationBloc({OfflineStorageService? offlineStorage})
       : _offlineStorage = offlineStorage ?? OfflineStorageService(),
@@ -97,7 +96,7 @@ class LocationBloc extends Bloc<LocationEvent, LocationState> {
       _recentMovements = [];
 
       // Configure location settings
-      const locationSettings = LocationSettings(
+      final locationSettings = LocationSettings(
         accuracy: LocationAccuracy.high,
         distanceFilter: AppConstants.minimumMovementDistance.toInt(),
       );
@@ -186,7 +185,6 @@ class LocationBloc extends Bloc<LocationEvent, LocationState> {
     Emitter<LocationState> emit,
   ) async {
     _updateIntervalSeconds = event.updateIntervalSeconds;
-    _accuracyThreshold = event.accuracyThreshold;
 
     // Restart timer with new interval
     if (_isTrackingActive) {
@@ -426,14 +424,12 @@ class LocationBloc extends Bloc<LocationEvent, LocationState> {
   }
 
   String _determineMovementType(Position position) {
-    if (position.speed != null) {
-      if (position.speed! > AppConstants.runningSpeedThreshold) {
-        return AppConstants.transitMovement;
-      } else if (position.speed! > AppConstants.walkingSpeedThreshold) {
-        return AppConstants.patrolMovement;
-      }
+    if (position.speed > AppConstants.runningSpeedThreshold) {
+      return AppConstants.transitMovement;
+    } else if (position.speed > AppConstants.walkingSpeedThreshold) {
+      return AppConstants.patrolMovement;
     }
-    return AppConstants.idleMovement;
+      return AppConstants.idleMovement;
   }
 
   // Public methods for external access

@@ -5,14 +5,12 @@ import 'package:equatable/equatable.dart';
 import 'package:slates_app_wear/data/models/api_error_model.dart';
 import 'package:slates_app_wear/data/models/roster/roster_response_model.dart';
 import 'package:slates_app_wear/data/models/roster/roster_user_model.dart';
-import 'package:slates_app_wear/data/models/roster/comprehensive_guard_duty_request_model.dart';
 import 'package:slates_app_wear/data/models/roster/comprehensive_guard_duty_response_model.dart';
 import 'package:slates_app_wear/data/models/roster/guard_movement_model.dart';
 import 'package:slates_app_wear/data/models/roster/roster_user_update_model.dart';
 import 'package:slates_app_wear/data/models/sites/perimeter_check_model.dart';
 import 'package:slates_app_wear/data/models/sites/site_model.dart';
 import 'package:slates_app_wear/data/repositories/roster_repository/roster_repository.dart';
-import 'package:slates_app_wear/core/auth_manager.dart';
 
 part 'roster_event.dart';
 part 'roster_state.dart';

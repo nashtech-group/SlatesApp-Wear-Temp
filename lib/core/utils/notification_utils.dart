@@ -114,29 +114,10 @@ class NotificationChannelConfig {
     this.soundFile,
   });
 }
+
 class NotificationUtils {
-  // Use DateService instance for consistent formatting
+  // Use DateService instance for all date/time operations
   static final DateService _dateService = DateService();
-
-  /// Format time for notification display
-  static String formatTime(DateTime dateTime) {
-    return _dateService.formatTimeForDisplay(dateTime);
-  }
-
-  /// Format date for notification display
-  static String formatDate(DateTime dateTime) {
-    return _dateService.formatDateForDisplay(dateTime);
-  }
-
-  /// Format date and time for notification display
-  static String formatDateTime(DateTime dateTime) {
-    return _dateService.formatDateTimeForDisplay(dateTime);
-  }
-
-  /// Get relative time string (e.g., "in 2 hours", "5 minutes ago")
-  static String getRelativeTimeString(DateTime dateTime) {
-    return _dateService.getRelativeTimeDescription(dateTime);
-  }
 
   /// Generate duty notification messages based on timing
   static Map<String, String> getDutyNotificationMessages({
@@ -152,7 +133,7 @@ class NotificationUtils {
       case NotificationConfig.dutyReminder24Hours:
         return {
           'title': 'Shift Reminder',
-          'body': 'Tomorrow at ${formatTime(dutyTime)} at $siteName',
+          'body': 'Tomorrow at ${_dateService.formatTimeForDisplay(dutyTime)} at $siteName',
         };
       case NotificationConfig.dutyReminder30Minutes:
         return {
@@ -167,7 +148,7 @@ class NotificationUtils {
       case 0:
         return {
           'title': 'Duty Started',
-          'body': '$siteName | Period: ${formatTime(dutyTime)} - ${formatTime(endTime)}',
+          'body': '$siteName | Period: ${_dateService.formatTimeForDisplay(dutyTime)} - ${_dateService.formatTimeForDisplay(endTime)}',
         };
       default:
         return {
@@ -203,7 +184,7 @@ class NotificationUtils {
     required bool isDutyStartingSoon,
     required bool isOnDuty,
   }) {
-    if (isDutyStartingSoon && batteryLevel < 90) { // Pre-duty threshold
+    if (isDutyStartingSoon && batteryLevel < 90) {
       return {
         'title': 'Pre-Duty Battery Check',
         'body': 'Battery is at $batteryLevel%. Please charge to at least 90% before duty starts.',
@@ -382,22 +363,8 @@ class NotificationUtils {
     return notifications.where((notification) => isNotificationUrgent(notification)).toList();
   }
 
-  /// Group notifications by date
+  /// Group notifications by date using DateService
   static Map<String, List<AppNotification>> groupNotificationsByDate(
-    List<AppNotification> notifications,
-  ) {
-    final grouped = <String, List<AppNotification>>{};
-    
-    for (final notification in notifications) {
-      final dateKey = formatDate(notification.timestamp);
-      grouped.putIfAbsent(dateKey, () => []).add(notification);
-    }
-    
-    return grouped;
-  }
-
-  /// Group notifications by date with formatted keys
-  static Map<String, List<AppNotification>> groupNotificationsByFormattedDate(
     List<AppNotification> notifications,
   ) {
     final grouped = <String, List<AppNotification>>{};
@@ -408,15 +375,10 @@ class NotificationUtils {
       
       if (_dateService.isToday(notificationDate)) {
         dateKey = 'Today';
+      } else if (_dateService.isYesterday(notificationDate)) {
+        dateKey = 'Yesterday';
       } else {
-        final yesterday = DateTime.now().subtract(const Duration(days: 1));
-        if (notificationDate.year == yesterday.year && 
-            notificationDate.month == yesterday.month && 
-            notificationDate.day == yesterday.day) {
-          dateKey = 'Yesterday';
-        } else {
-          dateKey = _dateService.formatDateForLongDisplay(notificationDate);
-        }
+        dateKey = _dateService.formatDateForLongDisplay(notificationDate);
       }
       
       grouped.putIfAbsent(dateKey, () => []).add(notification);
@@ -519,28 +481,22 @@ class NotificationUtils {
     return actions;
   }
 
-  /// Format notification timestamp with context
-  static String formatNotificationTimestamp(DateTime timestamp) {
-    final now = DateTime.now();
-    final difference = now.difference(timestamp);
-    
-    if (difference.inMinutes < 1) {
-      return 'Just now';
-    } else if (difference.inMinutes < 60) {
-      return '${difference.inMinutes}m ago';
-    } else if (difference.inHours < 24) {
-      return '${difference.inHours}h ago';
-    } else if (_dateService.isToday(timestamp)) {
-      return 'Today ${formatTime(timestamp)}';
-    } else {
-      final yesterday = now.subtract(const Duration(days: 1));
-      if (timestamp.year == yesterday.year && 
-          timestamp.month == yesterday.month && 
-          timestamp.day == yesterday.day) {
-        return 'Yesterday ${formatTime(timestamp)}';
-      } else {
-        return formatDateTime(timestamp);
-      }
-    }
-  }
+  // ===================================
+  // DELEGATE METHODS TO DATESERVICE
+  // ===================================
+  
+  /// Format time for notification display
+  static String formatTime(DateTime dateTime) => _dateService.formatTimeForDisplay(dateTime);
+
+  /// Format date for notification display
+  static String formatDate(DateTime dateTime) => _dateService.formatDateForDisplay(dateTime);
+
+  /// Format date and time for notification display
+  static String formatDateTime(DateTime dateTime) => _dateService.formatDateTimeForDisplay(dateTime);
+
+  /// Get relative time string (e.g., "in 2 hours", "5 minutes ago")
+  static String getRelativeTimeString(DateTime dateTime) => _dateService.getRelativeTimeDescription(dateTime);
+
+  /// Format notification timestamp with smart context
+  static String formatNotificationTimestamp(DateTime timestamp) => _dateService.formatTimestampSmart(timestamp);
 }
