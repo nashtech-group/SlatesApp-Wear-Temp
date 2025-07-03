@@ -1,6 +1,6 @@
 import 'package:slates_app_wear/data/models/roster/guard_movement_model.dart';
 import 'package:slates_app_wear/data/models/roster/roster_user_update_model.dart';
-import 'package:slates_app_wear/data/models/site/perimeter_check_model.dart';
+import 'package:slates_app_wear/data/models/sites/perimeter_check_model.dart';
 
 class ComprehensiveGuardDutyRequestModel {
   final List<RosterUserUpdateModel>? updates;

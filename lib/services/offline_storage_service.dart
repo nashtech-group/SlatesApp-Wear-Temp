@@ -9,9 +9,10 @@ import 'package:slates_app_wear/core/constants/storage_constants.dart';
 import 'package:slates_app_wear/data/models/roster/roster_response_model.dart';
 import 'package:slates_app_wear/data/models/roster/roster_user_model.dart';
 import 'package:slates_app_wear/data/models/roster/comprehensive_guard_duty_request_model.dart';
+import 'package:slates_app_wear/data/models/roster/comprehensive_guard_duty_response_model.dart';
 import 'package:slates_app_wear/data/models/roster/guard_movement_model.dart';
-import 'package:slates_app_wear/data/models/site/perimeter_check_model.dart';
-import 'package:slates_app_wear/data/models/site/site_model.dart';
+import 'package:slates_app_wear/data/models/sites/perimeter_check_model.dart';
+import 'package:slates_app_wear/data/models/sites/site_model.dart';
 
 class OfflineStorageService {
   static final OfflineStorageService _instance =
@@ -31,6 +32,7 @@ class OfflineStorageService {
   static const String _pendingSubmissionsTable = 'pending_submissions';
   static const String _cacheMetadataTable = 'cache_metadata';
   static const String _syncStatusTable = 'sync_status';
+  static const String _submissionRecordsTable = 'submission_records';
 
   /// Get database instance
   Future<Database> get database async {
@@ -155,6 +157,18 @@ class OfflineStorageService {
         )
       ''');
 
+      // Submission Records table (for caching successful submissions)
+      await txn.execute('''
+        CREATE TABLE $_submissionRecordsTable (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          request_data TEXT NOT NULL,
+          response_data TEXT NOT NULL,
+          submission_type TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          local_id TEXT UNIQUE NOT NULL
+        )
+      ''');
+
       // Cache Metadata table
       await txn.execute('''
         CREATE TABLE $_cacheMetadataTable (
@@ -221,6 +235,12 @@ class OfflineStorageService {
         'CREATE INDEX idx_pending_submissions_type ON $_pendingSubmissionsTable(submission_type)');
     await txn.execute(
         'CREATE INDEX idx_pending_submissions_created_at ON $_pendingSubmissionsTable(created_at)');
+
+    // Submission Records indexes
+    await txn.execute(
+        'CREATE INDEX idx_submission_records_type ON $_submissionRecordsTable(submission_type)');
+    await txn.execute(
+        'CREATE INDEX idx_submission_records_created_at ON $_submissionRecordsTable(created_at)');
 
     // Cache Metadata indexes
     await txn.execute(
@@ -418,6 +438,78 @@ class OfflineStorageService {
       createdAt: DateTime.parse(row['created_at'] as String),
       updatedAt: DateTime.parse(row['updated_at'] as String),
     );
+  }
+
+  // ====================
+  // SUBMISSION RECORDS OPERATIONS
+  // ====================
+
+  /// Cache successful submission record
+  Future<void> cacheSubmissionRecord(
+    ComprehensiveGuardDutyRequestModel request,
+    ComprehensiveGuardDutyResponseModel response,
+  ) async {
+    try {
+      final db = await database;
+      final now = DateTime.now().toIso8601String();
+      final localId = 'submission_record_${DateTime.now().millisecondsSinceEpoch}';
+
+      await db.insert(_submissionRecordsTable, {
+        'request_data': jsonEncode(request.toJson()),
+        'response_data': jsonEncode(response.toJson()),
+        'submission_type': 'comprehensive_guard_duty',
+        'created_at': now,
+        'local_id': localId,
+      });
+
+      log('Submission record cached: $localId');
+    } catch (e) {
+      log('Failed to cache submission record: $e');
+      rethrow;
+    }
+  }
+
+  /// Get submission records
+  Future<List<Map<String, dynamic>>> getSubmissionRecords({
+    int? limit,
+    String? submissionType,
+  }) async {
+    try {
+      final db = await database;
+
+      String whereClause = '';
+      List<dynamic> whereArgs = [];
+
+      if (submissionType != null) {
+        whereClause = 'submission_type = ?';
+        whereArgs.add(submissionType);
+      }
+
+      final records = await db.query(
+        _submissionRecordsTable,
+        where: whereClause.isNotEmpty ? whereClause : null,
+        whereArgs: whereArgs.isNotEmpty ? whereArgs : null,
+        orderBy: 'created_at DESC',
+        limit: limit,
+      );
+
+      return records
+          .map((row) => {
+                'localId': row['local_id'] as String,
+                'request': ComprehensiveGuardDutyRequestModel.fromJson(
+                  jsonDecode(row['request_data'] as String),
+                ),
+                'response': ComprehensiveGuardDutyResponseModel.fromJson(
+                  jsonDecode(row['response_data'] as String),
+                ),
+                'submissionType': row['submission_type'] as String,
+                'createdAt': DateTime.parse(row['created_at'] as String),
+              })
+          .toList();
+    } catch (e) {
+      log('Failed to get submission records: $e');
+      return [];
+    }
   }
 
   // ====================
@@ -668,7 +760,7 @@ class OfflineStorageService {
   }
 
   /// Get all pending submissions
-  Future<List<Map<String, dynamic>>> getPendingSubmissions() async {
+  Future<List<ComprehensiveGuardDutyRequestModel>> getPendingSubmissions() async {
     try {
       final db = await database;
 
@@ -678,14 +770,9 @@ class OfflineStorageService {
       );
 
       return submissions
-          .map((row) => {
-                'localId': row['local_id'] as String,
-                'data': ComprehensiveGuardDutyRequestModel.fromJson(
-                  jsonDecode(row['submission_data'] as String),
-                ),
-                'createdAt': DateTime.parse(row['created_at'] as String),
-                'retryCount': row['retry_count'] as int,
-              })
+          .map((row) => ComprehensiveGuardDutyRequestModel.fromJson(
+                jsonDecode(row['submission_data'] as String),
+              ))
           .toList();
     } catch (e) {
       log('Failed to get pending submissions: $e');
@@ -950,6 +1037,11 @@ class OfflineStorageService {
       final sitesCount = await db.rawQuery('SELECT COUNT(*) FROM $_sitesTable');
       stats['cachedSites'] = Sqflite.firstIntValue(sitesCount) ?? 0;
 
+      // Count submission records
+      final recordsCount =
+          await db.rawQuery('SELECT COUNT(*) FROM $_submissionRecordsTable');
+      stats['submissionRecords'] = Sqflite.firstIntValue(recordsCount) ?? 0;
+
       return stats;
     } catch (e) {
       log('Failed to get storage statistics: $e');
@@ -989,6 +1081,16 @@ class OfflineStorageService {
         _pendingSubmissionsTable,
         where: 'created_at < ? AND retry_count > ?',
         whereArgs: [submissionRetentionDate, AppConstants.maxRetryAttempts],
+      );
+
+      // Clean old submission records
+      final recordRetentionDate =
+          DateTime.now().subtract(const Duration(days: 30)).toIso8601String();
+
+      await db.delete(
+        _submissionRecordsTable,
+        where: 'created_at < ?',
+        whereArgs: [recordRetentionDate],
       );
 
       // Clear expired cache

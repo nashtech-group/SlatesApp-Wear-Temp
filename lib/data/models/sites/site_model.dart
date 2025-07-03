@@ -1,4 +1,4 @@
-import 'package:slates_app_wear/data/models/site/site_perimeter_model.dart';
+import 'package:slates_app_wear/data/models/sites/site_perimeter_model.dart';
 import 'package:slates_app_wear/data/models/sites/checkpoint_model.dart';
 import 'package:slates_app_wear/data/models/user/user_model.dart';
 

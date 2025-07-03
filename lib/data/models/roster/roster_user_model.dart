@@ -1,5 +1,5 @@
 import 'package:slates_app_wear/data/models/contract/time_requirement_model.dart';
-import 'package:slates_app_wear/data/models/site/site_model.dart';
+import 'package:slates_app_wear/data/models/sites/site_model.dart';
 
 class RosterUserModel {
   final int id;

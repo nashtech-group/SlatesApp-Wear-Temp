@@ -9,8 +9,8 @@ import 'package:slates_app_wear/data/models/roster/comprehensive_guard_duty_requ
 import 'package:slates_app_wear/data/models/roster/comprehensive_guard_duty_response_model.dart';
 import 'package:slates_app_wear/data/models/roster/guard_movement_model.dart';
 import 'package:slates_app_wear/data/models/roster/roster_user_update_model.dart';
-import 'package:slates_app_wear/data/models/site/perimeter_check_model.dart';
-import 'package:slates_app_wear/data/models/site/site_model.dart';
+import 'package:slates_app_wear/data/models/sites/perimeter_check_model.dart';
+import 'package:slates_app_wear/data/models/sites/site_model.dart';
 import 'package:slates_app_wear/services/offline_storage_service.dart';
 import 'package:slates_app_wear/services/connectivity_service.dart';
 import 'package:slates_app_wear/services/sync_service.dart';
@@ -43,8 +43,15 @@ class RosterRepository {
 
   /// Initialize repository and services
   Future<void> initialize() async {
-    _syncService.initialize();
-    await _syncService.scheduleSyncReminders();
+    try {
+      _syncService.initialize();
+      await _syncService.scheduleSyncReminders();
+      _connectivity.startMonitoring();
+      log('RosterRepository initialized successfully');
+    } catch (e) {
+      log('Failed to initialize RosterRepository: $e');
+      rethrow;
+    }
   }
 
   /// Get roster data for a guard from current date
@@ -67,6 +74,7 @@ class RosterRepository {
       // Try online first if connected
       if (_connectivity.isConnected) {
         try {
+          log('Fetching roster data online for guard $guardId from $dateToUse');
           final responseData = await _rosterProvider.getRosterData(
             guardId: guardId,
             fromDate: dateToUse,
@@ -86,6 +94,7 @@ class RosterRepository {
           
           // Cache for offline access
           await _offlineStorage.cacheRosterData(guardId, rosterResponse);
+          log('Roster data cached for offline access');
 
           return rosterResponse;
         } catch (e) {
@@ -95,8 +104,10 @@ class RosterRepository {
       }
 
       // Try offline cache
+      log('Attempting to load roster data from cache for guard $guardId');
       final cachedData = await _offlineStorage.getCachedRosterData(guardId);
       if (cachedData != null) {
+        log('Loaded roster data from cache');
         return cachedData;
       }
 
@@ -149,6 +160,7 @@ class RosterRepository {
       // Try online submission if connected
       if (_connectivity.isConnected) {
         try {
+          log('Submitting comprehensive guard duty data online');
           final responseData = await _rosterProvider.submitComprehensiveGuardDuty(
             requestData: requestData,
             token: token,
@@ -167,6 +179,7 @@ class RosterRepository {
 
           // Cache successful submission
           await _offlineStorage.cacheSubmissionRecord(requestData, response);
+          log('Submission record cached');
 
           return response;
         } catch (e) {
@@ -176,6 +189,7 @@ class RosterRepository {
       }
 
       // Cache for later sync
+      log('Caching submission for offline sync');
       await _offlineStorage.cachePendingSubmission(requestData);
       
       return ComprehensiveGuardDutyResponseModel(
@@ -238,6 +252,7 @@ class RosterRepository {
       final dateToUse = fromDate ?? _dateService.getTodayFormattedDate();
 
       if (_connectivity.isConnected) {
+        log('Fetching paginated roster data online for guard $guardId');
         final responseData = await _rosterProvider.getRosterDataPaginated(
           guardId: guardId,
           fromDate: dateToUse,
@@ -266,6 +281,242 @@ class RosterRepository {
         status: 'error',
         message: 'No internet connection and no offline data available',
       );
+    } catch (e) {
+      if (e is ApiErrorModel) rethrow;
+      
+      throw ApiErrorModel(
+        status: 'error',
+        message: 'Unexpected error: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Get roster data for multiple guards (bulk fetch)
+  Future<RosterResponseModel> getBulkRosterData({
+    required List<int> guardIds,
+    String? fromDate,
+  }) async {
+    try {
+      final token = await AuthManager().getToken();
+      
+      if (token == null) {
+        throw ApiErrorModel(
+          status: 'error',
+          message: 'No authentication token available',
+        );
+      }
+
+      final dateToUse = fromDate ?? _dateService.getTodayFormattedDate();
+
+      if (_connectivity.isConnected) {
+        log('Fetching bulk roster data for ${guardIds.length} guards');
+        final responseData = await _rosterProvider.getBulkRosterData(
+          guardIds: guardIds,
+          fromDate: dateToUse,
+          token: token,
+        );
+
+        final decodedData = jsonDecode(responseData);
+        
+        if (decodedData.containsKey("errors") || 
+            (decodedData.containsKey("status") && decodedData["status"] == "error")) {
+          throw ApiErrorModel.fromJson(decodedData);
+        }
+
+        return RosterResponseModel.fromJson(decodedData);
+      }
+
+      throw ApiErrorModel(
+        status: 'error',
+        message: 'Bulk roster data requires internet connection',
+      );
+    } catch (e) {
+      if (e is ApiErrorModel) rethrow;
+      
+      throw ApiErrorModel(
+        status: 'error',
+        message: 'Unexpected error: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Get roster data for a specific date range
+  Future<RosterResponseModel> getRosterDataForDateRange({
+    required int guardId,
+    required String fromDate,
+    required String toDate,
+  }) async {
+    try {
+      final token = await AuthManager().getToken();
+      
+      if (token == null) {
+        throw ApiErrorModel(
+          status: 'error',
+          message: 'No authentication token available',
+        );
+      }
+
+      if (_connectivity.isConnected) {
+        log('Fetching roster data for date range: $fromDate to $toDate');
+        final responseData = await _rosterProvider.getRosterDataForDateRange(
+          guardId: guardId,
+          fromDate: fromDate,
+          toDate: toDate,
+          token: token,
+        );
+
+        final decodedData = jsonDecode(responseData);
+        
+        if (decodedData.containsKey("errors") || 
+            (decodedData.containsKey("status") && decodedData["status"] == "error")) {
+          throw ApiErrorModel.fromJson(decodedData);
+        }
+
+        return RosterResponseModel.fromJson(decodedData);
+      }
+
+      throw ApiErrorModel(
+        status: 'error',
+        message: 'Date range queries require internet connection',
+      );
+    } catch (e) {
+      if (e is ApiErrorModel) rethrow;
+      
+      throw ApiErrorModel(
+        status: 'error',
+        message: 'Unexpected error: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Submit batch of roster user status updates only
+  Future<ComprehensiveGuardDutyResponseModel> submitRosterUserUpdatesBatch({
+    required List<Map<String, dynamic>> updates,
+  }) async {
+    try {
+      final token = await AuthManager().getToken();
+      
+      if (token == null) {
+        throw ApiErrorModel(
+          status: 'error',
+          message: 'No authentication token available',
+        );
+      }
+
+      if (_connectivity.isConnected) {
+        final responseData = await _rosterProvider.submitRosterUserUpdates(
+          updates: updates,
+          token: token,
+        );
+
+        final decodedData = jsonDecode(responseData);
+        
+        if (decodedData.containsKey("errors") || 
+            (decodedData.containsKey("status") && decodedData["status"] == "error")) {
+          throw ApiErrorModel.fromJson(decodedData);
+        }
+
+        return ComprehensiveGuardDutyResponseModel.fromJson(decodedData);
+      }
+
+      // Convert to proper format and cache
+      final updateModels = updates.map((update) => 
+        RosterUserUpdateModel.fromJson(update)
+      ).toList();
+
+      return await submitRosterUserUpdates(updates: updateModels);
+    } catch (e) {
+      if (e is ApiErrorModel) rethrow;
+      
+      throw ApiErrorModel(
+        status: 'error',
+        message: 'Unexpected error: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Submit batch of guard movements only  
+  Future<ComprehensiveGuardDutyResponseModel> submitGuardMovementsBatch({
+    required List<Map<String, dynamic>> movements,
+  }) async {
+    try {
+      final token = await AuthManager().getToken();
+      
+      if (token == null) {
+        throw ApiErrorModel(
+          status: 'error',
+          message: 'No authentication token available',
+        );
+      }
+
+      if (_connectivity.isConnected) {
+        final responseData = await _rosterProvider.submitGuardMovements(
+          movements: movements,
+          token: token,
+        );
+
+        final decodedData = jsonDecode(responseData);
+        
+        if (decodedData.containsKey("errors") || 
+            (decodedData.containsKey("status") && decodedData["status"] == "error")) {
+          throw ApiErrorModel.fromJson(decodedData);
+        }
+
+        return ComprehensiveGuardDutyResponseModel.fromJson(decodedData);
+      }
+
+      // Convert to proper format and cache
+      final movementModels = movements.map((movement) => 
+        GuardMovementModel.fromJson(movement)
+      ).toList();
+
+      return await submitGuardMovements(movements: movementModels);
+    } catch (e) {
+      if (e is ApiErrorModel) rethrow;
+      
+      throw ApiErrorModel(
+        status: 'error',
+        message: 'Unexpected error: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Submit batch of perimeter checks only
+  Future<ComprehensiveGuardDutyResponseModel> submitPerimeterChecksBatch({
+    required List<Map<String, dynamic>> perimeterChecks,
+  }) async {
+    try {
+      final token = await AuthManager().getToken();
+      
+      if (token == null) {
+        throw ApiErrorModel(
+          status: 'error',
+          message: 'No authentication token available',
+        );
+      }
+
+      if (_connectivity.isConnected) {
+        final responseData = await _rosterProvider.submitPerimeterChecks(
+          perimeterChecks: perimeterChecks,
+          token: token,
+        );
+
+        final decodedData = jsonDecode(responseData);
+        
+        if (decodedData.containsKey("errors") || 
+            (decodedData.containsKey("status") && decodedData["status"] == "error")) {
+          throw ApiErrorModel.fromJson(decodedData);
+        }
+
+        return ComprehensiveGuardDutyResponseModel.fromJson(decodedData);
+      }
+
+      // Convert to proper format and cache
+      final checkModels = perimeterChecks.map((check) => 
+        PerimeterCheckModel.fromJson(check)
+      ).toList();
+
+      return await submitPerimeterChecks(perimeterChecks: checkModels);
     } catch (e) {
       if (e is ApiErrorModel) rethrow;
       
@@ -310,18 +561,70 @@ class RosterRepository {
 
   /// Sync pending submissions manually
   Future<bool> syncPendingSubmissions() async {
-    return await _syncService.manualSync();
+    try {
+      log('Starting manual sync of pending submissions');
+      return await _syncService.manualSync();
+    } catch (e) {
+      log('Failed to sync pending submissions: $e');
+      return false;
+    }
+  }
+
+  /// Force sync all pending data
+  Future<Map<String, dynamic>> forceSyncAll() async {
+    try {
+      log('Starting force sync of all pending data');
+      return await _syncService.forceSyncAll();
+    } catch (e) {
+      log('Failed to force sync all data: $e');
+      return {
+        'error': e.toString(),
+        'movements': false,
+        'perimeterChecks': false,
+        'pendingSubmissions': false,
+        'totalSuccess': 0,
+        'totalFailure': 3,
+      };
+    }
   }
 
   /// Check if there are pending submissions
   Future<bool> hasPendingSubmissions() async {
-    final count = await _offlineStorage.getPendingSubmissionsCount();
-    return count > 0;
+    try {
+      final count = await _offlineStorage.getPendingSubmissionsCount();
+      return count > 0;
+    } catch (e) {
+      log('Failed to check pending submissions: $e');
+      return false;
+    }
   }
 
   /// Get sync status for UI
   Future<Map<String, dynamic>> getSyncStatus() async {
-    return await _syncService.getSyncStatus();
+    try {
+      return await _syncService.getSyncStatus();
+    } catch (e) {
+      log('Failed to get sync status: $e');
+      return {
+        'pendingSubmissions': 0,
+        'unsyncedMovements': 0,
+        'unsyncedPerimeterChecks': 0,
+        'daysSinceLastSync': 999,
+        'isSyncRequired': true,
+        'isConnected': false,
+        'isSyncing': false,
+      };
+    }
+  }
+
+  /// Get detailed sync statistics
+  Future<Map<String, dynamic>> getSyncStatistics() async {
+    try {
+      return await _syncService.getSyncStatistics();
+    } catch (e) {
+      log('Failed to get sync statistics: $e');
+      return {};
+    }
   }
 
   /// Get today's roster status
@@ -344,10 +647,105 @@ class RosterRepository {
     );
   }
 
+  /// Store guard movement locally
+  Future<String> storeGuardMovementLocally(GuardMovementModel movement) async {
+    try {
+      return await _offlineStorage.storeGuardMovement(movement);
+    } catch (e) {
+      log('Failed to store guard movement locally: $e');
+      rethrow;
+    }
+  }
+
+  /// Store perimeter check locally
+  Future<String> storePerimeterCheckLocally(PerimeterCheckModel perimeterCheck) async {
+    try {
+      return await _offlineStorage.storePerimeterCheck(perimeterCheck);
+    } catch (e) {
+      log('Failed to store perimeter check locally: $e');
+      rethrow;
+    }
+  }
+
+  /// Get unsynced guard movements
+  Future<List<GuardMovementModel>> getUnsyncedGuardMovements({
+    int? guardId,
+    int? limit,
+  }) async {
+    try {
+      return await _offlineStorage.getUnsyncedGuardMovements(
+        guardId: guardId,
+        limit: limit,
+      );
+    } catch (e) {
+      log('Failed to get unsynced guard movements: $e');
+      return [];
+    }
+  }
+
+  /// Get unsynced perimeter checks
+  Future<List<PerimeterCheckModel>> getUnsyncedPerimeterChecks({
+    int? guardId,
+    int? limit,
+  }) async {
+    try {
+      return await _offlineStorage.getUnsyncedPerimeterChecks(
+        guardId: guardId,
+        limit: limit,
+      );
+    } catch (e) {
+      log('Failed to get unsynced perimeter checks: $e');
+      return [];
+    }
+  }
+
+  /// Get storage statistics
+  Future<Map<String, int>> getStorageStatistics() async {
+    try {
+      return await _offlineStorage.getStorageStatistics();
+    } catch (e) {
+      log('Failed to get storage statistics: $e');
+      return {};
+    }
+  }
+
   /// Clear all roster cache
   Future<void> clearRosterCache() async {
-    await _offlineStorage.clearRosterCache();
+    try {
+      await _offlineStorage.clearRosterCache();
+      log('Roster cache cleared successfully');
+    } catch (e) {
+      log('Failed to clear roster cache: $e');
+      rethrow;
+    }
   }
+
+  /// Clear all cache data
+  Future<void> clearAllCache() async {
+    try {
+      await _offlineStorage.clearAllCache();
+      log('All cache data cleared successfully');
+    } catch (e) {
+      log('Failed to clear all cache: $e');
+      rethrow;
+    }
+  }
+
+  /// Clean old data
+  Future<void> cleanOldData() async {
+    try {
+      await _offlineStorage.cleanOldData();
+      log('Old data cleaned successfully');
+    } catch (e) {
+      log('Failed to clean old data: $e');
+    }
+  }
+
+  /// Check connectivity status
+  bool get isConnected => _connectivity.isConnected;
+
+  /// Get connectivity stream
+  Stream<bool> get connectivityStream => _connectivity.connectivityStream;
 
   /// Private helper methods
 
@@ -376,6 +774,12 @@ class RosterRepository {
 
   /// Dispose resources
   void dispose() {
-    _syncService.dispose();
+    try {
+      _syncService.dispose();
+      _connectivity.dispose();
+      log('RosterRepository disposed successfully');
+    } catch (e) {
+      log('Error disposing RosterRepository: $e');
+    }
   }
 }
