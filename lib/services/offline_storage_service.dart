@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:developer';
+import 'dart:io';
 import 'package:slates_app_wear/data/models/contract/time_requirement_model.dart';
 import 'package:slates_app_wear/data/models/pagination_models.dart';
 import 'package:sqflite/sqflite.dart';
@@ -452,7 +453,8 @@ class OfflineStorageService {
     try {
       final db = await database;
       final now = DateTime.now().toIso8601String();
-      final localId = 'submission_record_${DateTime.now().millisecondsSinceEpoch}';
+      final localId =
+          'submission_record_${DateTime.now().millisecondsSinceEpoch}';
 
       await db.insert(_submissionRecordsTable, {
         'request_data': jsonEncode(request.toJson()),
@@ -760,7 +762,8 @@ class OfflineStorageService {
   }
 
   /// Get all pending submissions
-  Future<List<ComprehensiveGuardDutyRequestModel>> getPendingSubmissions() async {
+  Future<List<ComprehensiveGuardDutyRequestModel>>
+      getPendingSubmissions() async {
     try {
       final db = await database;
 
@@ -1099,6 +1102,231 @@ class OfflineStorageService {
       log('Old data cleanup completed');
     } catch (e) {
       log('Failed to clean old data: $e');
+    }
+  }
+
+  /// Clear all submission records (sync history)
+  Future<void> clearSubmissionRecords({String? submissionType}) async {
+    try {
+      final db = await database;
+
+      if (submissionType != null) {
+        // Clear specific submission type
+        await db.delete(
+          _submissionRecordsTable,
+          where: 'submission_type = ?',
+          whereArgs: [submissionType],
+        );
+        log('Submission records cleared for type: $submissionType');
+      } else {
+        // Clear all submission records
+        await db.delete(_submissionRecordsTable);
+        log('All submission records cleared');
+      }
+    } catch (e) {
+      log('Failed to clear submission records: $e');
+      rethrow;
+    }
+  }
+
+  /// Clear both pending submissions and submission records (complete sync history cleanup)
+  Future<Map<String, int>> clearAllSyncData() async {
+    try {
+      final db = await database;
+
+      // Get counts before clearing
+      final pendingCount = await getPendingSubmissionsCount();
+      final recordsResult =
+          await db.rawQuery('SELECT COUNT(*) FROM $_submissionRecordsTable');
+      final recordsCount = Sqflite.firstIntValue(recordsResult) ?? 0;
+
+      await db.transaction((txn) async {
+        // Clear pending submissions
+        await txn.delete(_pendingSubmissionsTable);
+
+        // Clear submission records
+        await txn.delete(_submissionRecordsTable);
+
+        // Clear sync status (optional - resets sync tracking)
+        await txn.delete(_syncStatusTable);
+      });
+
+      final result = {
+        'pendingSubmissions': pendingCount,
+        'submissionRecords': recordsCount,
+        'totalCleared': pendingCount + recordsCount,
+      };
+
+      log('All sync data cleared: ${result.toString()}');
+      return result;
+    } catch (e) {
+      log('Failed to clear all sync data: $e');
+      rethrow;
+    }
+  }
+
+  /// Get submission records count
+  Future<int> getSubmissionRecordsCount({String? submissionType}) async {
+    try {
+      final db = await database;
+
+      String query = 'SELECT COUNT(*) FROM $_submissionRecordsTable';
+      List<dynamic> args = [];
+
+      if (submissionType != null) {
+        query += ' WHERE submission_type = ?';
+        args.add(submissionType);
+      }
+
+      final result = await db.rawQuery(query, args.isNotEmpty ? args : null);
+      return Sqflite.firstIntValue(result) ?? 0;
+    } catch (e) {
+      log('Failed to get submission records count: $e');
+      return 0;
+    }
+  }
+
+  /// Clean old submission records based on retention policy
+  Future<int> cleanOldSubmissionRecords({int retentionDays = 30}) async {
+    try {
+      final db = await database;
+      final retentionDate = DateTime.now()
+          .subtract(Duration(days: retentionDays))
+          .toIso8601String();
+
+      final deletedCount = await db.delete(
+        _submissionRecordsTable,
+        where: 'created_at < ?',
+        whereArgs: [retentionDate],
+      );
+
+      log('Cleaned $deletedCount old submission records (older than $retentionDays days)');
+      return deletedCount;
+    } catch (e) {
+      log('Failed to clean old submission records: $e');
+      return 0;
+    }
+  }
+
+  /// Get comprehensive storage usage statistics
+  Future<Map<String, dynamic>> getComprehensiveStorageStats() async {
+    try {
+      final basicStats = await getStorageStatistics();
+
+      // Add additional statistics
+      final db = await database;
+
+      // Database file size (approximate)
+      final databasePath = db.path;
+      int? databaseSize;
+      try {
+        final file = File(databasePath);
+        if (await file.exists()) {
+          databaseSize = await file.length();
+        }
+      } catch (e) {
+        log('Could not get database file size: $e');
+      }
+
+      // Cache metadata count
+      final cacheMetadataResult =
+          await db.rawQuery('SELECT COUNT(*) FROM $_cacheMetadataTable');
+      final cacheMetadataCount =
+          Sqflite.firstIntValue(cacheMetadataResult) ?? 0;
+
+      // Sync status records count
+      final syncStatusResult =
+          await db.rawQuery('SELECT COUNT(*) FROM $_syncStatusTable');
+      final syncStatusCount = Sqflite.firstIntValue(syncStatusResult) ?? 0;
+
+      return {
+        ...basicStats,
+        'cacheMetadataEntries': cacheMetadataCount,
+        'syncStatusRecords': syncStatusCount,
+        'databaseSizeBytes': databaseSize,
+        'databaseSizeMB': databaseSize != null
+            ? (databaseSize / (1024 * 1024)).toStringAsFixed(2)
+            : 'Unknown',
+        'lastUpdated': DateTime.now().toIso8601String(),
+      };
+    } catch (e) {
+      log('Failed to get comprehensive storage stats: $e');
+      return await getStorageStatistics(); // Fallback to basic stats
+    }
+  }
+
+  /// Export sync data for debugging/support purposes
+  Future<Map<String, dynamic>> exportSyncDataForDebug() async {
+    try {
+      final db = await database;
+
+      // Get recent submission records (last 10)
+      final recentSubmissions = await getSubmissionRecords(
+        limit: 10,
+        submissionType: 'comprehensive_guard_duty',
+      );
+
+      // Get pending submissions count and details (without sensitive data)
+      final pendingCount = await getPendingSubmissionsCount();
+      final pendingDetails = await db.query(
+        _pendingSubmissionsTable,
+        columns: [
+          'submission_type',
+          'created_at',
+          'retry_count',
+          'last_retry_at'
+        ],
+        orderBy: 'created_at DESC',
+        limit: 5,
+      );
+
+      // Get sync status for all guards
+      final syncStatuses = await db.query(
+        _syncStatusTable,
+        orderBy: 'last_sync_at DESC',
+      );
+
+      // Get storage statistics
+      final storageStats = await getComprehensiveStorageStats();
+
+      return {
+        'exportedAt': DateTime.now().toIso8601String(),
+        'recentSubmissions': recentSubmissions
+            .map((record) => {
+                  'submissionType': record['submissionType'],
+                  'createdAt': record['createdAt']?.toIso8601String(),
+                  'success': true, // These are successful submissions
+                })
+            .toList(),
+        'pendingSubmissions': {
+          'count': pendingCount,
+          'details': pendingDetails
+              .map((pending) => {
+                    'type': pending['submission_type'],
+                    'createdAt': pending['created_at'],
+                    'retryCount': pending['retry_count'],
+                    'lastRetryAt': pending['last_retry_at'],
+                  })
+              .toList(),
+        },
+        'syncStatuses': syncStatuses
+            .map((status) => {
+                  'guardId': status['guard_id'],
+                  'lastSyncAt': status['last_sync_at'],
+                  'pendingMovements': status['pending_movements'],
+                  'pendingPerimeterChecks': status['pending_perimeter_checks'],
+                  'pendingRosterUpdates': status['pending_roster_updates'],
+                  'syncStatus': status['sync_status'],
+                })
+            .toList(),
+        'storageStatistics': storageStats,
+      };
+    } catch (e) {
+      log('Failed to export sync data for debug: $e');
+      return {
+        'exportedAt': DateTime.now().toIso8601String(),
+        'error': e.toString(),
+      };
     }
   }
 

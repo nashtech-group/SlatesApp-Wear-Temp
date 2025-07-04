@@ -19,7 +19,7 @@ class NotificationService {
   bool _isInitialized = false;
   int _nextNotificationId = 1000;
 
-  // Notification categories 
+  // Notification categories
   static const String dutyReminderChannelId = 'duty_reminder_channel';
   static const String syncReminderChannelId = 'sync_reminder_channel';
   static const String checkpointChannelId = 'checkpoint_channel';
@@ -545,6 +545,465 @@ class NotificationService {
     }
   }
 
+  /// Show notification when sync starts
+  Future<void> showSyncStartedNotification() async {
+    if (!_isInitialized) {
+      log('NotificationService not initialized');
+      return;
+    }
+
+    try {
+      await showLocalNotification(
+        title: 'Data Sync Started',
+        body: 'Synchronizing data with server...',
+        type: NotificationType.system,
+        channelId: syncReminderChannelId,
+        payload: {
+          'type': 'sync_started',
+          'timestamp': DateTime.now().toIso8601String(),
+        },
+      );
+
+      log('Sync started notification shown');
+    } catch (e) {
+      log('Failed to show sync started notification: $e');
+    }
+  }
+
+  /// Show notification for sync retry
+  Future<void> showSyncRetryNotification() async {
+    if (!_isInitialized) {
+      log('NotificationService not initialized');
+      return;
+    }
+
+    try {
+      await showLocalNotification(
+        title: 'Retrying Data Sync',
+        body: 'Attempting to sync failed submissions...',
+        type: NotificationType.system,
+        channelId: syncReminderChannelId,
+        payload: {
+          'type': 'sync_retry',
+          'timestamp': DateTime.now().toIso8601String(),
+        },
+      );
+
+      log('Sync retry notification shown');
+    } catch (e) {
+      log('Failed to show sync retry notification: $e');
+    }
+  }
+
+  /// Show notification for partial sync success
+  Future<void> showSyncPartialSuccessNotification(
+    int successCount,
+    int failureCount,
+  ) async {
+    if (!_isInitialized) {
+      log('NotificationService not initialized');
+      return;
+    }
+
+    try {
+      await showLocalNotification(
+        title: 'Partial Sync Complete',
+        body:
+            '$successCount items synced, $failureCount failed. Will retry automatically.',
+        type: NotificationType.system,
+        channelId: syncReminderChannelId,
+        importance: Importance.high,
+        payload: {
+          'type': 'sync_partial_success',
+          'successCount': successCount,
+          'failureCount': failureCount,
+          'timestamp': DateTime.now().toIso8601String(),
+        },
+      );
+
+      log('Partial sync success notification shown: $successCount success, $failureCount failed');
+    } catch (e) {
+      log('Failed to show partial sync success notification: $e');
+    }
+  }
+
+  /// Show notification for sync failure
+  Future<void> showSyncFailedNotification(
+    String message,
+    int failureCount,
+  ) async {
+    if (!_isInitialized) {
+      log('NotificationService not initialized');
+      return;
+    }
+
+    try {
+      await showLocalNotification(
+        title: 'Data Sync Failed',
+        body: '$failureCount items failed to sync. $message',
+        type: NotificationType.syncReminder,
+        channelId: syncReminderChannelId,
+        importance: Importance.high,
+        payload: {
+          'type': 'sync_failed',
+          'failureCount': failureCount,
+          'message': message,
+          'timestamp': DateTime.now().toIso8601String(),
+        },
+      );
+
+      log('Sync failed notification shown: $message');
+    } catch (e) {
+      log('Failed to show sync failed notification: $e');
+    }
+  }
+
+  /// Show notification when data cleanup is completed
+  Future<void> showDataCleanupCompletedNotification(int itemsCleared) async {
+    if (!_isInitialized) {
+      log('NotificationService not initialized');
+      return;
+    }
+
+    try {
+      String message;
+      if (itemsCleared == 0) {
+        message = 'No old data found to clean up.';
+      } else if (itemsCleared == 1) {
+        message = 'Cleaned up old data to free up storage space.';
+      } else {
+        message = 'Cleared $itemsCleared items to free up storage space.';
+      }
+
+      await showLocalNotification(
+        title: 'Data Cleanup Complete',
+        body: message,
+        type: NotificationType.system,
+        channelId: systemChannelId,
+        payload: {
+          'type': 'data_cleanup_completed',
+          'itemsCleared': itemsCleared,
+          'timestamp': DateTime.now().toIso8601String(),
+        },
+      );
+
+      log('Data cleanup completed notification shown: $itemsCleared items');
+    } catch (e) {
+      log('Failed to show data cleanup completed notification: $e');
+    }
+  }
+
+  /// Show notification when data cleanup fails
+  Future<void> showDataCleanupFailedNotification(String message) async {
+    if (!_isInitialized) {
+      log('NotificationService not initialized');
+      return;
+    }
+
+    try {
+      await showLocalNotification(
+        title: 'Data Cleanup Failed',
+        body: 'Unable to clean up data: $message',
+        type: NotificationType.system,
+        channelId: systemChannelId,
+        importance: Importance.high,
+        payload: {
+          'type': 'data_cleanup_failed',
+          'errorMessage': message,
+          'timestamp': DateTime.now().toIso8601String(),
+        },
+      );
+
+      log('Data cleanup failed notification shown: $message');
+    } catch (e) {
+      log('Failed to show data cleanup failed notification: $e');
+    }
+  }
+
+  /// Show storage warning notification
+  Future<void> showStorageWarningNotification(double sizeMB) async {
+    if (!_isInitialized) {
+      log('NotificationService not initialized');
+      return;
+    }
+
+    try {
+      String message;
+      Importance importance;
+
+      if (sizeMB > 200) {
+        message =
+            'App database is ${sizeMB.toStringAsFixed(1)}MB. Please clean old data immediately.';
+        importance = Importance.max;
+      } else if (sizeMB > 150) {
+        message =
+            'App database is ${sizeMB.toStringAsFixed(1)}MB. Consider cleaning old data soon.';
+        importance = Importance.high;
+      } else {
+        message =
+            'App database is ${sizeMB.toStringAsFixed(1)}MB. Consider cleaning old data.';
+        importance = Importance.defaultImportance;
+      }
+
+      await showLocalNotification(
+        title: 'Storage Warning',
+        body: message,
+        type: NotificationType.system,
+        channelId: systemChannelId,
+        importance: importance,
+        payload: {
+          'type': 'storage_warning',
+          'databaseSizeMB': sizeMB,
+          'isCritical': sizeMB > 200,
+          'timestamp': DateTime.now().toIso8601String(),
+        },
+      );
+
+      log('Storage warning notification shown: ${sizeMB.toStringAsFixed(1)}MB');
+    } catch (e) {
+      log('Failed to show storage warning notification: $e');
+    }
+  }
+
+  /// Show notification for specific sync completion with timing details
+  Future<void> showSyncCompletedWithDetailsNotification(
+    int successCount,
+    int failureCount,
+    String duration,
+  ) async {
+    if (!_isInitialized) {
+      log('NotificationService not initialized');
+      return;
+    }
+
+    try {
+      String message;
+      NotificationType type;
+      Importance importance;
+
+      if (failureCount == 0) {
+        message = 'Successfully synced $successCount items in $duration';
+        type = NotificationType.system;
+        importance = Importance.defaultImportance;
+      } else if (successCount > 0) {
+        message =
+            'Synced $successCount items, $failureCount failed in $duration';
+        type = NotificationType.syncReminder;
+        importance = Importance.high;
+      } else {
+        message = 'All $failureCount items failed to sync in $duration';
+        type = NotificationType.syncReminder;
+        importance = Importance.high;
+      }
+
+      await showLocalNotification(
+        title: 'Sync Complete',
+        body: message,
+        type: type,
+        channelId: failureCount == 0 ? systemChannelId : syncReminderChannelId,
+        importance: importance,
+        payload: {
+          'type': 'sync_completed_detailed',
+          'successCount': successCount,
+          'failureCount': failureCount,
+          'duration': duration,
+          'timestamp': DateTime.now().toIso8601String(),
+        },
+      );
+
+      log('Detailed sync completion notification shown: $message');
+    } catch (e) {
+      log('Failed to show detailed sync completion notification: $e');
+    }
+  }
+
+  /// Show progress notification for long-running sync operations
+  Future<void> showSyncProgressNotification(
+    int current,
+    int total,
+    String operation,
+  ) async {
+    if (!_isInitialized) {
+      log('NotificationService not initialized');
+      return;
+    }
+
+    try {
+      final percentage = total > 0 ? ((current / total) * 100).round() : 0;
+
+      await showLocalNotification(
+        title: 'Syncing Data ($percentage%)',
+        body: '$operation: $current of $total items processed',
+        type: NotificationType.system,
+        channelId: syncReminderChannelId,
+        importance: Importance.low, // Low importance for progress notifications
+        payload: {
+          'type': 'sync_progress',
+          'current': current,
+          'total': total,
+          'percentage': percentage,
+          'operation': operation,
+          'timestamp': DateTime.now().toIso8601String(),
+        },
+      );
+
+      log('Sync progress notification shown: $current/$total ($percentage%)');
+    } catch (e) {
+      log('Failed to show sync progress notification: $e');
+    }
+  }
+
+  /// Clear all sync-related notifications
+  Future<void> clearSyncNotifications() async {
+    if (!_isInitialized) {
+      log('NotificationService not initialized');
+      return;
+    }
+
+    try {
+      // Get all pending notifications
+      final pendingNotifications = await getPendingNotifications();
+
+      // Cancel sync-related notifications based on payload
+      int cancelledCount = 0;
+      for (final notification in pendingNotifications) {
+        if (notification.payload != null) {
+          final payload = _decodePayload(notification.payload!);
+          final type = payload['type'] as String?;
+
+          if (type != null && _isSyncRelatedNotification(type)) {
+            await cancelNotification(notification.id);
+            cancelledCount++;
+          }
+        }
+      }
+
+      log('Cleared $cancelledCount sync-related notifications');
+    } catch (e) {
+      log('Failed to clear sync notifications: $e');
+    }
+  }
+
+  /// Show critical sync error that requires user attention
+  Future<void> showCriticalSyncErrorNotification(
+    String title,
+    String message,
+  ) async {
+    if (!_isInitialized) {
+      log('NotificationService not initialized');
+      return;
+    }
+
+    try {
+      await showLocalNotification(
+        title: title,
+        body: message,
+        type: NotificationType.emergency,
+        channelId: emergencyChannelId,
+        importance: Importance.max,
+        payload: {
+          'type': 'critical_sync_error',
+          'errorTitle': title,
+          'errorMessage': message,
+          'requiresUserAction': true,
+          'timestamp': DateTime.now().toIso8601String(),
+        },
+      );
+
+      log('Critical sync error notification shown: $title');
+    } catch (e) {
+      log('Failed to show critical sync error notification: $e');
+    }
+  }
+
+  /// Enhanced sync completed notification (replacement for existing method)
+  /// This enhances your existing showSyncCompletedNotification method
+  Future<void> showEnhancedSyncCompletedNotification({
+    required int successCount,
+    required int failureCount,
+    String? duration,
+    Map<String, dynamic>? additionalData,
+  }) async {
+    if (!_isInitialized) {
+      log('NotificationService not initialized');
+      return;
+    }
+
+    try {
+      String message;
+      String title;
+      NotificationType type;
+      Importance importance;
+
+      if (failureCount == 0 && successCount > 0) {
+        title = 'Data Sync Completed';
+        message = duration != null
+            ? 'Successfully synced $successCount items in $duration'
+            : AppConstants.syncSuccessMessage;
+        type = NotificationType.system;
+        importance = Importance.defaultImportance;
+      } else if (failureCount == 0 && successCount == 0) {
+        title = 'Sync Complete';
+        message = 'No new data to sync';
+        type = NotificationType.system;
+        importance = Importance.low;
+      } else if (successCount > 0) {
+        title = 'Partial Sync Complete';
+        message = duration != null
+            ? 'Synced $successCount items, $failureCount failed in $duration'
+            : 'Sync completed with $failureCount failures. $successCount items synced successfully.';
+        type = NotificationType.syncReminder;
+        importance = Importance.high;
+      } else {
+        title = 'Sync Failed';
+        message = duration != null
+            ? 'All $failureCount items failed to sync in $duration'
+            : 'Sync failed. $failureCount items could not be synchronized.';
+        type = NotificationType.syncReminder;
+        importance = Importance.high;
+      }
+
+      final payload = {
+        'type': AppConstants.systemUpdateNotification,
+        'successCount': successCount,
+        'failureCount': failureCount,
+        'timestamp': DateTime.now().toIso8601String(),
+        if (duration != null) 'duration': duration,
+        if (additionalData != null) ...additionalData,
+      };
+
+      await showLocalNotification(
+        title: title,
+        body: message,
+        type: type,
+        channelId: failureCount > 0 ? syncReminderChannelId : systemChannelId,
+        importance: importance,
+        payload: payload,
+      );
+
+      log('Enhanced sync completed notification shown: $message');
+    } catch (e) {
+      log('Failed to show enhanced sync completed notification: $e');
+    }
+  }
+
+  /// Check if a notification type is sync-related
+  bool _isSyncRelatedNotification(String type) {
+    const syncTypes = {
+      'sync_started',
+      'sync_retry',
+      'sync_partial_success',
+      'sync_failed',
+      'sync_completed_detailed',
+      'sync_progress',
+      'critical_sync_error',
+      AppConstants.dutyReminderNotification, // Your existing constant
+      AppConstants.systemUpdateNotification, // Your existing constant
+    };
+
+    return syncTypes.contains(type);
+  }
+
   /// Show a local notification
   Future<void> showLocalNotification({
     required String title,
@@ -712,6 +1171,26 @@ class NotificationService {
             // Handle emergency notification
             _handleEmergencyNotification(data);
             break;
+          case 'sync_started':
+          case 'sync_retry':
+          case 'sync_progress':
+            _handleSyncProgressNotification(data);
+            break;
+          case 'sync_partial_success':
+          case 'sync_failed':
+          case 'critical_sync_error':
+            _handleSyncErrorNotification(data);
+            break;
+          case 'data_cleanup_completed':
+          case 'data_cleanup_failed':
+            _handleDataCleanupNotification(data);
+            break;
+          case 'storage_warning':
+            _handleStorageWarningNotification(data);
+            break;
+          case 'sync_completed_detailed':
+            _handleDetailedSyncNotification(data);
+            break;
           default:
             log('Unknown notification type: $type');
         }
@@ -743,6 +1222,39 @@ class NotificationService {
   void _handleEmergencyNotification(Map<String, dynamic> data) {
     // Implementation would open emergency details
     log('Handling emergency notification');
+  }
+
+   /// Handle sync progress notification tap
+  void _handleSyncProgressNotification(Map<String, dynamic> data) {
+    // Implementation would show sync progress details or open sync screen
+    log('Handling sync progress notification: ${data['operation']}');
+  }
+
+  /// Handle sync error notification tap
+  void _handleSyncErrorNotification(Map<String, dynamic> data) {
+    // Implementation would show sync error details or retry options
+    log('Handling sync error notification: ${data['type']}');
+  }
+
+  /// Handle data cleanup notification tap
+  void _handleDataCleanupNotification(Map<String, dynamic> data) {
+    // Implementation would open storage management screen
+    log('Handling data cleanup notification: ${data['type']}');
+  }
+
+  /// Handle storage warning notification tap
+  void _handleStorageWarningNotification(Map<String, dynamic> data) {
+    // Implementation would open storage settings
+    final sizeMB = data['databaseSizeMB'];
+    log('Handling storage warning notification: ${sizeMB}MB');
+  }
+
+  /// Handle detailed sync notification tap
+  void _handleDetailedSyncNotification(Map<String, dynamic> data) {
+    // Implementation would show detailed sync results
+    final successCount = data['successCount'];
+    final failureCount = data['failureCount'];
+    log('Handling detailed sync notification: $successCount success, $failureCount failed');
   }
 
   /// Handle foreground Firebase messages

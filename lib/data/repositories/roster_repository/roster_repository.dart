@@ -34,12 +34,12 @@ class RosterRepository {
     SyncService? syncService,
     DateService? dateService,
     NotificationService? notificationService,
-  }) : _rosterProvider = rosterProvider,
-       _offlineStorage = offlineStorage ?? OfflineStorageService(),
-       _connectivity = connectivity ?? ConnectivityService(),
-       _syncService = syncService ?? SyncService(),
-       _dateService = dateService ?? DateService(),
-       _notificationService = notificationService ?? NotificationService();
+  })  : _rosterProvider = rosterProvider,
+        _offlineStorage = offlineStorage ?? OfflineStorageService(),
+        _connectivity = connectivity ?? ConnectivityService(),
+        _syncService = syncService ?? SyncService(),
+        _dateService = dateService ?? DateService(),
+        _notificationService = notificationService ?? NotificationService();
 
   /// Initialize repository and services
   Future<void> initialize() async {
@@ -54,7 +54,7 @@ class RosterRepository {
       _syncService.initialize();
       await _syncService.scheduleSyncReminders();
       _connectivity.startMonitoring();
-      
+
       log('RosterRepository initialized successfully');
     } catch (e) {
       log('Failed to initialize RosterRepository: $e');
@@ -69,7 +69,7 @@ class RosterRepository {
   }) async {
     try {
       final token = await AuthManager().getToken();
-      
+
       if (token == null) {
         throw ApiErrorModel(
           status: 'error',
@@ -90,16 +90,17 @@ class RosterRepository {
           );
 
           log('Roster response: $responseData');
-          
+
           final decodedData = jsonDecode(responseData);
-          
-          if (decodedData.containsKey("errors") || 
-              (decodedData.containsKey("status") && decodedData["status"] == "error")) {
+
+          if (decodedData.containsKey("errors") ||
+              (decodedData.containsKey("status") &&
+                  decodedData["status"] == "error")) {
             throw ApiErrorModel.fromJson(decodedData);
           }
 
           final rosterResponse = RosterResponseModel.fromJson(decodedData);
-          
+
           // Cache for offline access
           await _offlineStorage.cacheRosterData(guardId, rosterResponse);
           log('Roster data cached for offline access');
@@ -128,13 +129,13 @@ class RosterRepository {
       // No data available
       throw ApiErrorModel(
         status: 'error',
-        message: _connectivity.isConnected 
-            ? 'Failed to fetch roster data' 
+        message: _connectivity.isConnected
+            ? 'Failed to fetch roster data'
             : 'No internet connection and no offline data available',
       );
     } catch (e) {
       if (e is ApiErrorModel) rethrow;
-      
+
       throw ApiErrorModel(
         status: 'error',
         message: 'Unexpected error: ${e.toString()}',
@@ -163,7 +164,7 @@ class RosterRepository {
 
     try {
       final token = await AuthManager().getToken();
-      
+
       if (token == null) {
         throw ApiErrorModel(
           status: 'error',
@@ -175,31 +176,35 @@ class RosterRepository {
       if (_connectivity.isConnected) {
         try {
           log('Submitting comprehensive guard duty data online');
-          final responseData = await _rosterProvider.submitComprehensiveGuardDuty(
+          final responseData =
+              await _rosterProvider.submitComprehensiveGuardDuty(
             requestData: requestData,
             token: token,
           );
 
           log('Comprehensive guard duty response: $responseData');
-          
+
           final decodedData = jsonDecode(responseData);
-          
-          if (decodedData.containsKey("errors") || 
-              (decodedData.containsKey("status") && decodedData["status"] == "error")) {
+
+          if (decodedData.containsKey("errors") ||
+              (decodedData.containsKey("status") &&
+                  decodedData["status"] == "error")) {
             throw ApiErrorModel.fromJson(decodedData);
           }
 
-          final response = ComprehensiveGuardDutyResponseModel.fromJson(decodedData);
+          final response =
+              ComprehensiveGuardDutyResponseModel.fromJson(decodedData);
 
           // Cache successful submission
           await _offlineStorage.cacheSubmissionRecord(requestData, response);
-          
+
           // Show sync completed notification
-          final totalItems = (rosterUpdates?.length ?? 0) + 
-                           (movements?.length ?? 0) + 
-                           (perimeterChecks?.length ?? 0);
-          await _notificationService.showSyncCompletedNotification(totalItems, 0);
-          
+          final totalItems = (rosterUpdates?.length ?? 0) +
+              (movements?.length ?? 0) +
+              (perimeterChecks?.length ?? 0);
+          await _notificationService.showSyncCompletedNotification(
+              totalItems, 0);
+
           log('Submission record cached and sync notification shown');
 
           return response;
@@ -212,10 +217,10 @@ class RosterRepository {
       // Cache for later sync
       log('Caching submission for offline sync');
       await _offlineStorage.cachePendingSubmission(requestData);
-      
+
       // Check days since last sync and show reminder if needed
       await _checkAndShowSyncReminder();
-      
+
       return ComprehensiveGuardDutyResponseModel(
         message: 'Data cached for sync when online',
         summary: GuardDutySummaryModel(
@@ -227,7 +232,7 @@ class RosterRepository {
       );
     } catch (e) {
       if (e is ApiErrorModel) rethrow;
-      
+
       throw ApiErrorModel(
         status: 'error',
         message: 'Unexpected error: ${e.toString()}',
@@ -236,7 +241,8 @@ class RosterRepository {
   }
 
   /// Schedule duty notifications for upcoming duties in roster
-  Future<void> _scheduleDutyNotificationsFromRoster(RosterResponseModel rosterResponse) async {
+  Future<void> _scheduleDutyNotificationsFromRoster(
+      RosterResponseModel rosterResponse) async {
     try {
       final now = DateTime.now();
       final upcomingDuties = rosterResponse.data.where((rosterUser) {
@@ -245,11 +251,12 @@ class RosterRepository {
       }).toList();
 
       for (final rosterUser in upcomingDuties) {
-        final scheduledIds = await _notificationService.scheduleDutyNotifications(
+        final scheduledIds =
+            await _notificationService.scheduleDutyNotifications(
           rosterUser: rosterUser,
           site: rosterUser.site,
         );
-        
+
         if (scheduledIds.isNotEmpty) {
           log('Scheduled ${scheduledIds.length} notifications for duty at ${rosterUser.site.name}');
         }
@@ -264,7 +271,7 @@ class RosterRepository {
     try {
       final syncStatus = await _syncService.getSyncStatus();
       final daysSinceSync = syncStatus['daysSinceLastSync'] as int? ?? 0;
-      
+
       // Show sync reminder based on days since last sync
       if (daysSinceSync >= 5) {
         await _notificationService.showSyncRequiredNotification(daysSinceSync);
@@ -362,7 +369,7 @@ class RosterRepository {
   }) async {
     try {
       final token = await AuthManager().getToken();
-      
+
       if (token == null) {
         throw ApiErrorModel(
           status: 'error',
@@ -383,17 +390,18 @@ class RosterRepository {
         );
 
         final decodedData = jsonDecode(responseData);
-        
-        if (decodedData.containsKey("errors") || 
-            (decodedData.containsKey("status") && decodedData["status"] == "error")) {
+
+        if (decodedData.containsKey("errors") ||
+            (decodedData.containsKey("status") &&
+                decodedData["status"] == "error")) {
           throw ApiErrorModel.fromJson(decodedData);
         }
 
         final rosterResponse = RosterResponseModel.fromJson(decodedData);
-        
+
         // Schedule notifications for any new duties found
         await _scheduleDutyNotificationsFromRoster(rosterResponse);
-        
+
         return rosterResponse;
       }
 
@@ -409,7 +417,7 @@ class RosterRepository {
       );
     } catch (e) {
       if (e is ApiErrorModel) rethrow;
-      
+
       throw ApiErrorModel(
         status: 'error',
         message: 'Unexpected error: ${e.toString()}',
@@ -424,7 +432,7 @@ class RosterRepository {
   }) async {
     try {
       final token = await AuthManager().getToken();
-      
+
       if (token == null) {
         throw ApiErrorModel(
           status: 'error',
@@ -443,17 +451,18 @@ class RosterRepository {
         );
 
         final decodedData = jsonDecode(responseData);
-        
-        if (decodedData.containsKey("errors") || 
-            (decodedData.containsKey("status") && decodedData["status"] == "error")) {
+
+        if (decodedData.containsKey("errors") ||
+            (decodedData.containsKey("status") &&
+                decodedData["status"] == "error")) {
           throw ApiErrorModel.fromJson(decodedData);
         }
 
         final rosterResponse = RosterResponseModel.fromJson(decodedData);
-        
+
         // Schedule notifications for upcoming duties
         await _scheduleDutyNotificationsFromRoster(rosterResponse);
-        
+
         return rosterResponse;
       }
 
@@ -463,7 +472,7 @@ class RosterRepository {
       );
     } catch (e) {
       if (e is ApiErrorModel) rethrow;
-      
+
       throw ApiErrorModel(
         status: 'error',
         message: 'Unexpected error: ${e.toString()}',
@@ -479,7 +488,7 @@ class RosterRepository {
   }) async {
     try {
       final token = await AuthManager().getToken();
-      
+
       if (token == null) {
         throw ApiErrorModel(
           status: 'error',
@@ -497,17 +506,18 @@ class RosterRepository {
         );
 
         final decodedData = jsonDecode(responseData);
-        
-        if (decodedData.containsKey("errors") || 
-            (decodedData.containsKey("status") && decodedData["status"] == "error")) {
+
+        if (decodedData.containsKey("errors") ||
+            (decodedData.containsKey("status") &&
+                decodedData["status"] == "error")) {
           throw ApiErrorModel.fromJson(decodedData);
         }
 
         final rosterResponse = RosterResponseModel.fromJson(decodedData);
-        
+
         // Schedule notifications for upcoming duties in the range
         await _scheduleDutyNotificationsFromRoster(rosterResponse);
-        
+
         return rosterResponse;
       }
 
@@ -517,7 +527,7 @@ class RosterRepository {
       );
     } catch (e) {
       if (e is ApiErrorModel) rethrow;
-      
+
       throw ApiErrorModel(
         status: 'error',
         message: 'Unexpected error: ${e.toString()}',
@@ -528,11 +538,11 @@ class RosterRepository {
   /// Extract unique sites list from roster data
   List<SiteModel> extractSitesFromRoster(RosterResponseModel rosterResponse) {
     final Map<int, SiteModel> sitesMap = {};
-    
+
     for (final rosterUser in rosterResponse.data) {
       sitesMap[rosterUser.site.id] = rosterUser.site;
     }
-    
+
     return sitesMap.values.toList();
   }
 
@@ -550,10 +560,10 @@ class RosterRepository {
   List<RosterUserModel> getUpcomingDuties(RosterResponseModel rosterResponse) {
     final now = DateTime.now();
     final next24Hours = now.add(const Duration(hours: 24));
-    
+
     return rosterResponse.data.where((rosterUser) {
-      return rosterUser.startsAt.isAfter(now) && 
-             rosterUser.startsAt.isBefore(next24Hours);
+      return rosterUser.startsAt.isAfter(now) &&
+          rosterUser.startsAt.isBefore(next24Hours);
     }).toList();
   }
 
@@ -562,12 +572,12 @@ class RosterRepository {
     try {
       log('Starting manual sync of pending submissions');
       final result = await _syncService.manualSync();
-      
+
       if (result) {
         // Show sync success notification
         await _notificationService.showSyncCompletedNotification(1, 0);
       }
-      
+
       return result;
     } catch (e) {
       log('Failed to sync pending submissions: $e');
@@ -580,13 +590,14 @@ class RosterRepository {
     try {
       log('Starting force sync of all pending data');
       final result = await _syncService.forceSyncAll();
-      
+
       final successCount = result['totalSuccess'] as int? ?? 0;
       final failureCount = result['totalFailure'] as int? ?? 0;
-      
+
       // Show sync completed notification
-      await _notificationService.showSyncCompletedNotification(successCount, failureCount);
-      
+      await _notificationService.showSyncCompletedNotification(
+          successCount, failureCount);
+
       return result;
     } catch (e) {
       log('Failed to force sync all data: $e');
@@ -596,6 +607,246 @@ class RosterRepository {
         'totalSuccess': 0,
         'totalFailure': 1,
       };
+    }
+  }
+
+  /// Clear sync history - facade method with enhanced UX
+  Future<SyncResult> clearSyncHistory() async {
+    try {
+      log('Starting sync history cleanup via repository');
+
+      // Show notification that cleanup is starting
+      await _notificationService.showSyncStartedNotification();
+
+      final result = await _syncService.clearSyncHistory();
+
+      // Handle UI concerns and enhanced reporting
+      await _showSyncNotification(result);
+      await _logSyncResult(result);
+
+      // Additional repository-level logging for sync history clearing
+      if (result.success) {
+        final totalCleared = result.metadata['total_cleared'] as int? ?? 0;
+        final pendingCleared = result.metadata['pending_cleared'] as int? ?? 0;
+        final recordsCleared = result.metadata['records_cleared'] as int? ?? 0;
+
+        log('Repository: Sync history cleared - $pendingCleared pending, $recordsCleared records, $totalCleared total');
+
+        // Could also trigger a notification about storage space freed
+        await _notificationService
+            .showDataCleanupCompletedNotification(totalCleared);
+      }
+
+      return result;
+    } catch (e) {
+      log('Failed to clear sync history via repository: $e');
+
+      final errorResult = SyncResult.failure(
+        message: 'Failed to clear sync history: ${e.toString()}',
+        errors: [e.toString()],
+      );
+
+      await _showSyncNotification(errorResult);
+      return errorResult;
+    }
+  }
+
+  /// Get comprehensive sync report for UI/debugging
+  Future<Map<String, dynamic>> getSyncReport() async {
+    try {
+      final report = await _syncService.getSyncReport();
+
+      // Add repository-level enhancements
+      report['repositoryLevel'] = {
+        'lastRefresh': DateTime.now().toIso8601String(),
+        'connectivity': _connectivity.isConnected,
+        'hasPendingSubmissions': await hasPendingSubmissions(),
+      };
+
+      return report;
+    } catch (e) {
+      log('Failed to get sync report: $e');
+      return {
+        'error': e.toString(),
+        'generatedAt': DateTime.now().toIso8601String(),
+      };
+    }
+  }
+
+  /// Clean old sync data - facade method with notifications
+  Future<SyncResult> cleanOldSyncData() async {
+    try {
+      log('Starting old sync data cleanup via repository');
+
+      final result = await _syncService.cleanOldSyncData();
+
+      // Show appropriate notifications
+      if (result.success) {
+        await _notificationService.showDataCleanupCompletedNotification(1);
+      } else {
+        await _notificationService
+            .showDataCleanupFailedNotification(result.message);
+      }
+
+      return result;
+    } catch (e) {
+      log('Failed to clean old sync data via repository: $e');
+
+      final errorResult = SyncResult.failure(
+        message: 'Failed to clean old sync data: ${e.toString()}',
+        errors: [e.toString()],
+      );
+
+      await _notificationService
+          .showDataCleanupFailedNotification(errorResult.message);
+      return errorResult;
+    }
+  }
+
+  /// Get sync history for UI display
+  Future<List<Map<String, dynamic>>> getSyncHistory({int limit = 20}) async {
+    try {
+      return await _syncService.getSyncHistory(limit: limit);
+    } catch (e) {
+      log('Failed to get sync history: $e');
+      return [];
+    }
+  }
+
+  /// Retry failed submissions - enhanced facade method
+  Future<SyncResult> retryFailedSubmissions() async {
+    try {
+      log('Retrying failed submissions via repository');
+
+      // Check connectivity first
+      if (!_connectivity.isConnected) {
+        await _notificationService.showOfflineModeNotification();
+        return SyncResult.failure(
+          message: 'Cannot retry: No internet connection',
+          metadata: {'reason': 'no_connectivity'},
+        );
+      }
+
+      // Show retry notification
+      await _notificationService.showSyncRetryNotification();
+
+      final result = await _syncService.retryFailedSubmissions();
+
+      // Handle notifications based on result
+      await _showSyncNotification(result);
+
+      return result;
+    } catch (e) {
+      log('Failed to retry failed submissions: $e');
+
+      final errorResult = SyncResult.failure(
+        message: 'Failed to retry submissions: ${e.toString()}',
+        errors: [e.toString()],
+      );
+
+      await _showSyncNotification(errorResult);
+      return errorResult;
+    }
+  }
+
+  /// Export sync data for debugging/support
+  Future<Map<String, dynamic>> exportSyncDataForDebug() async {
+    try {
+      // Get data from OfflineStorageService
+      final debugData = await _offlineStorage.exportSyncDataForDebug();
+
+      // Add repository-level context
+      debugData['repositoryContext'] = {
+        'connectivity': _connectivity.isConnected,
+        'lastSyncAttempt': await _syncService.getDaysSinceLastSync(),
+        'isSyncing': _syncService.isSyncing,
+        'exportedFromRepository': true,
+      };
+
+      return debugData;
+    } catch (e) {
+      log('Failed to export sync data for debug: $e');
+      return {
+        'error': e.toString(),
+        'exportedAt': DateTime.now().toIso8601String(),
+      };
+    }
+  }
+
+  /// Get storage usage with notifications if needed
+  Future<Map<String, dynamic>> getStorageUsage() async {
+    try {
+      final usage = await _offlineStorage.getComprehensiveStorageStats();
+
+      // Check if storage is getting full (example threshold)
+      final databaseSizeMB =
+          double.tryParse(usage['databaseSizeMB'] as String? ?? '0') ?? 0;
+      if (databaseSizeMB > 100) {
+        // 100MB threshold
+        await _notificationService
+            .showStorageWarningNotification(databaseSizeMB);
+      }
+
+      return usage;
+    } catch (e) {
+      log('Failed to get storage usage: $e');
+      return {};
+    }
+  }
+
+  /// Private helper to show appropriate sync notifications 
+  Future<void> _showSyncNotification(SyncResult result) async {
+    try {
+      if (result.isCompleteSuccess) {
+        await _notificationService.showSyncCompletedNotification(
+          result.successCount,
+          result.failureCount,
+        );
+      } else if (result.isPartialSuccess) {
+        await _notificationService.showSyncPartialSuccessNotification(
+          result.successCount,
+          result.failureCount,
+        );
+      } else {
+        await _notificationService.showSyncFailedNotification(
+          result.message,
+          result.failureCount,
+        );
+      }
+    } catch (e) {
+      log('Failed to show sync notification: $e');
+    }
+  }
+
+  /// Enhanced sync result logging
+  Future<void> _logSyncResult(SyncResult result) async {
+    try {
+      final logData = {
+        'timestamp': DateTime.now().toIso8601String(),
+        'operation': 'sync_result',
+        'success': result.success,
+        'success_count': result.successCount,
+        'failure_count': result.failureCount,
+        'total_count': result.totalCount,
+        'success_rate': result.successRate,
+        'success_percentage': result.successPercentage,
+        'duration': result.formattedDuration,
+        'errors': result.errors,
+        'metadata': result.metadata,
+        'result_type': result.isCompleteSuccess
+            ? 'complete_success'
+            : result.isPartialSuccess
+                ? 'partial_success'
+                : 'failure',
+      };
+
+      // Log to your analytics/monitoring service
+      log('Enhanced sync result: ${jsonEncode(logData)}');
+
+      // You could also save to local storage for debugging
+      // await _offlineStorage.saveSyncLog(logData);
+    } catch (e) {
+      log('Failed to log enhanced sync result: $e');
     }
   }
 
@@ -614,13 +865,13 @@ class RosterRepository {
   Future<Map<String, dynamic>> getSyncStatus() async {
     try {
       final status = await _syncService.getSyncStatus();
-      
+
       // Show sync reminder if needed
       final daysSinceSync = status['daysSinceLastSync'] as int? ?? 0;
       if (daysSinceSync >= 5) {
         await _notificationService.showSyncRequiredNotification(daysSinceSync);
       }
-      
+
       return status;
     } catch (e) {
       log('Failed to get sync status: $e');
@@ -677,7 +928,8 @@ class RosterRepository {
   }
 
   /// Store perimeter check locally
-  Future<String> storePerimeterCheckLocally(PerimeterCheckModel perimeterCheck) async {
+  Future<String> storePerimeterCheckLocally(
+      PerimeterCheckModel perimeterCheck) async {
     try {
       return await _offlineStorage.storePerimeterCheck(perimeterCheck);
     } catch (e) {
@@ -776,14 +1028,16 @@ class RosterRepository {
   ) {
     final startIndex = (page - 1) * perPage;
     final endIndex = startIndex + perPage;
-    
+
     final paginatedItems = cachedData.data.length > startIndex
         ? cachedData.data.sublist(
             startIndex,
-            endIndex > cachedData.data.length ? cachedData.data.length : endIndex,
+            endIndex > cachedData.data.length
+                ? cachedData.data.length
+                : endIndex,
           )
         : <RosterUserModel>[];
-    
+
     return RosterResponseModel(
       data: paginatedItems,
       links: cachedData.links,
