@@ -353,27 +353,6 @@ class RosterRepository {
     }
   }
 
-  /// Submit only roster user status updates
-  Future<ComprehensiveGuardDutyResponseModel> submitRosterUserUpdates({
-    required List<RosterUserUpdateModel> updates,
-  }) async {
-    return await submitComprehensiveGuardDuty(rosterUpdates: updates);
-  }
-
-  /// Submit only guard movements
-  Future<ComprehensiveGuardDutyResponseModel> submitGuardMovements({
-    required List<GuardMovementModel> movements,
-  }) async {
-    return await submitComprehensiveGuardDuty(movements: movements);
-  }
-
-  /// Submit only perimeter checks
-  Future<ComprehensiveGuardDutyResponseModel> submitPerimeterChecks({
-    required List<PerimeterCheckModel> perimeterChecks,
-  }) async {
-    return await submitComprehensiveGuardDuty(perimeterChecks: perimeterChecks);
-  }
-
   /// Get roster data with pagination
   Future<RosterResponseModel> getRosterDataPaginated({
     required int guardId,
@@ -546,153 +525,6 @@ class RosterRepository {
     }
   }
 
-  /// Submit batch of roster user status updates only
-  Future<ComprehensiveGuardDutyResponseModel> submitRosterUserUpdatesBatch({
-    required List<Map<String, dynamic>> updates,
-  }) async {
-    try {
-      final token = await AuthManager().getToken();
-      
-      if (token == null) {
-        throw ApiErrorModel(
-          status: 'error',
-          message: 'No authentication token available',
-        );
-      }
-
-      if (_connectivity.isConnected) {
-        final responseData = await _rosterProvider.submitRosterUserUpdates(
-          updates: updates,
-          token: token,
-        );
-
-        final decodedData = jsonDecode(responseData);
-        
-        if (decodedData.containsKey("errors") || 
-            (decodedData.containsKey("status") && decodedData["status"] == "error")) {
-          throw ApiErrorModel.fromJson(decodedData);
-        }
-
-        // Show sync success notification
-        await _notificationService.showSyncCompletedNotification(updates.length, 0);
-
-        return ComprehensiveGuardDutyResponseModel.fromJson(decodedData);
-      }
-
-      // Convert to proper format and cache
-      final updateModels = updates.map((update) => 
-        RosterUserUpdateModel.fromJson(update)
-      ).toList();
-
-      return await submitRosterUserUpdates(updates: updateModels);
-    } catch (e) {
-      if (e is ApiErrorModel) rethrow;
-      
-      throw ApiErrorModel(
-        status: 'error',
-        message: 'Unexpected error: ${e.toString()}',
-      );
-    }
-  }
-
-  /// Submit batch of guard movements only  
-  Future<ComprehensiveGuardDutyResponseModel> submitGuardMovementsBatch({
-    required List<Map<String, dynamic>> movements,
-  }) async {
-    try {
-      final token = await AuthManager().getToken();
-      
-      if (token == null) {
-        throw ApiErrorModel(
-          status: 'error',
-          message: 'No authentication token available',
-        );
-      }
-
-      if (_connectivity.isConnected) {
-        final responseData = await _rosterProvider.submitGuardMovements(
-          movements: movements,
-          token: token,
-        );
-
-        final decodedData = jsonDecode(responseData);
-        
-        if (decodedData.containsKey("errors") || 
-            (decodedData.containsKey("status") && decodedData["status"] == "error")) {
-          throw ApiErrorModel.fromJson(decodedData);
-        }
-
-        // Show sync success notification
-        await _notificationService.showSyncCompletedNotification(movements.length, 0);
-
-        return ComprehensiveGuardDutyResponseModel.fromJson(decodedData);
-      }
-
-      // Convert to proper format and cache
-      final movementModels = movements.map((movement) => 
-        GuardMovementModel.fromJson(movement)
-      ).toList();
-
-      return await submitGuardMovements(movements: movementModels);
-    } catch (e) {
-      if (e is ApiErrorModel) rethrow;
-      
-      throw ApiErrorModel(
-        status: 'error',
-        message: 'Unexpected error: ${e.toString()}',
-      );
-    }
-  }
-
-  /// Submit batch of perimeter checks only
-  Future<ComprehensiveGuardDutyResponseModel> submitPerimeterChecksBatch({
-    required List<Map<String, dynamic>> perimeterChecks,
-  }) async {
-    try {
-      final token = await AuthManager().getToken();
-      
-      if (token == null) {
-        throw ApiErrorModel(
-          status: 'error',
-          message: 'No authentication token available',
-        );
-      }
-
-      if (_connectivity.isConnected) {
-        final responseData = await _rosterProvider.submitPerimeterChecks(
-          perimeterChecks: perimeterChecks,
-          token: token,
-        );
-
-        final decodedData = jsonDecode(responseData);
-        
-        if (decodedData.containsKey("errors") || 
-            (decodedData.containsKey("status") && decodedData["status"] == "error")) {
-          throw ApiErrorModel.fromJson(decodedData);
-        }
-
-        // Show sync success notification
-        await _notificationService.showSyncCompletedNotification(perimeterChecks.length, 0);
-
-        return ComprehensiveGuardDutyResponseModel.fromJson(decodedData);
-      }
-
-      // Convert to proper format and cache
-      final checkModels = perimeterChecks.map((check) => 
-        PerimeterCheckModel.fromJson(check)
-      ).toList();
-
-      return await submitPerimeterChecks(perimeterChecks: checkModels);
-    } catch (e) {
-      if (e is ApiErrorModel) rethrow;
-      
-      throw ApiErrorModel(
-        status: 'error',
-        message: 'Unexpected error: ${e.toString()}',
-      );
-    }
-  }
-
   /// Extract unique sites list from roster data
   List<SiteModel> extractSitesFromRoster(RosterResponseModel rosterResponse) {
     final Map<int, SiteModel> sitesMap = {};
@@ -760,11 +592,9 @@ class RosterRepository {
       log('Failed to force sync all data: $e');
       return {
         'error': e.toString(),
-        'movements': false,
-        'perimeterChecks': false,
         'pendingSubmissions': false,
         'totalSuccess': 0,
-        'totalFailure': 3,
+        'totalFailure': 1,
       };
     }
   }

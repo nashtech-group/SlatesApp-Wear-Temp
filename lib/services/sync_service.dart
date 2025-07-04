@@ -134,132 +134,9 @@ class SyncService {
     }
   }
 
-  /// Sync specific guard movements
-  Future<bool> syncGuardMovements({int? guardId, int? limit}) async {
-    if (!_connectivity.isConnected) {
-      log('No internet connection for movement sync');
-      return false;
-    }
-
-    try {
-      final token = await AuthManager().getToken();
-      if (token == null) {
-        log('No token available for movement sync');
-        return false;
-      }
-
-      final movements = await _offlineStorage.getUnsyncedGuardMovements(
-        guardId: guardId,
-        limit: limit,
-      );
-
-      if (movements.isEmpty) {
-        log('No unsynced movements to sync');
-        return true;
-      }
-
-      // Convert movements to JSON format for API
-      final movementData = movements.map((m) => m.toJson()).toList();
-
-      final response = await _rosterProvider.submitGuardMovements(
-        movements: movementData,
-        token: token,
-      );
-
-      // Mark movements as synced
-      final localIds = movements
-          .map((m) => 'movement_${m.timestamp.millisecondsSinceEpoch}')
-          .toList();
-      await _offlineStorage.markGuardMovementsAsSynced(localIds);
-
-      log('Successfully synced ${movements.length} movements');
-      return true;
-    } catch (e) {
-      log('Failed to sync movements: $e');
-      return false;
-    }
-  }
-
-  /// Sync specific perimeter checks
-  Future<bool> syncPerimeterChecks({int? guardId, int? limit}) async {
-    if (!_connectivity.isConnected) {
-      log('No internet connection for perimeter check sync');
-      return false;
-    }
-
-    try {
-      final token = await AuthManager().getToken();
-      if (token == null) {
-        log('No token available for perimeter check sync');
-        return false;
-      }
-
-      final checks = await _offlineStorage.getUnsyncedPerimeterChecks(
-        guardId: guardId,
-        limit: limit,
-      );
-
-      if (checks.isEmpty) {
-        log('No unsynced perimeter checks to sync');
-        return true;
-      }
-
-      // Convert checks to JSON format for API
-      final checkData = checks.map((c) => c.toJson()).toList();
-
-      final response = await _rosterProvider.submitPerimeterChecks(
-        perimeterChecks: checkData,
-        token: token,
-      );
-
-      // Mark checks as synced
-      final localIds = checks
-          .map((c) => 'perimeter_${c.passTime.millisecondsSinceEpoch}')
-          .toList();
-      await _offlineStorage.markPerimeterChecksAsSynced(localIds);
-
-      log('Successfully synced ${checks.length} perimeter checks');
-      return true;
-    } catch (e) {
-      log('Failed to sync perimeter checks: $e');
-      return false;
-    }
-  }
-
-  /// Sync roster user updates
-  Future<bool> syncRosterUserUpdates({
-    required List<Map<String, dynamic>> updates,
-  }) async {
-    if (!_connectivity.isConnected) {
-      log('No internet connection for roster updates sync');
-      return false;
-    }
-
-    try {
-      final token = await AuthManager().getToken();
-      if (token == null) {
-        log('No token available for roster updates sync');
-        return false;
-      }
-
-      final response = await _rosterProvider.submitRosterUserUpdates(
-        updates: updates,
-        token: token,
-      );
-
-      log('Successfully synced ${updates.length} roster updates');
-      return true;
-    } catch (e) {
-      log('Failed to sync roster updates: $e');
-      return false;
-    }
-  }
-
   /// Force sync all pending data
   Future<Map<String, dynamic>> forceSyncAll() async {
     final results = <String, dynamic>{
-      'movements': false,
-      'perimeterChecks': false,
       'pendingSubmissions': false,
       'totalSuccess': 0,
       'totalFailure': 0,
@@ -271,23 +148,15 @@ class SyncService {
     }
 
     try {
-      // Sync movements
-      results['movements'] = await syncGuardMovements();
-
-      // Sync perimeter checks
-      results['perimeterChecks'] = await syncPerimeterChecks();
-
       // Sync pending submissions
       results['pendingSubmissions'] = await _performSync();
 
       // Calculate totals
       int successCount = 0;
-      if (results['movements'] == true) successCount++;
-      if (results['perimeterChecks'] == true) successCount++;
       if (results['pendingSubmissions'] == true) successCount++;
 
       results['totalSuccess'] = successCount;
-      results['totalFailure'] = 3 - successCount;
+      results['totalFailure'] = 1 - successCount;
 
       return results;
     } catch (e) {

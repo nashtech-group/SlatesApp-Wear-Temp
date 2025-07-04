@@ -6,6 +6,7 @@ abstract class RosterEvent extends Equatable {
   @override
   List<Object?> get props => [];
 }
+
 class LoadRosterData extends RosterEvent {
   final int guardId;
   final String? fromDate;
@@ -51,33 +52,6 @@ class SubmitComprehensiveGuardDuty extends RosterEvent {
 
   @override
   List<Object?> get props => [rosterUpdates, movements, perimeterChecks];
-}
-
-class SubmitRosterUserUpdates extends RosterEvent {
-  final List<RosterUserUpdateModel> updates;
-
-  const SubmitRosterUserUpdates({required this.updates});
-
-  @override
-  List<Object?> get props => [updates];
-}
-
-class SubmitGuardMovements extends RosterEvent {
-  final List<GuardMovementModel> movements;
-
-  const SubmitGuardMovements({required this.movements});
-
-  @override
-  List<Object?> get props => [movements];
-}
-
-class SubmitPerimeterChecks extends RosterEvent {
-  final List<PerimeterCheckModel> perimeterChecks;
-
-  const SubmitPerimeterChecks({required this.perimeterChecks});
-
-  @override
-  List<Object?> get props => [perimeterChecks];
 }
 
 class SyncPendingSubmissions extends RosterEvent {

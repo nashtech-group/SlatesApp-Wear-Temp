@@ -29,9 +29,6 @@ class RosterBloc extends Bloc<RosterEvent, RosterState> {
     on<LoadRosterData>(_onLoadRosterData);
     on<LoadRosterDataPaginated>(_onLoadRosterDataPaginated);
     on<SubmitComprehensiveGuardDuty>(_onSubmitComprehensiveGuardDuty);
-    on<SubmitRosterUserUpdates>(_onSubmitRosterUserUpdates);
-    on<SubmitGuardMovements>(_onSubmitGuardMovements);
-    on<SubmitPerimeterChecks>(_onSubmitPerimeterChecks);
     on<SyncPendingSubmissions>(_onSyncPendingSubmissions);
     on<GetSyncStatus>(_onGetSyncStatus);
     on<ClearRosterCache>(_onClearRosterCache);
@@ -165,96 +162,6 @@ class RosterBloc extends Bloc<RosterEvent, RosterState> {
     } catch (e) {
       emit(RosterError(
         message: 'Failed to submit guard duty data: ${e.toString()}',
-        isNetworkError: e.toString().contains('connection'),
-      ));
-    }
-  }
-
-  Future<void> _onSubmitRosterUserUpdates(
-    SubmitRosterUserUpdates event,
-    Emitter<RosterState> emit,
-  ) async {
-    try {
-      emit(const RosterLoading(message: 'Submitting roster updates...'));
-
-      final response = await _rosterRepository.submitRosterUserUpdates(
-        updates: event.updates,
-      );
-
-      emit(RosterSubmissionSuccess(
-        response: response,
-        message: 'Roster updates submitted successfully',
-      ));
-    } on ApiErrorModel catch (e) {
-      emit(RosterError(
-        message: e.message,
-        error: e,
-        isNetworkError:
-            e.message.contains('connection') || e.message.contains('network'),
-      ));
-    } catch (e) {
-      emit(RosterError(
-        message: 'Failed to submit roster updates: ${e.toString()}',
-        isNetworkError: e.toString().contains('connection'),
-      ));
-    }
-  }
-
-  Future<void> _onSubmitGuardMovements(
-    SubmitGuardMovements event,
-    Emitter<RosterState> emit,
-  ) async {
-    try {
-      emit(const RosterLoading(message: 'Submitting movement data...'));
-
-      final response = await _rosterRepository.submitGuardMovements(
-        movements: event.movements,
-      );
-
-      emit(RosterSubmissionSuccess(
-        response: response,
-        message: 'Movement data submitted successfully',
-      ));
-    } on ApiErrorModel catch (e) {
-      emit(RosterError(
-        message: e.message,
-        error: e,
-        isNetworkError:
-            e.message.contains('connection') || e.message.contains('network'),
-      ));
-    } catch (e) {
-      emit(RosterError(
-        message: 'Failed to submit movement data: ${e.toString()}',
-        isNetworkError: e.toString().contains('connection'),
-      ));
-    }
-  }
-
-  Future<void> _onSubmitPerimeterChecks(
-    SubmitPerimeterChecks event,
-    Emitter<RosterState> emit,
-  ) async {
-    try {
-      emit(const RosterLoading(message: 'Submitting perimeter checks...'));
-
-      final response = await _rosterRepository.submitPerimeterChecks(
-        perimeterChecks: event.perimeterChecks,
-      );
-
-      emit(RosterSubmissionSuccess(
-        response: response,
-        message: 'Perimeter checks submitted successfully',
-      ));
-    } on ApiErrorModel catch (e) {
-      emit(RosterError(
-        message: e.message,
-        error: e,
-        isNetworkError:
-            e.message.contains('connection') || e.message.contains('network'),
-      ));
-    } catch (e) {
-      emit(RosterError(
-        message: 'Failed to submit perimeter checks: ${e.toString()}',
         isNetworkError: e.toString().contains('connection'),
       ));
     }
