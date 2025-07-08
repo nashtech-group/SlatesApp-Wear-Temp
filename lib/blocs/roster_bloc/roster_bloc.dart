@@ -3,6 +3,7 @@ import 'dart:developer';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:slates_app_wear/data/models/api_error_model.dart';
+import 'package:slates_app_wear/data/models/sync/sync_result.dart';
 import 'package:slates_app_wear/data/models/roster/roster_response_model.dart';
 import 'package:slates_app_wear/data/models/roster/roster_user_model.dart';
 import 'package:slates_app_wear/data/models/roster/comprehensive_guard_duty_response_model.dart';
@@ -30,7 +31,13 @@ class RosterBloc extends Bloc<RosterEvent, RosterState> {
     on<LoadRosterDataPaginated>(_onLoadRosterDataPaginated);
     on<SubmitComprehensiveGuardDuty>(_onSubmitComprehensiveGuardDuty);
     on<SyncPendingSubmissions>(_onSyncPendingSubmissions);
+    on<ForceSyncAll>(_onForceSyncAll);
+    on<ClearSyncHistory>(_onClearSyncHistory);
+    on<RetryFailedSubmissions>(_onRetryFailedSubmissions);
+    on<CleanOldSyncData>(_onCleanOldSyncData);
     on<GetSyncStatus>(_onGetSyncStatus);
+    on<GetSyncReport>(_onGetSyncReport);
+    on<GetStorageUsage>(_onGetStorageUsage);
     on<ClearRosterCache>(_onClearRosterCache);
     on<GetTodaysRosterStatus>(_onGetTodaysRosterStatus);
     on<GetUpcomingDuties>(_onGetUpcomingDuties);
@@ -196,6 +203,126 @@ class RosterBloc extends Bloc<RosterEvent, RosterState> {
     }
   }
 
+  Future<void> _onForceSyncAll(
+    ForceSyncAll event,
+    Emitter<RosterState> emit,
+  ) async {
+    try {
+      emit(const RosterLoading(message: 'Force syncing all data...'));
+
+      final result = await _rosterRepository.forceSyncAll();
+
+      if (result.success) {
+        final syncStatus = await _rosterRepository.getSyncStatus();
+        emit(RosterSyncDetailedSuccess(
+          syncResult: result,
+          message: 'Force sync completed successfully',
+          syncStatus: syncStatus,
+        ));
+      } else {
+        emit(RosterSyncDetailedError(
+          syncResult: result,
+          message: result.message,
+          canRetry: true,
+        ));
+      }
+    } catch (e) {
+      emit(RosterError(
+        message: 'Failed to force sync: ${e.toString()}',
+        isNetworkError: e.toString().contains('connection'),
+      ));
+    }
+  }
+
+  Future<void> _onClearSyncHistory(
+    ClearSyncHistory event,
+    Emitter<RosterState> emit,
+  ) async {
+    try {
+      emit(const RosterLoading(message: 'Clearing sync history...'));
+
+      final result = await _rosterRepository.clearSyncHistory();
+
+      if (result.success) {
+        emit(RosterSyncDetailedSuccess(
+          syncResult: result,
+          message: 'Sync history cleared successfully',
+          syncStatus: await _rosterRepository.getSyncStatus(),
+        ));
+      } else {
+        emit(RosterSyncDetailedError(
+          syncResult: result,
+          message: result.message,
+          canRetry: false,
+        ));
+      }
+    } catch (e) {
+      emit(RosterError(
+        message: 'Failed to clear sync history: ${e.toString()}',
+      ));
+    }
+  }
+
+  Future<void> _onRetryFailedSubmissions(
+    RetryFailedSubmissions event,
+    Emitter<RosterState> emit,
+  ) async {
+    try {
+      emit(const RosterLoading(message: 'Retrying failed submissions...'));
+
+      final result = await _rosterRepository.retryFailedSubmissions();
+
+      if (result.success) {
+        final syncStatus = await _rosterRepository.getSyncStatus();
+        emit(RosterSyncDetailedSuccess(
+          syncResult: result,
+          message: 'Failed submissions retried successfully',
+          syncStatus: syncStatus,
+        ));
+      } else {
+        emit(RosterSyncDetailedError(
+          syncResult: result,
+          message: result.message,
+          canRetry: true,
+        ));
+      }
+    } catch (e) {
+      emit(RosterError(
+        message: 'Failed to retry submissions: ${e.toString()}',
+        isNetworkError: e.toString().contains('connection'),
+      ));
+    }
+  }
+
+  Future<void> _onCleanOldSyncData(
+    CleanOldSyncData event,
+    Emitter<RosterState> emit,
+  ) async {
+    try {
+      emit(const RosterLoading(message: 'Cleaning old sync data...'));
+
+      final result = await _rosterRepository.cleanOldSyncData();
+
+      if (result.success) {
+        emit(RosterSyncDetailedSuccess(
+          syncResult: result,
+          message: 'Old sync data cleaned successfully',
+          syncStatus: await _rosterRepository.getSyncStatus(),
+        ));
+      } else {
+        emit(RosterSyncDetailedError(
+          syncResult: result,
+          message: result.message,
+          canRetry: true,
+        ));
+      }
+    } catch (e) {
+      emit(RosterError(
+        message: 'Failed to clean old sync data: ${e.toString()}',
+      ));
+    }
+  }
+
   Future<void> _onGetSyncStatus(
     GetSyncStatus event,
     Emitter<RosterState> emit,
@@ -210,6 +337,46 @@ class RosterBloc extends Bloc<RosterEvent, RosterState> {
     } catch (e) {
       emit(RosterError(
         message: 'Failed to get sync status: ${e.toString()}',
+      ));
+    }
+  }
+
+  Future<void> _onGetSyncReport(
+    GetSyncReport event,
+    Emitter<RosterState> emit,
+  ) async {
+    try {
+      emit(const RosterLoading(message: 'Generating sync report...'));
+
+      final report = await _rosterRepository.getSyncReport();
+
+      emit(RosterSyncReportLoaded(
+        report: report,
+        message: 'Sync report generated successfully',
+      ));
+    } catch (e) {
+      emit(RosterError(
+        message: 'Failed to generate sync report: ${e.toString()}',
+      ));
+    }
+  }
+
+  Future<void> _onGetStorageUsage(
+    GetStorageUsage event,
+    Emitter<RosterState> emit,
+  ) async {
+    try {
+      emit(const RosterLoading(message: 'Calculating storage usage...'));
+
+      final usage = await _rosterRepository.getStorageUsage();
+
+      emit(RosterStorageUsageLoaded(
+        usage: usage,
+        message: 'Storage usage calculated successfully',
+      ));
+    } catch (e) {
+      emit(RosterError(
+        message: 'Failed to get storage usage: ${e.toString()}',
       ));
     }
   }

@@ -11,6 +11,7 @@ import 'package:slates_app_wear/data/models/roster/guard_movement_model.dart';
 import 'package:slates_app_wear/data/models/roster/roster_user_update_model.dart';
 import 'package:slates_app_wear/data/models/sites/perimeter_check_model.dart';
 import 'package:slates_app_wear/data/models/sites/site_model.dart';
+import 'package:slates_app_wear/data/models/sync/sync_result.dart';
 import 'package:slates_app_wear/services/offline_storage_service.dart';
 import 'package:slates_app_wear/services/connectivity_service.dart';
 import 'package:slates_app_wear/services/sync_service.dart';
@@ -570,43 +571,45 @@ class RosterRepository {
   /// Sync pending submissions manually
   Future<bool> syncPendingSubmissions() async {
     try {
-      log('Starting manual sync of pending submissions');
+      log('Starting manual sync of pending submissions via repository');
       final result = await _syncService.manualSync();
 
-      if (result) {
-        // Show sync success notification
-        await _notificationService.showSyncCompletedNotification(1, 0);
-      }
+      // Handle UI concerns (notifications) based on SyncResult
+      await _showSyncNotification(result);
 
-      return result;
+      return result.success;
     } catch (e) {
       log('Failed to sync pending submissions: $e');
+      await _notificationService.showSyncCompletedNotification(0, 1);
       return false;
     }
   }
 
   /// Force sync all pending data
-  Future<Map<String, dynamic>> forceSyncAll() async {
+  Future<SyncResult> forceSyncAll() async {
     try {
-      log('Starting force sync of all pending data');
+      log('Starting enhanced force sync via repository');
+
+      // Show starting notification for better UX
+      await _notificationService.showSyncStartedNotification();
+
       final result = await _syncService.forceSyncAll();
 
-      final successCount = result['totalSuccess'] as int? ?? 0;
-      final failureCount = result['totalFailure'] as int? ?? 0;
-
-      // Show sync completed notification
-      await _notificationService.showSyncCompletedNotification(
-          successCount, failureCount);
+      // Handle UI concerns and enhanced reporting
+      await _showSyncNotification(result);
+      await _logSyncResult(result);
 
       return result;
     } catch (e) {
       log('Failed to force sync all data: $e');
-      return {
-        'error': e.toString(),
-        'pendingSubmissions': false,
-        'totalSuccess': 0,
-        'totalFailure': 1,
-      };
+
+      final errorResult = SyncResult.failure(
+        message: 'Force sync failed: ${e.toString()}',
+        errors: [e.toString()],
+      );
+
+      await _showSyncNotification(errorResult);
+      return errorResult;
     }
   }
 
@@ -723,7 +726,7 @@ class RosterRepository {
         await _notificationService.showOfflineModeNotification();
         return SyncResult.failure(
           message: 'Cannot retry: No internet connection',
-          metadata: {'reason': 'no_connectivity'},
+          metadata: const {'reason': 'no_connectivity'},
         );
       }
 
@@ -794,14 +797,24 @@ class RosterRepository {
     }
   }
 
-  /// Private helper to show appropriate sync notifications 
+  /// Private helper to show appropriate sync notifications (Enhanced version)
   Future<void> _showSyncNotification(SyncResult result) async {
     try {
       if (result.isCompleteSuccess) {
-        await _notificationService.showSyncCompletedNotification(
-          result.successCount,
-          result.failureCount,
-        );
+        // Use enhanced notification with timing if available
+        final duration = result.formattedDuration;
+        if (duration != 'Unknown') {
+          await _notificationService.showSyncCompletedWithDetailsNotification(
+            result.successCount,
+            result.failureCount,
+            duration,
+          );
+        } else {
+          await _notificationService.showSyncCompletedNotification(
+            result.successCount,
+            result.failureCount,
+          );
+        }
       } else if (result.isPartialSuccess) {
         await _notificationService.showSyncPartialSuccessNotification(
           result.successCount,
@@ -818,7 +831,7 @@ class RosterRepository {
     }
   }
 
-  /// Enhanced sync result logging
+  /// Private helper to log detailed sync results for monitoring
   Future<void> _logSyncResult(SyncResult result) async {
     try {
       final logData = {

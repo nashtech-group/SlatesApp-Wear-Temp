@@ -90,6 +90,62 @@ class RosterSyncSuccess extends RosterState {
   List<Object?> get props => [message, syncStatus];
 }
 
+class RosterSyncDetailedSuccess extends RosterState {
+  final SyncResult syncResult;
+  final String message;
+  final Map<String, dynamic>? syncStatus;
+
+  const RosterSyncDetailedSuccess({
+    required this.syncResult,
+    required this.message,
+    this.syncStatus,
+  });
+
+  @override
+  List<Object?> get props => [syncResult, message, syncStatus];
+}
+
+class RosterSyncDetailedError extends RosterState {
+  final SyncResult syncResult;
+  final String message;
+  final bool canRetry;
+
+  const RosterSyncDetailedError({
+    required this.syncResult,
+    required this.message,
+    this.canRetry = true,
+  });
+
+  @override
+  List<Object?> get props => [syncResult, message, canRetry];
+}
+
+class RosterSyncReportLoaded extends RosterState {
+  final Map<String, dynamic> report;
+  final String message;
+
+  const RosterSyncReportLoaded({
+    required this.report,
+    required this.message,
+  });
+
+  @override
+  List<Object?> get props => [report, message];
+}
+
+class RosterStorageUsageLoaded extends RosterState {
+  final Map<String, dynamic> usage;
+  final String message;
+
+  const RosterStorageUsageLoaded({
+    required this.usage,
+    required this.message,
+  });
+
+  @override
+  List<Object?> get props => [usage, message];
+}
+
 class RosterError extends RosterState {
   final String message;
   final ApiErrorModel? error;

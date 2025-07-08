@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:developer';
 import 'package:slates_app_wear/core/auth_manager.dart';
+import 'package:slates_app_wear/data/models/sync/sync_result.dart';
 import 'package:slates_app_wear/data/repositories/roster_repository/roster_provider.dart';
 import 'offline_storage_service.dart';
 import 'connectivity_service.dart';
+import 'notification_service.dart';
 
 class SyncService {
   static final SyncService _instance = SyncService._internal();
@@ -12,6 +14,7 @@ class SyncService {
 
   final OfflineStorageService _offlineStorage = OfflineStorageService();
   final ConnectivityService _connectivity = ConnectivityService();
+  final NotificationService _notification = NotificationService();
   final RosterProvider _rosterProvider = RosterProvider();
 
   StreamSubscription<bool>? _connectivitySubscription;
@@ -48,14 +51,14 @@ class SyncService {
     if (_isSyncing) {
       return SyncResult.failure(
         message: 'Sync already in progress',
-        metadata: {'reason': 'sync_in_progress'},
+        metadata: const {'reason': 'sync_in_progress'},
       );
     }
 
     if (!_connectivity.isConnected) {
       return SyncResult.failure(
         message: 'No internet connection available',
-        metadata: {'reason': 'no_connectivity'},
+        metadata: const {'reason': 'no_connectivity'},
       );
     }
 
@@ -78,7 +81,7 @@ class SyncService {
       if (token == null) {
         return SyncResult.failure(
           message: 'Authentication token not available',
-          metadata: {'reason': 'no_auth_token'},
+          metadata: const {'reason': 'no_auth_token'},
         );
       }
 
@@ -192,6 +195,15 @@ class SyncService {
     }
   }
 
+  /// Schedule sync reminder notifications
+  Future<void> scheduleSyncReminders() async {
+    final daysSinceSync = await getDaysSinceLastSync();
+
+    if (daysSinceSync >= 5) {
+      await _notification.showSyncRequiredNotification(daysSinceSync);
+    }
+  }
+
   /// Check sync status for UI
   Future<Map<String, dynamic>> getSyncStatus() async {
     final pendingCount = await _offlineStorage.getPendingSubmissionsCount();
@@ -235,6 +247,68 @@ class SyncService {
     }
   }
 
+  /// Get sync history using OfflineStorageService
+  Future<List<Map<String, dynamic>>> getSyncHistory({int? limit}) async {
+    try {
+      return await _offlineStorage.getSubmissionRecords(
+        limit: limit,
+        submissionType: 'comprehensive_guard_duty',
+      );
+    } catch (e) {
+      log('Failed to get sync history: $e');
+      return [];
+    }
+  }
+
+  /// Clear sync history - properly handles both pending submissions and submission records
+  Future<SyncResult> clearSyncHistory() async {
+    try {
+      log('Starting sync history cleanup');
+      final stopwatch = Stopwatch()..start();
+
+      // Use OfflineStorageService's comprehensive clear method
+      final clearedCounts = await _offlineStorage.clearAllSyncData();
+
+      stopwatch.stop();
+
+      final totalCleared = clearedCounts['totalCleared'] ?? 0;
+      final pendingCleared = clearedCounts['pendingSubmissions'] ?? 0;
+      final recordsCleared = clearedCounts['submissionRecords'] ?? 0;
+      
+      log('Sync history cleared: $pendingCleared pending + $recordsCleared records = $totalCleared total');
+
+      return SyncResult.success(
+        message: 'Sync history cleared successfully',
+        successCount: totalCleared,
+        metadata: {
+          'pending_cleared': pendingCleared,
+          'records_cleared': recordsCleared,
+          'total_cleared': totalCleared,
+          'operation_duration_ms': stopwatch.elapsedMilliseconds,
+        },
+      );
+    } catch (e) {
+      log('Failed to clear sync history: $e');
+      return SyncResult.failure(
+        message: 'Failed to clear sync history: ${e.toString()}',
+        errors: [e.toString()],
+      );
+    }
+  }
+
+  /// Retry failed submissions
+  Future<SyncResult> retryFailedSubmissions() async {
+    if (!_connectivity.isConnected) {
+      return SyncResult.failure(
+        message: 'No internet connection for retry',
+        metadata: const {'reason': 'no_connectivity'},
+      );
+    }
+
+    log('Retrying failed submissions');
+    return await _performSync();
+  }
+
   /// Check network connectivity and sync if needed
   Future<void> checkAndSync() async {
     if (_connectivity.isConnected && !_isSyncing) {
@@ -242,6 +316,56 @@ class SyncService {
       if (isRequired) {
         await _performSync();
       }
+    }
+  }
+
+  /// Get comprehensive sync report
+  Future<Map<String, dynamic>> getSyncReport() async {
+    try {
+      final status = await getSyncStatus();
+      final statistics = await getSyncStatistics();
+      final history = await getSyncHistory(limit: 10); // Last 10 sync records
+      
+      return {
+        'status': status,
+        'statistics': statistics,
+        'recentHistory': history,
+        'generatedAt': DateTime.now().toIso8601String(),
+      };
+    } catch (e) {
+      log('Failed to generate sync report: $e');
+      return {
+        'error': e.toString(),
+        'generatedAt': DateTime.now().toIso8601String(),
+      };
+    }
+  }
+
+  /// Clean old sync data based on retention policies
+  Future<SyncResult> cleanOldSyncData() async {
+    try {
+      log('Starting old sync data cleanup');
+      final stopwatch = Stopwatch()..start();
+
+      // Use OfflineStorageService's cleanOldData method
+      await _offlineStorage.cleanOldData();
+
+      stopwatch.stop();
+
+      return SyncResult.success(
+        message: 'Old sync data cleaned successfully',
+        successCount: 1, // Indicates successful cleanup operation
+        metadata: {
+          'operation_duration_ms': stopwatch.elapsedMilliseconds,
+          'operation_type': 'data_cleanup',
+        },
+      );
+    } catch (e) {
+      log('Failed to clean old sync data: $e');
+      return SyncResult.failure(
+        message: 'Failed to clean old sync data: ${e.toString()}',
+        errors: [e.toString()],
+      );
     }
   }
 

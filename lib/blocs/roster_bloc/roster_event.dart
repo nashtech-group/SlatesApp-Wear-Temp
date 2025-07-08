@@ -58,8 +58,32 @@ class SyncPendingSubmissions extends RosterEvent {
   const SyncPendingSubmissions();
 }
 
+class ForceSyncAll extends RosterEvent {
+  const ForceSyncAll();
+}
+
+class ClearSyncHistory extends RosterEvent {
+  const ClearSyncHistory();
+}
+
+class RetryFailedSubmissions extends RosterEvent {
+  const RetryFailedSubmissions();
+}
+
+class CleanOldSyncData extends RosterEvent {
+  const CleanOldSyncData();
+}
+
 class GetSyncStatus extends RosterEvent {
   const GetSyncStatus();
+}
+
+class GetSyncReport extends RosterEvent {
+  const GetSyncReport();
+}
+
+class GetStorageUsage extends RosterEvent {
+  const GetStorageUsage();
 }
 
 class ClearRosterCache extends RosterEvent {

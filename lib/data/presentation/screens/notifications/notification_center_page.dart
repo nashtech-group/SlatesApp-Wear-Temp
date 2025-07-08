@@ -1206,10 +1206,10 @@ class NotificationActionSheet extends StatelessWidget {
   final List<Map<String, String>> actions;
 
   const NotificationActionSheet({
-    Key? key,
+    super.key,
     required this.notification,
     required this.actions,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
