@@ -4,13 +4,14 @@ import 'package:equatable/equatable.dart';
 import 'package:slates_app_wear/data/models/user/login_model.dart';
 import 'package:slates_app_wear/data/models/user/user_model.dart';
 import '../../core/auth_manager.dart';
-import '../../data/models/api_error_model.dart';
+import '../../core/error/bloc_error_mixin.dart';
+import '../../core/error/error_handler.dart';
 import '../../data/repositories/auth_repository/auth_repository.dart';
 
 part 'auth_event.dart';
 part 'auth_state.dart';
 
-class AuthBloc extends Bloc<AuthEvent, AuthState> {
+class AuthBloc extends Bloc<AuthEvent, AuthState> with BlocErrorMixin<AuthEvent, AuthState> {
   final AuthRepository authRepository;
 
   AuthBloc({required this.authRepository}) : super(const AuthInitial()) {
@@ -20,6 +21,22 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AutoLoginEvent>(_onAutoLogin);
     on<CheckAuthStatusEvent>(_onCheckAuthStatus);
     on<ClearAuthErrorEvent>(_onClearAuthError);
+  }
+
+  @override
+  AuthState createDefaultErrorState(BlocErrorInfo errorInfo) {
+    // Handle specific error types for Auth
+    if (errorInfo.isType(ErrorType.authentication)) {
+      return AuthError(errorInfo: errorInfo);
+    } else if (errorInfo.shouldLogoutUser()) {
+      return AuthSessionExpired(errorInfo: errorInfo);
+    } else if (errorInfo.shouldTriggerOfflineMode()) {
+      return AuthError(errorInfo: errorInfo.copyWith(
+        message: 'No internet connection. Try offline login or connect to internet.',
+      ));
+    }
+    
+    return AuthError(errorInfo: errorInfo);
   }
 
   /// Handle login event
@@ -41,26 +58,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       ));
 
       log('Login successful for user: ${loginResponse.user.fullName}');
-    } on ApiErrorModel catch (apiError) {
-      String errorMessage = apiError.message;
-      
-      // Handle specific error cases
-      if (errorMessage.toLowerCase().contains('validation')) {
-        errorMessage = 'Invalid credentials. Please check your ID and PIN.';
-      } else if (errorMessage.toLowerCase().contains('unauthorized')) {
-        errorMessage = 'Invalid credentials. Please try again.';
-      }
-
-      emit(AuthError(
-        message: errorMessage,
-        errorCode: apiError.statusCode?.toString(),
-      ));
-      
-      log('Login failed: $errorMessage');
-    } catch (e) {
+    } catch (error) {
       // Check if this is a network error and try offline login
-      if (e.toString().contains('No internet connection') || 
-          e.toString().contains('Network error')) {
+      if (shouldTriggerOfflineMode(error)) {
         try {
           final offlineResponse = await authRepository.autoLogin(event.identifier);
           if (offlineResponse != null) {
@@ -73,17 +73,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         } catch (offlineError) {
           log('Offline login failed: $offlineError');
         }
-        
-        emit(const AuthError(
-          message: 'No internet connection. Please connect to login or try offline mode.',
-        ));
-      } else {
-        emit(AuthError(
-          message: 'Login failed: ${e.toString()}',
-        ));
       }
-      
-      log('Login error: $e');
+
+      handleError(
+        error,
+        emit,
+        context: 'Login',
+        additionalData: {'identifier': event.identifier},
+      );
     }
   }
 
@@ -95,11 +92,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       await authRepository.logout();
       emit(const AuthUnauthenticated());
       log('Logout successful');
-    } catch (e) {
+    } catch (error) {
       // Even if server logout fails, clear local data
       await AuthManager().clear();
       emit(const AuthUnauthenticated());
-      log('Logout completed with errors: $e');
+      log('Logout completed with errors: $error');
     }
   }
 
@@ -109,7 +106,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     
     // Only refresh if currently authenticated
     if (currentState is! AuthAuthenticated) {
-      emit(const AuthError(message: 'Not authenticated'));
+      handleError(
+        'Not authenticated',
+        emit,
+        context: 'Token Refresh',
+        customErrorState: (errorInfo) => AuthError(
+          errorInfo: errorInfo.copyWith(message: 'Not authenticated'),
+        ),
+      );
       return;
     }
 
@@ -125,15 +129,21 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       ));
       
       log('Token refresh successful');
-    } catch (e) {
+    } catch (error) {
       // If refresh fails, user needs to login again
       await AuthManager().clear();
-      emit(const AuthSessionExpired());
-      log('Token refresh failed: $e');
+      
+      if (shouldLogoutUser(error)) {
+        emit(AuthSessionExpired(
+          errorInfo: processError(error, context: 'Token Refresh'),
+        ));
+      } else {
+        handleError(error, emit, context: 'Token Refresh');
+      }
     }
   }
 
-  /// Handle auto-login event
+  /// Handle auto-login event with improved error handling
   Future<void> _onAutoLogin(AutoLoginEvent event, Emitter<AuthState> emit) async {
     emit(const AuthLoading());
 
@@ -180,9 +190,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
       // No valid authentication found
       emit(const AuthUnauthenticated());
-    } catch (e) {
+    } catch (error) {
+      // For auto-login, we typically want to silently fail to unauthenticated
       emit(const AuthUnauthenticated());
-      log('Auto-login failed: $e');
+      log('Auto-login failed: $error');
     }
   }
 
@@ -207,9 +218,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       } else {
         emit(const AuthUnauthenticated());
       }
-    } catch (e) {
+    } catch (error) {
       emit(const AuthUnauthenticated());
-      log('Auth status check failed: $e');
+      log('Auth status check failed: $error');
     }
   }
 
