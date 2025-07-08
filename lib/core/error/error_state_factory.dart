@@ -1,4 +1,3 @@
-// lib/core/error/error_state_factory.dart
 import 'error_handler.dart';
 import 'common_error_states.dart';
 
