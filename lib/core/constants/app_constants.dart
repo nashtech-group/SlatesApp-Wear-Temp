@@ -76,6 +76,11 @@ class AppConstants {
   static const int uploadTimeoutSeconds = 120;
   static const int downloadTimeoutSeconds = 300;
 
+  // Retry delay configuration
+  static const int baseRetryDelayMs = 1000; // Base delay in milliseconds
+  static const int maxRetryDelayMs = 10000; // Maximum delay in milliseconds
+  static const double retryBackoffMultiplier = 2.0; // Exponential backoff multiplier
+
   // Cache settings
   static const int cacheExpirationHours = 24;
   static const int maxCacheSize = 50; // MB
@@ -160,34 +165,102 @@ class AppConstants {
   static const String offlineModeNotification = 'offline_mode';
 
   // ====================
-  // ERROR MESSAGES
+  // ERROR MESSAGES - NETWORK & CONNECTIVITY
   // ====================
   static const String networkErrorMessage =
       'Please check your internet connection and try again';
-  static const String serverErrorMessage =
-      'Something went wrong on our end. Please try again later';
+  static const String connectionTimeoutMessage =
+      'Connection timed out. Please try again';
+  static const String noInternetMessage =
+      'No internet connection available';
+  static const String slowConnectionMessage =
+      'Connection is slow. Please wait or try again later';
+
+  // ====================
+  // ERROR MESSAGES - CLIENT ERRORS (4XX)
+  // ====================
+  static const String badRequestMessage =
+      'Invalid request. Please check your input and try again';
   static const String unauthorizedMessage =
       'You are not authorized to perform this action';
+  static const String forbiddenMessage =
+      'Access to this resource is forbidden';
+  static const String notFoundMessage =
+      'The requested resource was not found';
+  static const String methodNotAllowedMessage =
+      'This operation is not allowed';
+  static const String conflictMessage =
+      'There was a conflict with your request. Please try again';
   static const String validationErrorMessage =
       'Please check your input and try again';
-  static const String unknownErrorMessage =
-      'An unexpected error occurred. Please contact support';
-  static const String offlineLoginUnavailable =
-      'Offline login is only available for security guards';
-  static const String noOfflineDataMessage =
-      'No offline login data found. Please connect to internet to login';
-  static const String expiredOfflineDataMessage =
-      'Offline data has expired. Please connect to internet to continue';
+  static const String tooManyRequestsMessage =
+      'Too many requests. Please wait a moment and try again';
+
+  // ====================
+  // ERROR MESSAGES - SERVER ERRORS (5XX)
+  // ====================
+  static const String serverErrorMessage =
+      'Something went wrong on our end. Please try again later';
+  static const String badGatewayMessage =
+      'Server communication error. Please try again';
+  static const String serviceUnavailableMessage =
+      'Service is temporarily unavailable. Please try again later';
+  static const String gatewayTimeoutMessage =
+      'Server response timed out. Please try again';
+  static const String notImplementedMessage =
+      'This feature is not yet available';
+
+  // ====================
+  // ERROR MESSAGES - AUTHENTICATION & SESSION
+  // ====================
   static const String sessionExpiredMessage =
       'Your session has expired. Please login again';
   static const String accountLockedMessage =
       'Account temporarily locked due to multiple failed attempts';
   static const String deviceNotTrustedMessage =
       'This device is not trusted. Please verify your identity';
+  static const String tokenExpiredMessage =
+      'Access token has expired. Please login again';
+  static const String refreshTokenExpiredMessage =
+      'Session expired. Please login again';
+
+  // ====================
+  // ERROR MESSAGES - OFFLINE & DATA
+  // ====================
+  static const String offlineLoginUnavailable =
+      'Offline login is only available for security guards';
+  static const String noOfflineDataMessage =
+      'No offline login data found. Please connect to internet to login';
+  static const String expiredOfflineDataMessage =
+      'Offline data has expired. Please connect to internet to continue';
+  static const String dataSyncFailedMessage =
+      'Failed to sync data. Some information may be outdated';
+  static const String cacheErrorMessage =
+      'Error accessing cached data. Please try again';
+
+  // ====================
+  // ERROR MESSAGES - PERMISSIONS & LOCATION
+  // ====================
   static const String locationPermissionMessage =
       'Location permission is required for guard duties';
   static const String gpsNotAvailableMessage =
       'GPS is not available. Please enable location services';
+  static const String locationAccuracyLowMessage =
+      'Location accuracy is low. Please move to an open area';
+  static const String geofenceViolationMessage =
+      'You are outside the designated work area';
+
+  // ====================
+  // ERROR MESSAGES - GENERAL
+  // ====================
+  static const String unknownErrorMessage =
+      'An unexpected error occurred. Please contact support';
+  static const String timeoutErrorMessage =
+      'Operation timed out. Please try again';
+  static const String retryLimitExceededMessage =
+      'Maximum retry attempts exceeded. Please try again later';
+  static const String maintenanceModeMessage =
+      'System is under maintenance. Please try again later';
 
   // ====================
   // SUCCESS MESSAGES
@@ -204,6 +277,8 @@ class AppConstants {
       'Movement recorded successfully';
   static const String dutyStartedMessage = 'Duty started successfully';
   static const String dutyEndedMessage = 'Duty ended successfully';
+  static const String dataBackupSuccessMessage = 'Data backed up successfully';
+  static const String settingsUpdatedMessage = 'Settings updated successfully';
 
   // ====================
   // WEARABLE SPECIFIC
@@ -389,5 +464,62 @@ class AppConstants {
   /// Get formatted app version
   static String getFormattedVersion() {
     return '$appVersion ($buildNumber)';
+  }
+
+  /// Get error message for HTTP status code
+  static String getErrorMessageForStatusCode(int statusCode) {
+    switch (statusCode) {
+      case 400:
+        return badRequestMessage;
+      case 401:
+        return unauthorizedMessage;
+      case 403:
+        return forbiddenMessage;
+      case 404:
+        return notFoundMessage;
+      case 405:
+        return methodNotAllowedMessage;
+      case 409:
+        return conflictMessage;
+      case 422:
+        return validationErrorMessage;
+      case 429:
+        return tooManyRequestsMessage;
+      case 500:
+        return serverErrorMessage;
+      case 501:
+        return notImplementedMessage;
+      case 502:
+        return badGatewayMessage;
+      case 503:
+        return serviceUnavailableMessage;
+      case 504:
+        return gatewayTimeoutMessage;
+      default:
+        return unknownErrorMessage;
+    }
+  }
+
+  /// Check if error message suggests retry
+  static bool shouldRetryForError(String errorMessage) {
+    final retryableMessages = [
+      networkErrorMessage,
+      connectionTimeoutMessage,
+      serverErrorMessage,
+      badGatewayMessage,
+      serviceUnavailableMessage,
+      gatewayTimeoutMessage,
+      tooManyRequestsMessage,
+    ];
+    
+    return retryableMessages.any((message) => 
+        errorMessage.toLowerCase().contains(message.toLowerCase()));
+  }
+
+  /// Get retry delay in milliseconds
+  static int getRetryDelay(int attemptNumber) {
+    final delay = (baseRetryDelayMs * 
+        (retryBackoffMultiplier * attemptNumber)).round();
+    return delay > maxRetryDelayMs ? maxRetryDelayMs : delay;
   }
 }

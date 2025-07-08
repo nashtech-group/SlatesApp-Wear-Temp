@@ -13,13 +13,13 @@ mixin RepositoryErrorMixin {
     dynamic error,
     String operation, {
     T? fallbackValue,
-    bool rethrow = true,
+    bool shouldRethrow = true,
   }) {
     final handledException = DataLayerErrorHandler.handleRepositoryError(error, operation);
     
     log('Repository error in $operation: ${handledException.message}');
     
-    if (fallbackValue != null && !rethrow) {
+    if (fallbackValue != null && !shouldRethrow) {
       return fallbackValue;
     }
     
@@ -115,16 +115,28 @@ mixin RepositoryErrorMixin {
   /// Get default message for status code using existing constants
   String _getDefaultMessageForStatusCode(int? statusCode) {
     switch (statusCode) {
+      case ApiConstants.badRequestCode:
+        return AppConstants.badRequestMessage;
       case ApiConstants.unauthorizedCode:
         return AppConstants.unauthorizedMessage;
       case ApiConstants.forbiddenCode:
-        return AppConstants.unauthorizedMessage;
+        return AppConstants.forbiddenMessage;
       case ApiConstants.notFoundCode:
-        return 'Resource not found';
+        return AppConstants.notFoundMessage;
+      case ApiConstants.conflictCode:
+        return AppConstants.conflictMessage;
       case ApiConstants.validationErrorCode:
         return AppConstants.validationErrorMessage;
+      case ApiConstants.tooManyRequestsCode:
+        return AppConstants.tooManyRequestsMessage;
       case ApiConstants.serverErrorCode:
         return AppConstants.serverErrorMessage;
+      case ApiConstants.badGatewayCode:
+        return AppConstants.badGatewayMessage;
+      case ApiConstants.serviceUnavailableCode:
+        return AppConstants.serviceUnavailableMessage;
+      case ApiConstants.gatewayTimeoutCode:
+        return AppConstants.gatewayTimeoutMessage;
       default:
         return AppConstants.unknownErrorMessage;
     }
@@ -142,5 +154,38 @@ mixin RepositoryErrorMixin {
   bool shouldUseCachedData(dynamic error) {
     return shouldTriggerOfflineMode(error) || 
            (error is ServerException && error.statusCode != null && error.statusCode! >= 500);
+  }
+
+  /// Check if error is retryable based on status code
+  bool isRetryableError(dynamic error) {
+    if (error is NetworkException) return true;
+    if (error is TimeoutException) return true;
+    
+    int? statusCode;
+    if (error is AppException) {
+      statusCode = error.statusCode;
+    } else if (error is ApiErrorModel) {
+      statusCode = error.statusCode;
+    }
+    
+    if (statusCode == null) return false;
+    
+    // Retry on server errors and rate limiting
+    return statusCode == ApiConstants.tooManyRequestsCode ||
+           statusCode == ApiConstants.serverErrorCode ||
+           statusCode == ApiConstants.badGatewayCode ||
+           statusCode == ApiConstants.serviceUnavailableCode ||
+           statusCode == ApiConstants.gatewayTimeoutCode;
+  }
+
+  /// Get retry delay based on error type and attempt number
+  int getRetryDelay(int attempt, dynamic error) {
+    // Use exponential backoff for rate limiting
+    if (error is ApiErrorModel && error.statusCode == ApiConstants.tooManyRequestsCode) {
+      return AppConstants.baseRetryDelayMs * (2 << attempt);
+    }
+    
+    // Standard retry delay for other errors
+    return DataLayerErrorHandler.getRetryDelay(attempt);
   }
 }
