@@ -97,10 +97,16 @@ class PendingNotificationsLoaded extends NotificationState {
 }
 
 class NotificationError extends NotificationState {
-  final String message;
+  final BlocErrorInfo errorInfo;
 
-  const NotificationError({required this.message});
+  const NotificationError({required this.errorInfo});
 
   @override
-  List<Object?> get props => [message];
+  List<Object?> get props => [errorInfo];
+
+  // Convenience getters for backward compatibility
+  String get message => errorInfo.message;
+  bool get canRetry => errorInfo.canRetry;
+  bool get isNetworkError => errorInfo.isNetworkError;
+  ErrorType get errorType => errorInfo.type;
 }

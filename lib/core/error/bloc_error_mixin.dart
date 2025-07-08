@@ -1,5 +1,3 @@
-
-// lib/core/error/bloc_error_mixin.dart
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'error_handler.dart';
 
@@ -73,6 +71,3 @@ mixin BlocErrorMixin<Event, State> on Bloc<Event, State> {
     return errorInfo.shouldLogoutUser();
   }
 }
-
-
-

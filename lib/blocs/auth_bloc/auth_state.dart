@@ -1,4 +1,3 @@
-// lib/bloc/auth_bloc/auth_state.dart
 part of 'auth_bloc.dart';
 
 abstract class AuthState extends Equatable {
@@ -36,27 +35,43 @@ class AuthUnauthenticated extends AuthState {
 }
 
 class AuthError extends AuthState {
-  final String message;
-  final String? errorCode;
+  final BlocErrorInfo errorInfo;
 
-  const AuthError({
-    required this.message,
-    this.errorCode,
-  });
+  const AuthError({required this.errorInfo});
 
   @override
-  List<Object?> get props => [message, errorCode];
+  List<Object?> get props => [errorInfo];
+
+  // Convenience getters for backward compatibility
+  String get message => errorInfo.message;
+  String? get errorCode => errorInfo.errorCode;
+  bool get canRetry => errorInfo.canRetry;
+  bool get isNetworkError => errorInfo.isNetworkError;
+  ErrorType get errorType => errorInfo.type;
+  List<String>? get validationErrors => errorInfo.validationErrors;
+  int? get statusCode => errorInfo.statusCode;
 }
 
 class AuthSessionExpired extends AuthState {
-  final String message;
+  final BlocErrorInfo errorInfo;
 
-  const AuthSessionExpired({
-    this.message = 'Your session has expired. Please login again.',
-  });
+  AuthSessionExpired({BlocErrorInfo? errorInfo})
+      : errorInfo = errorInfo ??
+            BlocErrorInfo(
+              type: ErrorType.authentication,
+              message: 'Your session has expired. Please login again.',
+              errorCode: 'SESSION_EXPIRED',
+            );
 
   @override
-  List<Object?> get props => [message];
+  List<Object?> get props => [errorInfo];
+
+  // Convenience getters for backward compatibility
+  String get message => errorInfo.message;
+  String? get errorCode => errorInfo.errorCode;
+  bool get canRetry => errorInfo.canRetry;
+  bool get isNetworkError => errorInfo.isNetworkError;
+  ErrorType get errorType => errorInfo.type;
 }
 
 class AuthRefreshing extends AuthState {

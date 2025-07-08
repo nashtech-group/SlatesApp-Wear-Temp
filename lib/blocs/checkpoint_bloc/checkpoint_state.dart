@@ -178,14 +178,16 @@ class CheckpointProgress extends CheckpointState {
 }
 
 class CheckpointError extends CheckpointState {
-  final String message;
-  final bool canRetry;
+  final BlocErrorInfo errorInfo;
 
-  const CheckpointError({
-    required this.message,
-    this.canRetry = true,
-  });
+  const CheckpointError({required this.errorInfo});
 
   @override
-  List<Object?> get props => [message, canRetry];
+  List<Object?> get props => [errorInfo];
+
+  // Convenience getters for backward compatibility
+  String get message => errorInfo.message;
+  bool get canRetry => errorInfo.canRetry;
+  bool get isNetworkError => errorInfo.isNetworkError;
+  ErrorType get errorType => errorInfo.type;
 }

@@ -107,17 +107,19 @@ class RosterSyncDetailedSuccess extends RosterState {
 
 class RosterSyncDetailedError extends RosterState {
   final SyncResult syncResult;
-  final String message;
-  final bool canRetry;
+  final BlocErrorInfo errorInfo;
 
   const RosterSyncDetailedError({
     required this.syncResult,
-    required this.message,
-    this.canRetry = true,
+    required this.errorInfo,
   });
 
   @override
-  List<Object?> get props => [syncResult, message, canRetry];
+  List<Object?> get props => [syncResult, errorInfo];
+
+  // Convenience getters for backward compatibility
+  String get message => errorInfo.message;
+  bool get canRetry => errorInfo.canRetry;
 }
 
 class RosterSyncReportLoaded extends RosterState {
@@ -147,20 +149,19 @@ class RosterStorageUsageLoaded extends RosterState {
 }
 
 class RosterError extends RosterState {
-  final String message;
-  final ApiErrorModel? error;
-  final bool isNetworkError;
-  final bool canRetry;
+  final BlocErrorInfo errorInfo;
 
-  const RosterError({
-    required this.message,
-    this.error,
-    this.isNetworkError = false,
-    this.canRetry = true,
-  });
+  const RosterError({required this.errorInfo});
 
   @override
-  List<Object?> get props => [message, error, isNetworkError, canRetry];
+  List<Object?> get props => [errorInfo];
+
+  // Convenience getters for backward compatibility
+  String get message => errorInfo.message;
+  bool get canRetry => errorInfo.canRetry;
+  bool get isNetworkError => errorInfo.isNetworkError;
+  ErrorType get errorType => errorInfo.type;
+  List<String>? get validationErrors => errorInfo.validationErrors;
 }
 
 class RosterCacheCleared extends RosterState {

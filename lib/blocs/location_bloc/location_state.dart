@@ -93,16 +93,18 @@ class LocationTrackingInactive extends LocationState {
 }
 
 class LocationError extends LocationState {
-  final String message;
-  final bool canRetry;
+  final BlocErrorInfo errorInfo;
 
-  const LocationError({
-    required this.message,
-    this.canRetry = true,
-  });
+  const LocationError({required this.errorInfo});
 
   @override
-  List<Object?> get props => [message, canRetry];
+  List<Object?> get props => [errorInfo];
+
+  // Convenience getters for backward compatibility
+  String get message => errorInfo.message;
+  bool get canRetry => errorInfo.canRetry;
+  bool get isNetworkError => errorInfo.isNetworkError;
+  ErrorType get errorType => errorInfo.type;
 }
 
 class GeofenceStatusChanged extends LocationState {

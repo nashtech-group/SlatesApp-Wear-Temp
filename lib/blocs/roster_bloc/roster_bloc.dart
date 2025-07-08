@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:developer';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
-import 'package:slates_app_wear/data/models/api_error_model.dart';
 import 'package:slates_app_wear/data/models/sync/sync_result.dart';
 import 'package:slates_app_wear/data/models/roster/roster_response_model.dart';
 import 'package:slates_app_wear/data/models/roster/roster_user_model.dart';
@@ -12,11 +11,14 @@ import 'package:slates_app_wear/data/models/roster/roster_user_update_model.dart
 import 'package:slates_app_wear/data/models/sites/perimeter_check_model.dart';
 import 'package:slates_app_wear/data/models/sites/site_model.dart';
 import 'package:slates_app_wear/data/repositories/roster_repository/roster_repository.dart';
+import '../../core/error/bloc_error_mixin.dart';
+import '../../core/error/error_handler.dart';
 
 part 'roster_event.dart';
 part 'roster_state.dart';
 
-class RosterBloc extends Bloc<RosterEvent, RosterState> {
+class RosterBloc extends Bloc<RosterEvent, RosterState>
+    with BlocErrorMixin<RosterEvent, RosterState> {
   final RosterRepository _rosterRepository;
   Timer? _refreshTimer;
 
@@ -46,6 +48,11 @@ class RosterBloc extends Bloc<RosterEvent, RosterState> {
 
     // Set up periodic refresh
     _setupPeriodicRefresh();
+  }
+
+  @override
+  RosterState createDefaultErrorState(BlocErrorInfo errorInfo) {
+    return RosterError(errorInfo: errorInfo);
   }
 
   void _setupPeriodicRefresh() {
@@ -85,18 +92,16 @@ class RosterBloc extends Bloc<RosterEvent, RosterState> {
         upcomingDuties: upcomingDuties,
         lastUpdated: DateTime.now(),
       ));
-    } on ApiErrorModel catch (e) {
-      emit(RosterError(
-        message: e.message,
-        error: e,
-        isNetworkError:
-            e.message.contains('connection') || e.message.contains('network'),
-      ));
-    } catch (e) {
-      emit(RosterError(
-        message: 'Failed to load roster data: ${e.toString()}',
-        isNetworkError: e.toString().contains('connection'),
-      ));
+    } catch (error) {
+      handleError(
+        error,
+        emit,
+        context: 'Load Roster Data',
+        additionalData: {
+          'guardId': event.guardId,
+          'fromDate': event.fromDate,
+        },
+      );
     }
   }
 
@@ -127,18 +132,18 @@ class RosterBloc extends Bloc<RosterEvent, RosterState> {
         upcomingDuties: upcomingDuties,
         lastUpdated: DateTime.now(),
       ));
-    } on ApiErrorModel catch (e) {
-      emit(RosterError(
-        message: e.message,
-        error: e,
-        isNetworkError:
-            e.message.contains('connection') || e.message.contains('network'),
-      ));
-    } catch (e) {
-      emit(RosterError(
-        message: 'Failed to load roster data: ${e.toString()}',
-        isNetworkError: e.toString().contains('connection'),
-      ));
+    } catch (error) {
+      handleError(
+        error,
+        emit,
+        context: 'Load Paginated Roster Data',
+        additionalData: {
+          'guardId': event.guardId,
+          'fromDate': event.fromDate,
+          'page': event.page,
+          'perPage': event.perPage,
+        },
+      );
     }
   }
 
@@ -159,18 +164,17 @@ class RosterBloc extends Bloc<RosterEvent, RosterState> {
         response: response,
         message: response.message,
       ));
-    } on ApiErrorModel catch (e) {
-      emit(RosterError(
-        message: e.message,
-        error: e,
-        isNetworkError:
-            e.message.contains('connection') || e.message.contains('network'),
-      ));
-    } catch (e) {
-      emit(RosterError(
-        message: 'Failed to submit guard duty data: ${e.toString()}',
-        isNetworkError: e.toString().contains('connection'),
-      ));
+    } catch (error) {
+      handleError(
+        error,
+        emit,
+        context: 'Submit Guard Duty',
+        additionalData: {
+          'rosterUpdatesCount': event.rosterUpdates?.length,
+          'movementsCount': event.movements?.length,
+          'perimeterChecksCount': event.perimeterChecks?.length,
+        },
+      );
     }
   }
 
@@ -190,16 +194,25 @@ class RosterBloc extends Bloc<RosterEvent, RosterState> {
           syncStatus: syncStatus,
         ));
       } else {
-        emit(const RosterError(
-          message: 'Some submissions failed to sync. Will retry automatically.',
-          canRetry: true,
-        ));
+        handleError(
+          'Some submissions failed to sync',
+          emit,
+          context: 'Sync Pending Submissions',
+          customErrorState: (errorInfo) => RosterError(
+            errorInfo: errorInfo.copyWith(
+              message:
+                  'Some submissions failed to sync. Will retry automatically.',
+              canRetry: true,
+            ),
+          ),
+        );
       }
-    } catch (e) {
-      emit(RosterError(
-        message: 'Failed to sync pending submissions: ${e.toString()}',
-        isNetworkError: e.toString().contains('connection'),
-      ));
+    } catch (error) {
+      handleError(
+        error,
+        emit,
+        context: 'Sync Pending Submissions',
+      );
     }
   }
 
@@ -222,15 +235,19 @@ class RosterBloc extends Bloc<RosterEvent, RosterState> {
       } else {
         emit(RosterSyncDetailedError(
           syncResult: result,
-          message: result.message,
-          canRetry: true,
+          errorInfo: BlocErrorInfo(
+            type: ErrorType.server,
+            message: result.message,
+            canRetry: true,
+          ),
         ));
       }
-    } catch (e) {
-      emit(RosterError(
-        message: 'Failed to force sync: ${e.toString()}',
-        isNetworkError: e.toString().contains('connection'),
-      ));
+    } catch (error) {
+      handleError(
+        error,
+        emit,
+        context: 'Force Sync All',
+      );
     }
   }
 
@@ -252,14 +269,19 @@ class RosterBloc extends Bloc<RosterEvent, RosterState> {
       } else {
         emit(RosterSyncDetailedError(
           syncResult: result,
-          message: result.message,
-          canRetry: false,
+          errorInfo: BlocErrorInfo(
+            type: ErrorType.unknown,
+            message: result.message,
+            canRetry: false,
+          ),
         ));
       }
-    } catch (e) {
-      emit(RosterError(
-        message: 'Failed to clear sync history: ${e.toString()}',
-      ));
+    } catch (error) {
+      handleError(
+        error,
+        emit,
+        context: 'Clear Sync History',
+      );
     }
   }
 
@@ -282,15 +304,19 @@ class RosterBloc extends Bloc<RosterEvent, RosterState> {
       } else {
         emit(RosterSyncDetailedError(
           syncResult: result,
-          message: result.message,
-          canRetry: true,
+          errorInfo: BlocErrorInfo(
+            type: ErrorType.server,
+            message: result.message,
+            canRetry: true,
+          ),
         ));
       }
-    } catch (e) {
-      emit(RosterError(
-        message: 'Failed to retry submissions: ${e.toString()}',
-        isNetworkError: e.toString().contains('connection'),
-      ));
+    } catch (error) {
+      handleError(
+        error,
+        emit,
+        context: 'Retry Failed Submissions',
+      );
     }
   }
 
@@ -312,14 +338,19 @@ class RosterBloc extends Bloc<RosterEvent, RosterState> {
       } else {
         emit(RosterSyncDetailedError(
           syncResult: result,
-          message: result.message,
-          canRetry: true,
+          errorInfo: BlocErrorInfo(
+            type: ErrorType.unknown,
+            message: result.message,
+            canRetry: true,
+          ),
         ));
       }
-    } catch (e) {
-      emit(RosterError(
-        message: 'Failed to clean old sync data: ${e.toString()}',
-      ));
+    } catch (error) {
+      handleError(
+        error,
+        emit,
+        context: 'Clean Old Sync Data',
+      );
     }
   }
 
@@ -334,10 +365,12 @@ class RosterBloc extends Bloc<RosterEvent, RosterState> {
         message: 'Sync status retrieved',
         syncStatus: syncStatus,
       ));
-    } catch (e) {
-      emit(RosterError(
-        message: 'Failed to get sync status: ${e.toString()}',
-      ));
+    } catch (error) {
+      handleError(
+        error,
+        emit,
+        context: 'Get Sync Status',
+      );
     }
   }
 
@@ -354,10 +387,12 @@ class RosterBloc extends Bloc<RosterEvent, RosterState> {
         report: report,
         message: 'Sync report generated successfully',
       ));
-    } catch (e) {
-      emit(RosterError(
-        message: 'Failed to generate sync report: ${e.toString()}',
-      ));
+    } catch (error) {
+      handleError(
+        error,
+        emit,
+        context: 'Get Sync Report',
+      );
     }
   }
 
@@ -374,10 +409,12 @@ class RosterBloc extends Bloc<RosterEvent, RosterState> {
         usage: usage,
         message: 'Storage usage calculated successfully',
       ));
-    } catch (e) {
-      emit(RosterError(
-        message: 'Failed to get storage usage: ${e.toString()}',
-      ));
+    } catch (error) {
+      handleError(
+        error,
+        emit,
+        context: 'Get Storage Usage',
+      );
     }
   }
 
@@ -393,10 +430,12 @@ class RosterBloc extends Bloc<RosterEvent, RosterState> {
       emit(const RosterCacheCleared(
         message: 'Roster cache cleared successfully',
       ));
-    } catch (e) {
-      emit(RosterError(
-        message: 'Failed to clear roster cache: ${e.toString()}',
-      ));
+    } catch (error) {
+      handleError(
+        error,
+        emit,
+        context: 'Clear Roster Cache',
+      );
     }
   }
 
@@ -424,18 +463,13 @@ class RosterBloc extends Bloc<RosterEvent, RosterState> {
         upcomingDuties: upcomingDuties,
         lastUpdated: DateTime.now(),
       ));
-    } on ApiErrorModel catch (e) {
-      emit(RosterError(
-        message: e.message,
-        error: e,
-        isNetworkError:
-            e.message.contains('connection') || e.message.contains('network'),
-      ));
-    } catch (e) {
-      emit(RosterError(
-        message: 'Failed to load today\'s roster status: ${e.toString()}',
-        isNetworkError: e.toString().contains('connection'),
-      ));
+    } catch (error) {
+      handleError(
+        error,
+        emit,
+        context: 'Get Today\'s Roster Status',
+        additionalData: {'guardId': event.guardId},
+      );
     }
   }
 
@@ -463,18 +497,13 @@ class RosterBloc extends Bloc<RosterEvent, RosterState> {
         upcomingDuties: upcomingDuties,
         lastUpdated: DateTime.now(),
       ));
-    } on ApiErrorModel catch (e) {
-      emit(RosterError(
-        message: e.message,
-        error: e,
-        isNetworkError:
-            e.message.contains('connection') || e.message.contains('network'),
-      ));
-    } catch (e) {
-      emit(RosterError(
-        message: 'Failed to load upcoming duties: ${e.toString()}',
-        isNetworkError: e.toString().contains('connection'),
-      ));
+    } catch (error) {
+      handleError(
+        error,
+        emit,
+        context: 'Get Upcoming Duties',
+        additionalData: {'guardId': event.guardId},
+      );
     }
   }
 
@@ -509,18 +538,13 @@ class RosterBloc extends Bloc<RosterEvent, RosterState> {
           lastUpdated: DateTime.now(),
         ));
       }
-    } on ApiErrorModel catch (e) {
-      emit(RosterError(
-        message: e.message,
-        error: e,
-        isNetworkError:
-            e.message.contains('connection') || e.message.contains('network'),
-      ));
-    } catch (e) {
-      emit(RosterError(
-        message: 'Failed to get current active duty: ${e.toString()}',
-        isNetworkError: e.toString().contains('connection'),
-      ));
+    } catch (error) {
+      handleError(
+        error,
+        emit,
+        context: 'Get Current Active Duty',
+        additionalData: {'guardId': event.guardId},
+      );
     }
   }
 
@@ -547,27 +571,23 @@ class RosterBloc extends Bloc<RosterEvent, RosterState> {
         upcomingDuties: upcomingDuties,
         lastUpdated: DateTime.now(),
       ));
-    } on ApiErrorModel catch (e) {
-      // For refresh, we might want to keep the previous state and just show a snackbar
+    } catch (error) {
+      // For refresh, we might want to keep the previous state and just log the error
       if (state is RosterLoaded) {
-        log('Refresh failed: ${e.message}');
-        // You could emit a specific refresh error state here if needed
+        final errorInfo = processError(
+          error,
+          context: 'Refresh Roster Data',
+          additionalData: {'guardId': event.guardId},
+        );
+        log('Refresh failed: ${errorInfo.message}');
+        // Optionally emit a specific refresh error state here if needed
       } else {
-        emit(RosterError(
-          message: e.message,
-          error: e,
-          isNetworkError:
-              e.message.contains('connection') || e.message.contains('network'),
-        ));
-      }
-    } catch (e) {
-      if (state is RosterLoaded) {
-        log('Refresh failed: ${e.toString()}');
-      } else {
-        emit(RosterError(
-          message: 'Failed to refresh roster data: ${e.toString()}',
-          isNetworkError: e.toString().contains('connection'),
-        ));
+        handleError(
+          error,
+          emit,
+          context: 'Refresh Roster Data',
+          additionalData: {'guardId': event.guardId},
+        );
       }
     }
   }

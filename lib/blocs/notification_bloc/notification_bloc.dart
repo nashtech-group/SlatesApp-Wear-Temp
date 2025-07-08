@@ -7,11 +7,14 @@ import 'package:slates_app_wear/data/models/notification_model.dart';
 import 'package:slates_app_wear/data/models/roster/roster_user_model.dart';
 import 'package:slates_app_wear/data/models/sites/site_model.dart';
 import 'package:slates_app_wear/services/notification_service.dart';
+import '../../core/error/bloc_error_mixin.dart';
+import '../../core/error/error_handler.dart';
 
 part 'notification_event.dart';
 part 'notification_state.dart';
 
-class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
+class NotificationBloc extends Bloc<NotificationEvent, NotificationState> 
+    with BlocErrorMixin<NotificationEvent, NotificationState> {
   final NotificationService _notificationService;
   
   List<AppNotification> _notificationHistory = [];
@@ -43,6 +46,11 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
     on<GetPendingNotifications>(_onGetPendingNotifications);
   }
 
+  @override
+  NotificationState createDefaultErrorState(BlocErrorInfo errorInfo) {
+    return NotificationError(errorInfo: errorInfo);
+  }
+
   Future<void> _onInitializeNotifications(
     InitializeNotifications event,
     Emitter<NotificationState> emit,
@@ -56,12 +64,24 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
         emit(const NotificationInitialized(permissionGranted: true));
         log('NotificationBloc: Service initialized successfully');
       } else {
-        emit(const NotificationError(message: 'Failed to initialize notification service'));
-        log('NotificationBloc: Failed to initialize service');
+        handleError(
+          'Failed to initialize notification service',
+          emit,
+          context: 'Initialize Notifications',
+          customErrorState: (errorInfo) => NotificationError(
+            errorInfo: errorInfo.copyWith(
+              message: 'Failed to initialize notification service',
+              canRetry: true,
+            ),
+          ),
+        );
       }
-    } catch (e) {
-      emit(NotificationError(message: 'Initialization error: ${e.toString()}'));
-      log('NotificationBloc: Initialization error: $e');
+    } catch (error) {
+      handleError(
+        error,
+        emit,
+        context: 'Initialize Notifications',
+      );
     }
   }
 
@@ -96,12 +116,32 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
         _trimHistory();
         log('NotificationBloc: Scheduled ${scheduledIds.length} duty notifications');
       } else {
-        emit(const NotificationError(message: 'No notifications were scheduled'));
-        log('NotificationBloc: No notifications were scheduled');
+        handleError(
+          'No notifications were scheduled',
+          emit,
+          context: 'Schedule Duty Notifications',
+          additionalData: {
+            'rosterId': event.rosterUser.id,
+            'siteId': event.site.id,
+          },
+          customErrorState: (errorInfo) => NotificationError(
+            errorInfo: errorInfo.copyWith(
+              message: 'No notifications were scheduled',
+              canRetry: true,
+            ),
+          ),
+        );
       }
-    } catch (e) {
-      emit(NotificationError(message: 'Failed to schedule duty notifications: ${e.toString()}'));
-      log('NotificationBloc: Error scheduling duty notifications: $e');
+    } catch (error) {
+      handleError(
+        error,
+        emit,
+        context: 'Schedule Duty Notifications',
+        additionalData: {
+          'rosterId': event.rosterUser.id,
+          'siteId': event.site.id,
+        },
+      );
     }
   }
 
@@ -133,9 +173,16 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
 
       emit(NotificationShown(notification: notification));
       log('NotificationBloc: Local notification shown: ${event.title}');
-    } catch (e) {
-      emit(NotificationError(message: 'Failed to show notification: ${e.toString()}'));
-      log('NotificationBloc: Error showing notification: $e');
+    } catch (error) {
+      handleError(
+        error,
+        emit,
+        context: 'Show Local Notification',
+        additionalData: {
+          'title': event.title,
+          'type': event.type.toString(),
+        },
+      );
     }
   }
 
@@ -163,9 +210,13 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
 
       emit(NotificationShown(notification: notification));
       log('NotificationBloc: Sync reminder shown for ${event.daysSinceSync} days');
-    } catch (e) {
-      emit(NotificationError(message: 'Failed to show sync reminder: ${e.toString()}'));
-      log('NotificationBloc: Error showing sync reminder: $e');
+    } catch (error) {
+      handleError(
+        error,
+        emit,
+        context: 'Show Sync Reminder',
+        additionalData: {'daysSinceSync': event.daysSinceSync},
+      );
     }
   }
 
@@ -198,9 +249,16 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
 
       emit(NotificationShown(notification: notification));
       log('NotificationBloc: Sync completed notification shown');
-    } catch (e) {
-      emit(NotificationError(message: 'Failed to show sync completed: ${e.toString()}'));
-      log('NotificationBloc: Error showing sync completed: $e');
+    } catch (error) {
+      handleError(
+        error,
+        emit,
+        context: 'Show Sync Completed',
+        additionalData: {
+          'successCount': event.successCount,
+          'failureCount': event.failureCount,
+        },
+      );
     }
   }
 
@@ -231,9 +289,16 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
 
       emit(NotificationShown(notification: notification));
       log('NotificationBloc: Checkpoint completion alert shown');
-    } catch (e) {
-      emit(NotificationError(message: 'Failed to show checkpoint alert: ${e.toString()}'));
-      log('NotificationBloc: Error showing checkpoint alert: $e');
+    } catch (error) {
+      handleError(
+        error,
+        emit,
+        context: 'Show Checkpoint Completion Alert',
+        additionalData: {
+          'checkpointName': event.checkpointName,
+          'siteName': event.siteName,
+        },
+      );
     }
   }
 
@@ -263,9 +328,16 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
 
       emit(NotificationShown(notification: notification));
       log('NotificationBloc: Position alert shown');
-    } catch (e) {
-      emit(NotificationError(message: 'Failed to show position alert: ${e.toString()}'));
-      log('NotificationBloc: Error showing position alert: $e');
+    } catch (error) {
+      handleError(
+        error,
+        emit,
+        context: 'Show Position Alert',
+        additionalData: {
+          'message': event.message,
+          'isReturnAlert': event.isReturnAlert,
+        },
+      );
     }
   }
 
@@ -295,9 +367,16 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
 
       emit(NotificationShown(notification: notification));
       log('NotificationBloc: Battery alert shown');
-    } catch (e) {
-      emit(NotificationError(message: 'Failed to show battery alert: ${e.toString()}'));
-      log('NotificationBloc: Error showing battery alert: $e');
+    } catch (error) {
+      handleError(
+        error,
+        emit,
+        context: 'Show Battery Alert',
+        additionalData: {
+          'batteryLevel': event.batteryLevel,
+          'message': event.message,
+        },
+      );
     }
   }
 
@@ -326,9 +405,16 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
 
       emit(NotificationShown(notification: notification));
       log('NotificationBloc: Emergency alert shown');
-    } catch (e) {
-      emit(NotificationError(message: 'Failed to show emergency alert: ${e.toString()}'));
-      log('NotificationBloc: Error showing emergency alert: $e');
+    } catch (error) {
+      handleError(
+        error,
+        emit,
+        context: 'Show Emergency Alert',
+        additionalData: {
+          'title': event.title,
+          'message': event.message,
+        },
+      );
     }
   }
 
@@ -353,9 +439,12 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
 
       emit(NotificationShown(notification: notification));
       log('NotificationBloc: Offline mode alert shown');
-    } catch (e) {
-      emit(NotificationError(message: 'Failed to show offline mode alert: ${e.toString()}'));
-      log('NotificationBloc: Error showing offline mode alert: $e');
+    } catch (error) {
+      handleError(
+        error,
+        emit,
+        context: 'Show Offline Mode Alert',
+      );
     }
   }
 
@@ -363,11 +452,20 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
     AddNotificationToHistory event,
     Emitter<NotificationState> emit,
   ) async {
-    _notificationHistory.insert(0, event.notification);
-    _trimHistory();
+    try {
+      _notificationHistory.insert(0, event.notification);
+      _trimHistory();
 
-    emit(NotificationShown(notification: event.notification));
-    log('NotificationBloc: Notification added to history');
+      emit(NotificationShown(notification: event.notification));
+      log('NotificationBloc: Notification added to history');
+    } catch (error) {
+      handleError(
+        error,
+        emit,
+        context: 'Add Notification To History',
+        additionalData: {'notificationId': event.notification.id},
+      );
+    }
   }
 
   Future<void> _onMarkNotificationAsRead(
@@ -384,10 +482,27 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
           action: 'marked_read',
         ));
         log('NotificationBloc: Notification marked as read');
+      } else {
+        handleError(
+          'Notification not found',
+          emit,
+          context: 'Mark Notification As Read',
+          additionalData: {'notificationId': event.notificationId},
+          customErrorState: (errorInfo) => NotificationError(
+            errorInfo: errorInfo.copyWith(
+              message: 'Notification not found',
+              canRetry: false,
+            ),
+          ),
+        );
       }
-    } catch (e) {
-      emit(NotificationError(message: 'Failed to mark notification as read: ${e.toString()}'));
-      log('NotificationBloc: Error marking notification as read: $e');
+    } catch (error) {
+      handleError(
+        error,
+        emit,
+        context: 'Mark Notification As Read',
+        additionalData: {'notificationId': event.notificationId},
+      );
     }
   }
 
@@ -409,9 +524,12 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
         typeCounts: typeCounts,
       ));
       log('NotificationBloc: All notifications marked as read');
-    } catch (e) {
-      emit(NotificationError(message: 'Failed to mark all notifications as read: ${e.toString()}'));
-      log('NotificationBloc: Error marking all notifications as read: $e');
+    } catch (error) {
+      handleError(
+        error,
+        emit,
+        context: 'Mark All Notifications As Read',
+      );
     }
   }
 
@@ -429,10 +547,27 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
           action: 'deleted',
         ));
         log('NotificationBloc: Notification deleted');
+      } else {
+        handleError(
+          'Notification not found',
+          emit,
+          context: 'Delete Notification',
+          additionalData: {'notificationId': event.notificationId},
+          customErrorState: (errorInfo) => NotificationError(
+            errorInfo: errorInfo.copyWith(
+              message: 'Notification not found',
+              canRetry: false,
+            ),
+          ),
+        );
       }
-    } catch (e) {
-      emit(NotificationError(message: 'Failed to delete notification: ${e.toString()}'));
-      log('NotificationBloc: Error deleting notification: $e');
+    } catch (error) {
+      handleError(
+        error,
+        emit,
+        context: 'Delete Notification',
+        additionalData: {'notificationId': event.notificationId},
+      );
     }
   }
 
@@ -449,9 +584,12 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
         typeCounts: {},
       ));
       log('NotificationBloc: All notifications cleared');
-    } catch (e) {
-      emit(NotificationError(message: 'Failed to clear notifications: ${e.toString()}'));
-      log('NotificationBloc: Error clearing notifications: $e');
+    } catch (error) {
+      handleError(
+        error,
+        emit,
+        context: 'Clear All Notifications',
+      );
     }
   }
 
@@ -479,9 +617,16 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
         typeCounts: typeCounts,
       ));
       log('NotificationBloc: Notification history loaded (${filtered.length} items)');
-    } catch (e) {
-      emit(NotificationError(message: 'Failed to get notification history: ${e.toString()}'));
-      log('NotificationBloc: Error getting notification history: $e');
+    } catch (error) {
+      handleError(
+        error,
+        emit,
+        context: 'Get Notification History',
+        additionalData: {
+          'filterType': event.filterType?.toString(),
+          'limit': event.limit,
+        },
+      );
     }
   }
 
@@ -503,9 +648,13 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
         action: 'cancelled',
       ));
       log('NotificationBloc: Notification cancelled: ${event.notificationId}');
-    } catch (e) {
-      emit(NotificationError(message: 'Failed to cancel notification: ${e.toString()}'));
-      log('NotificationBloc: Error cancelling notification: $e');
+    } catch (error) {
+      handleError(
+        error,
+        emit,
+        context: 'Cancel Scheduled Notification',
+        additionalData: {'notificationId': event.notificationId},
+      );
     }
   }
 
@@ -521,9 +670,12 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
         affectedCount: 0, // We don't know the exact count
       ));
       log('NotificationBloc: All scheduled notifications cancelled');
-    } catch (e) {
-      emit(NotificationError(message: 'Failed to cancel all notifications: ${e.toString()}'));
-      log('NotificationBloc: Error cancelling all notifications: $e');
+    } catch (error) {
+      handleError(
+        error,
+        emit,
+        context: 'Cancel All Scheduled Notifications',
+      );
     }
   }
 
@@ -539,9 +691,12 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
         count: pending.length,
       ));
       log('NotificationBloc: Pending notifications loaded (${pending.length} items)');
-    } catch (e) {
-      emit(NotificationError(message: 'Failed to get pending notifications: ${e.toString()}'));
-      log('NotificationBloc: Error getting pending notifications: $e');
+    } catch (error) {
+      handleError(
+        error,
+        emit,
+        context: 'Get Pending Notifications',
+      );
     }
   }
 
@@ -563,8 +718,6 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
         return NotificationService.systemChannelId;
       case NotificationType.positionAlert:
         return NotificationService.checkpointChannelId;
-      default:
-        return NotificationService.systemChannelId;
     }
   }
 

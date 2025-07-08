@@ -1,4 +1,3 @@
-// lib/core/error/error_handler.dart
 import 'dart:developer';
 import 'dart:io';
 import 'package:equatable/equatable.dart';
@@ -6,7 +5,6 @@ import '../constants/app_constants.dart';
 import '../../data/models/api_error_model.dart';
 import 'exceptions.dart';
 
-/// Centralized error handler for the entire application
 class ErrorHandler {
   static const String _logTag = 'ErrorHandler';
 
@@ -96,7 +94,8 @@ class ErrorHandler {
       statusCode: error.statusCode,
       canRetry: canRetry,
       isNetworkError: isNetworkError,
-      validationErrors: error.hasValidationErrors ? error.validationMessages : null,
+      validationErrors:
+          error.hasValidationErrors ? error.validationMessages : null,
       errorCode: error.statusCode?.toString(),
     );
   }
@@ -105,7 +104,8 @@ class ErrorHandler {
   static BlocErrorInfo _handleAuthException(AuthException error) {
     return BlocErrorInfo(
       type: ErrorType.authentication,
-      message: _getHumanReadableMessage(error.message, ErrorType.authentication),
+      message:
+          _getHumanReadableMessage(error.message, ErrorType.authentication),
       originalError: error,
       statusCode: error.statusCode,
       canRetry: false,
@@ -125,14 +125,15 @@ class ErrorHandler {
 
     return BlocErrorInfo(
       type: ErrorType.validation,
-      message: validationMessages.isNotEmpty 
-          ? validationMessages.first 
+      message: validationMessages.isNotEmpty
+          ? validationMessages.first
           : _getHumanReadableMessage(error.message, ErrorType.validation),
       originalError: error,
       statusCode: error.statusCode,
       canRetry: false,
       isNetworkError: false,
-      validationErrors: validationMessages.isNotEmpty ? validationMessages : null,
+      validationErrors:
+          validationMessages.isNotEmpty ? validationMessages : null,
       errorCode: error.statusCode?.toString(),
     );
   }
@@ -262,7 +263,8 @@ class ErrorHandler {
   }
 
   /// Get human-readable error message based on error type
-  static String _getHumanReadableMessage(String originalMessage, ErrorType type) {
+  static String _getHumanReadableMessage(
+      String originalMessage, ErrorType type) {
     switch (type) {
       case ErrorType.network:
         return AppConstants.networkErrorMessage;
@@ -271,7 +273,9 @@ class ErrorHandler {
       case ErrorType.authentication:
         return AppConstants.unauthorizedMessage;
       case ErrorType.validation:
-        return originalMessage.isNotEmpty ? originalMessage : AppConstants.validationErrorMessage;
+        return originalMessage.isNotEmpty
+            ? originalMessage
+            : AppConstants.validationErrorMessage;
       case ErrorType.authorization:
         return AppConstants.unauthorizedMessage;
       case ErrorType.notFound:
@@ -283,8 +287,9 @@ class ErrorHandler {
       case ErrorType.parsing:
         return 'Invalid data received. Please try again.';
       case ErrorType.unknown:
-      default:
-        return originalMessage.isNotEmpty ? originalMessage : AppConstants.unknownErrorMessage;
+        return originalMessage.isNotEmpty
+            ? originalMessage
+            : AppConstants.unknownErrorMessage;
     }
   }
 
@@ -296,14 +301,14 @@ class ErrorHandler {
   ) {
     final logMessage = StringBuffer();
     logMessage.writeln('[$_logTag] Error occurred');
-    
+
     if (context != null) {
       logMessage.writeln('Context: $context');
     }
-    
+
     logMessage.writeln('Error Type: ${error.runtimeType}');
     logMessage.writeln('Error Message: $error');
-    
+
     if (error is ApiErrorModel) {
       logMessage.writeln('Status Code: ${error.statusCode}');
       logMessage.writeln('API Status: ${error.status}');
@@ -311,31 +316,31 @@ class ErrorHandler {
         logMessage.writeln('Validation Errors: ${error.errors}');
       }
     }
-    
+
     if (additionalData != null && additionalData.isNotEmpty) {
       logMessage.writeln('Additional Data: $additionalData');
     }
-    
+
     log(logMessage.toString());
   }
 
   /// Check if error indicates offline/network issues
   static bool isOfflineError(BlocErrorInfo errorInfo) {
-    return errorInfo.isNetworkError || 
-           errorInfo.type == ErrorType.network ||
-           errorInfo.type == ErrorType.timeout;
+    return errorInfo.isNetworkError ||
+        errorInfo.type == ErrorType.network ||
+        errorInfo.type == ErrorType.timeout;
   }
 
   /// Check if error indicates authentication issues
   static bool isAuthError(BlocErrorInfo errorInfo) {
     return errorInfo.type == ErrorType.authentication ||
-           errorInfo.statusCode == 401;
+        errorInfo.statusCode == 401;
   }
 
   /// Check if error indicates session expiry
   static bool isSessionExpired(BlocErrorInfo errorInfo) {
-    return isAuthError(errorInfo) && 
-           (errorInfo.message.toLowerCase().contains('expired') ||
+    return isAuthError(errorInfo) &&
+        (errorInfo.message.toLowerCase().contains('expired') ||
             errorInfo.message.toLowerCase().contains('invalid token'));
   }
 
@@ -344,7 +349,8 @@ class ErrorHandler {
     switch (errorType) {
       case ErrorType.network:
       case ErrorType.timeout:
-        return (1000 * attemptNumber * 2).clamp(1000, 10000); // Exponential backoff
+        return (1000 * attemptNumber * 2)
+            .clamp(1000, 10000); // Exponential backoff
       case ErrorType.server:
         return (2000 * attemptNumber).clamp(2000, 15000);
       case ErrorType.rateLimited:
@@ -381,7 +387,7 @@ class BlocErrorInfo extends Equatable {
   final String? errorCode;
   final DateTime timestamp;
 
-  const BlocErrorInfo({
+  BlocErrorInfo({
     required this.type,
     required this.message,
     this.originalError,
@@ -391,9 +397,7 @@ class BlocErrorInfo extends Equatable {
     this.validationErrors,
     this.errorCode,
     DateTime? timestamp,
-  }) : timestamp = timestamp ?? const Duration().inMicroseconds != 0 
-                    ? DateTime.now() 
-                    : DateTime.fromMicrosecondsSinceEpoch(0);
+  }) : timestamp = timestamp ?? DateTime.now();
 
   @override
   List<Object?> get props => [
@@ -450,8 +454,8 @@ class BlocErrorInfo extends Equatable {
 
   /// Check if this error should logout user
   bool shouldLogoutUser() {
-    return type == ErrorType.authentication && 
-           (message.toLowerCase().contains('expired') ||
+    return type == ErrorType.authentication &&
+        (message.toLowerCase().contains('expired') ||
             message.toLowerCase().contains('invalid'));
   }
 }

@@ -11,7 +11,8 @@ import '../../data/repositories/auth_repository/auth_repository.dart';
 part 'auth_event.dart';
 part 'auth_state.dart';
 
-class AuthBloc extends Bloc<AuthEvent, AuthState> with BlocErrorMixin<AuthEvent, AuthState> {
+class AuthBloc extends Bloc<AuthEvent, AuthState>
+    with BlocErrorMixin<AuthEvent, AuthState> {
   final AuthRepository authRepository;
 
   AuthBloc({required this.authRepository}) : super(const AuthInitial()) {
@@ -31,11 +32,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> with BlocErrorMixin<AuthEvent,
     } else if (errorInfo.shouldLogoutUser()) {
       return AuthSessionExpired(errorInfo: errorInfo);
     } else if (errorInfo.shouldTriggerOfflineMode()) {
-      return AuthError(errorInfo: errorInfo.copyWith(
-        message: 'No internet connection. Try offline login or connect to internet.',
+      return AuthError(
+          errorInfo: errorInfo.copyWith(
+        message:
+            'No internet connection. Try offline login or connect to internet.',
       ));
     }
-    
+
     return AuthError(errorInfo: errorInfo);
   }
 
@@ -62,11 +65,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> with BlocErrorMixin<AuthEvent,
       // Check if this is a network error and try offline login
       if (shouldTriggerOfflineMode(error)) {
         try {
-          final offlineResponse = await authRepository.autoLogin(event.identifier);
+          final offlineResponse =
+              await authRepository.autoLogin(event.identifier);
           if (offlineResponse != null) {
             emit(AuthOfflineMode(
               user: offlineResponse.user,
-              message: 'Logged in offline. Connect to internet for full features.',
+              message:
+                  'Logged in offline. Connect to internet for full features.',
             ));
             return;
           }
@@ -75,6 +80,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> with BlocErrorMixin<AuthEvent,
         }
       }
 
+      // Use centralized error handling
       handleError(
         error,
         emit,
@@ -101,9 +107,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> with BlocErrorMixin<AuthEvent,
   }
 
   /// Handle token refresh event
-  Future<void> _onRefreshToken(RefreshTokenEvent event, Emitter<AuthState> emit) async {
+  Future<void> _onRefreshToken(
+      RefreshTokenEvent event, Emitter<AuthState> emit) async {
     final currentState = state;
-    
+
     // Only refresh if currently authenticated
     if (currentState is! AuthAuthenticated) {
       handleError(
@@ -121,18 +128,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> with BlocErrorMixin<AuthEvent,
 
     try {
       final refreshResponse = await authRepository.refreshToken();
-      
+
       emit(AuthAuthenticated(
         user: refreshResponse.user,
         token: refreshResponse.accessToken,
         isOffline: false,
       ));
-      
+
       log('Token refresh successful');
     } catch (error) {
       // If refresh fails, user needs to login again
       await AuthManager().clear();
-      
+
       if (shouldLogoutUser(error)) {
         emit(AuthSessionExpired(
           errorInfo: processError(error, context: 'Token Refresh'),
@@ -144,27 +151,28 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> with BlocErrorMixin<AuthEvent,
   }
 
   /// Handle auto-login event with improved error handling
-  Future<void> _onAutoLogin(AutoLoginEvent event, Emitter<AuthState> emit) async {
+  Future<void> _onAutoLogin(
+      AutoLoginEvent event, Emitter<AuthState> emit) async {
     emit(const AuthLoading());
 
     try {
       // Check if user is already authenticated
       final isAuthenticated = await authRepository.isAuthenticated();
-      
+
       if (isAuthenticated) {
         final user = await authRepository.getCurrentUser();
         final token = await AuthManager().getToken();
-        
+
         if (user != null && token != null) {
           // Check if token is close to expiry and refresh if needed
           final timeUntilExpiry = await AuthManager().getTimeUntilExpiry();
-          
+
           if (timeUntilExpiry != null && timeUntilExpiry.inMinutes < 30) {
             // Try to refresh token
             add(const RefreshTokenEvent());
             return;
           }
-          
+
           emit(AuthAuthenticated(
             user: user,
             token: token,
@@ -176,8 +184,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> with BlocErrorMixin<AuthEvent,
 
       // Try auto-login for guards with offline data
       if (event.employeeId != null) {
-        final autoLoginResponse = await authRepository.autoLogin(event.employeeId!);
-        
+        final autoLoginResponse =
+            await authRepository.autoLogin(event.employeeId!);
+
         if (autoLoginResponse != null) {
           emit(AuthAuthenticated(
             user: autoLoginResponse.user,
@@ -198,14 +207,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> with BlocErrorMixin<AuthEvent,
   }
 
   /// Handle check authentication status event
-  Future<void> _onCheckAuthStatus(CheckAuthStatusEvent event, Emitter<AuthState> emit) async {
+  Future<void> _onCheckAuthStatus(
+      CheckAuthStatusEvent event, Emitter<AuthState> emit) async {
     try {
       final isAuthenticated = await authRepository.isAuthenticated();
-      
+
       if (isAuthenticated) {
         final user = await authRepository.getCurrentUser();
         final token = await AuthManager().getToken();
-        
+
         if (user != null && token != null) {
           emit(AuthAuthenticated(
             user: user,
@@ -225,7 +235,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> with BlocErrorMixin<AuthEvent,
   }
 
   /// Handle clear auth error event
-  Future<void> _onClearAuthError(ClearAuthErrorEvent event, Emitter<AuthState> emit) async {
+  Future<void> _onClearAuthError(
+      ClearAuthErrorEvent event, Emitter<AuthState> emit) async {
     if (state is AuthError || state is AuthSessionExpired) {
       emit(const AuthUnauthenticated());
     }

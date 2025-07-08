@@ -1,4 +1,3 @@
-// lib/core/error/common_error_states.dart
 import 'package:equatable/equatable.dart';
 import 'error_handler.dart';
 
