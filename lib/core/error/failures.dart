@@ -1,5 +1,6 @@
-// lib/core/error/failures.dart
 import 'package:equatable/equatable.dart';
+import '../constants/api_constants.dart';
+import '../constants/app_constants.dart';
 
 abstract class Failure extends Equatable {
   final String message;
@@ -18,37 +19,37 @@ abstract class Failure extends Equatable {
 
 class ServerFailure extends Failure {
   const ServerFailure({
-    required super.message,
-    super.statusCode,
-    super.data,
-  });
+    required String message,
+    int? statusCode,
+    dynamic data,
+  }) : super(message: message, statusCode: statusCode, data: data);
 }
 
 class NetworkFailure extends Failure {
   const NetworkFailure({
-    required super.message,
-    super.statusCode,
-    super.data,
-  });
+    required String message,
+    int? statusCode,
+    dynamic data,
+  }) : super(message: message, statusCode: statusCode, data: data);
 }
 
 class CacheFailure extends Failure {
   const CacheFailure({
-    required super.message,
-    super.statusCode,
-    super.data,
-  });
+    required String message,
+    int? statusCode,
+    dynamic data,
+  }) : super(message: message, statusCode: statusCode, data: data);
 }
 
 class ValidationFailure extends Failure {
   final Map<String, List<String>>? validationErrors;
 
   const ValidationFailure({
-    required super.message,
-    super.statusCode,
-    super.data,
+    required String message,
+    int? statusCode,
+    dynamic data,
     this.validationErrors,
-  });
+  }) : super(message: message, statusCode: statusCode, data: data);
 
   @override
   List<Object?> get props => [message, statusCode, data, validationErrors];
@@ -56,40 +57,40 @@ class ValidationFailure extends Failure {
 
 class AuthFailure extends Failure {
   const AuthFailure({
-    required super.message,
-    super.statusCode,
-    super.data,
-  });
+    required String message,
+    int? statusCode,
+    dynamic data,
+  }) : super(message: message, statusCode: statusCode, data: data);
 }
 
 class UnauthorizedFailure extends AuthFailure {
   const UnauthorizedFailure({
-    super.message = 'Unauthorized access',
-    super.statusCode = 401,
-    super.data,
-  });
+    String message = AppConstants.unauthorizedMessage,
+    int statusCode = ApiConstants.unauthorizedCode,
+    dynamic data,
+  }) : super(message: message, statusCode: statusCode, data: data);
 }
 
 class ForbiddenFailure extends AuthFailure {
   const ForbiddenFailure({
-    super.message = 'Access forbidden',
-    super.statusCode = 403,
-    super.data,
-  });
+    String message = AppConstants.forbiddenMessage,
+    int statusCode = ApiConstants.forbiddenCode,
+    dynamic data,
+  }) : super(message: message, statusCode: statusCode, data: data);
 }
 
 class NotFoundFailure extends Failure {
   const NotFoundFailure({
-    super.message = 'Resource not found',
-    super.statusCode = 404,
-    super.data,
-  });
+    String message = AppConstants.notFoundMessage,
+    int statusCode = ApiConstants.notFoundCode,
+    dynamic data,
+  }) : super(message: message, statusCode: statusCode, data: data);
 }
 
 class TimeoutFailure extends NetworkFailure {
   const TimeoutFailure({
-    super.message = 'Request timeout',
-    super.statusCode,
-    super.data,
-  });
+    String message = AppConstants.connectionTimeoutMessage,
+    int? statusCode,
+    dynamic data,
+  }) : super(message: message, statusCode: statusCode, data: data);
 }

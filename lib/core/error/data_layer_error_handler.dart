@@ -152,19 +152,19 @@ class DataLayerErrorHandler {
       case ApiConstants.unauthorizedCode: // 401
         return UnauthorizedException(
           message: message,
-          statusCode: statusCode,
+          statusCode: statusCode!,
         );
         
       case ApiConstants.forbiddenCode: // 403
         return ForbiddenException(
           message: message,
-          statusCode: statusCode,
+          statusCode: statusCode!,
         );
         
       case ApiConstants.notFoundCode: // 404
         return NotFoundException(
           message: message,
-          statusCode: statusCode,
+          statusCode: statusCode!,
         );
         
       case ApiConstants.conflictCode: // 409

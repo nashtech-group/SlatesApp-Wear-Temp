@@ -3,7 +3,6 @@ import 'common_error_states.dart';
 
 /// Factory for creating appropriate error states
 class ErrorStateFactory {
-  
   /// Create error state based on error type
   static BaseErrorState createErrorState(BlocErrorInfo errorInfo) {
     switch (errorInfo.type) {

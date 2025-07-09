@@ -15,7 +15,7 @@ class ErrorScreen extends StatelessWidget {
   const ErrorScreen({
     super.key,
     required this.title,
-    required this.message,
+    required this.message, 
     this.errorCode,
     this.icon,
     this.onRetry,
