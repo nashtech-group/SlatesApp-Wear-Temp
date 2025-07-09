@@ -26,16 +26,17 @@ class RosterProvider with ProviderErrorMixin {
     // Build URI with query parameters
     final uri = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.rosterEndpoint}/guards')
         .replace(queryParameters: queryParams);
+    final headers = buildStandardHeaders(token: token);
 
-    logHttpRequest('GET', uri.toString(), buildStandardHeaders(token: token));
-
-    final response = await safeHttpCallWithTimeout(
-      () => client.get(uri, headers: buildStandardHeaders(token: token)),
+    return await executeHttpOperation(
+      () => client.get(uri, headers: headers),
+      'GET',
+      uri.toString(),
       operation,
-    );
-
-    logHttpResponse(response, operation);
-    return extractResponseBody(response, operation);
+      headers: headers,
+      timeout: getTimeoutForOperation('api'),
+      enableRetry: true,
+    ).then((response) => extractResponseBody(response, operation));
   }
 
   /// Submit comprehensive guard duty data
@@ -48,20 +49,19 @@ class RosterProvider with ProviderErrorMixin {
     final uri = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.comprehensiveGuardDutyEndpoint}');
     final headers = buildPostHeaders(token: token);
     
-    logHttpRequest('PATCH', uri.toString(), headers);
-
-    final response = await safeHttpCallWithTimeout(
+    return await executeHttpOperation(
       () => client.patch(
         uri,
         headers: headers,
         body: jsonEncode(requestData.toJson()),
       ),
+      'PATCH',
+      uri.toString(),
       operation,
-      customTimeout: getTimeoutForOperation('upload'),
-    );
-
-    logHttpResponse(response, operation);
-    return extractResponseBody(response, operation);
+      headers: headers,
+      timeout: getTimeoutForOperation('upload'),
+      enableRetry: true,
+    ).then((response) => extractResponseBody(response, operation));
   }
 
   /// Get roster data with pagination support
@@ -85,16 +85,17 @@ class RosterProvider with ProviderErrorMixin {
     // Build URI with query parameters
     final uri = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.rosterEndpoint}/guards')
         .replace(queryParameters: queryParams);
+    final headers = buildStandardHeaders(token: token);
 
-    logHttpRequest('GET', uri.toString(), buildStandardHeaders(token: token));
-
-    final response = await safeHttpCallWithTimeout(
-      () => client.get(uri, headers: buildStandardHeaders(token: token)),
+    return await executeHttpOperation(
+      () => client.get(uri, headers: headers),
+      'GET',
+      uri.toString(),
       operation,
-    );
-
-    logHttpResponse(response, operation);
-    return extractResponseBody(response, operation);
+      headers: headers,
+      timeout: getTimeoutForOperation('api'),
+      enableRetry: true,
+    ).then((response) => extractResponseBody(response, operation));
   }
 
   /// Get roster data for multiple guards (bulk fetch)
@@ -118,16 +119,17 @@ class RosterProvider with ProviderErrorMixin {
     // Build URI with query parameters
     final uri = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.rosterEndpoint}/guards')
         .replace(queryParameters: queryParams);
+    final headers = buildStandardHeaders(token: token);
 
-    logHttpRequest('GET', uri.toString(), buildStandardHeaders(token: token));
-
-    final response = await safeHttpCallWithTimeout(
-      () => client.get(uri, headers: buildStandardHeaders(token: token)),
+    return await executeHttpOperation(
+      () => client.get(uri, headers: headers),
+      'GET',
+      uri.toString(),
       operation,
-    );
-
-    logHttpResponse(response, operation);
-    return extractResponseBody(response, operation);
+      headers: headers,
+      timeout: getTimeoutForOperation('api'),
+      enableRetry: true,
+    ).then((response) => extractResponseBody(response, operation));
   }
 
   /// Get roster data for a specific date range
@@ -149,16 +151,17 @@ class RosterProvider with ProviderErrorMixin {
     // Build URI with query parameters
     final uri = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.rosterEndpoint}/guards')
         .replace(queryParameters: queryParams);
+    final headers = buildStandardHeaders(token: token);
 
-    logHttpRequest('GET', uri.toString(), buildStandardHeaders(token: token));
-
-    final response = await safeHttpCallWithTimeout(
-      () => client.get(uri, headers: buildStandardHeaders(token: token)),
+    return await executeHttpOperation(
+      () => client.get(uri, headers: headers),
+      'GET',
+      uri.toString(),
       operation,
-    );
-
-    logHttpResponse(response, operation);
-    return extractResponseBody(response, operation);
+      headers: headers,
+      timeout: getTimeoutForOperation('api'),
+      enableRetry: true,
+    ).then((response) => extractResponseBody(response, operation));
   }
 
   /// Get current roster status for today's duties

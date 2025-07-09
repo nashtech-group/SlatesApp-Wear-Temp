@@ -84,62 +84,19 @@ mixin RepositoryErrorMixin {
     );
   }
 
-  /// Check if error should trigger offline mode using existing logic
+  /// Check if error should trigger offline mode
   bool shouldTriggerOfflineMode(dynamic error) {
-    if (error is NetworkException) return true;
-    if (error is ApiErrorModel && error.message.toLowerCase().contains('connection')) return true;
-    if (error.toString().toLowerCase().contains('no internet connection')) return true;
-    if (error.toString().toLowerCase().contains('network error')) return true;
-    return false;
+    return DataLayerErrorHandler.shouldTriggerOfflineMode(error);
   }
 
-  /// Check if error should logout user using ApiConstants
+  /// Check if error should logout user
   bool shouldLogoutUser(dynamic error) {
-    if (error is UnauthorizedException) return true;
-    if (error is AuthException && error.message.toLowerCase().contains('expired')) return true;
-    if (error is ApiErrorModel && error.statusCode == ApiConstants.unauthorizedCode) return true;
-    return false;
+    return DataLayerErrorHandler.shouldLogoutUser(error);
   }
 
-  /// Get user-friendly error message using AppConstants
+  /// Get user-friendly error message using DataLayerErrorHandler
   String getUserFriendlyMessage(dynamic error) {
-    if (error is AppException) {
-      return error.message;
-    }
-    if (error is ApiErrorModel) {
-      return error.message.isNotEmpty ? error.message : _getDefaultMessageForStatusCode(error.statusCode);
-    }
-    return AppConstants.unknownErrorMessage;
-  }
-
-  /// Get default message for status code using existing constants
-  String _getDefaultMessageForStatusCode(int? statusCode) {
-    switch (statusCode) {
-      case ApiConstants.badRequestCode:
-        return AppConstants.badRequestMessage;
-      case ApiConstants.unauthorizedCode:
-        return AppConstants.unauthorizedMessage;
-      case ApiConstants.forbiddenCode:
-        return AppConstants.forbiddenMessage;
-      case ApiConstants.notFoundCode:
-        return AppConstants.notFoundMessage;
-      case ApiConstants.conflictCode:
-        return AppConstants.conflictMessage;
-      case ApiConstants.validationErrorCode:
-        return AppConstants.validationErrorMessage;
-      case ApiConstants.tooManyRequestsCode:
-        return AppConstants.tooManyRequestsMessage;
-      case ApiConstants.serverErrorCode:
-        return AppConstants.serverErrorMessage;
-      case ApiConstants.badGatewayCode:
-        return AppConstants.badGatewayMessage;
-      case ApiConstants.serviceUnavailableCode:
-        return AppConstants.serviceUnavailableMessage;
-      case ApiConstants.gatewayTimeoutCode:
-        return AppConstants.gatewayTimeoutMessage;
-      default:
-        return AppConstants.unknownErrorMessage;
-    }
+    return DataLayerErrorHandler.getUserFriendlyMessage(error);
   }
 
   /// Check if error indicates session expiry
@@ -153,12 +110,13 @@ mixin RepositoryErrorMixin {
   /// Check if operation should use cached data
   bool shouldUseCachedData(dynamic error) {
     return shouldTriggerOfflineMode(error) || 
-           (error is ServerException && error.statusCode != null && error.statusCode! >= 500);
+           (error is ServerException && error.statusCode != null && 
+            ApiConstants.isServerError(error.statusCode!));
   }
 
   /// Check if error is retryable based on status code
   bool isRetryableError(dynamic error) {
-    if (error is NetworkException) return true;
+    if (DataLayerErrorHandler.isNetworkError(error)) return true;
     if (error is TimeoutException) return true;
     
     int? statusCode;
@@ -170,22 +128,115 @@ mixin RepositoryErrorMixin {
     
     if (statusCode == null) return false;
     
-    // Retry on server errors and rate limiting
-    return statusCode == ApiConstants.tooManyRequestsCode ||
-           statusCode == ApiConstants.serverErrorCode ||
-           statusCode == ApiConstants.badGatewayCode ||
-           statusCode == ApiConstants.serviceUnavailableCode ||
-           statusCode == ApiConstants.gatewayTimeoutCode;
+    // Use ApiConstants to check if retryable
+    return ApiConstants.isRetryableStatusCode(statusCode);
   }
 
   /// Get retry delay based on error type and attempt number
   int getRetryDelay(int attempt, dynamic error) {
     // Use exponential backoff for rate limiting
     if (error is ApiErrorModel && error.statusCode == ApiConstants.tooManyRequestsCode) {
-      return AppConstants.baseRetryDelayMs * (2 << attempt);
+      return AppConstants.baseRetryDelayMs * (1 << attempt); // Fixed bit shift operation
+    }
+    
+    if (error is AppException && error.statusCode == ApiConstants.tooManyRequestsCode) {
+      return AppConstants.baseRetryDelayMs * (1 << attempt); // Fixed bit shift operation
     }
     
     // Standard retry delay for other errors
     return DataLayerErrorHandler.getRetryDelay(attempt);
+  }
+
+  /// Get error category for better handling
+  String getErrorCategory(dynamic error) {
+    return DataLayerErrorHandler.getErrorCategory(error);
+  }
+
+  /// Check if error is network-related
+  bool isNetworkError(dynamic error) {
+    return DataLayerErrorHandler.isNetworkError(error);
+  }
+
+  /// Check if error is authentication-related
+  bool isAuthenticationError(dynamic error) {
+    return DataLayerErrorHandler.isAuthenticationError(error);
+  }
+
+  /// Check if error is validation-related
+  bool isValidationError(dynamic error) {
+    return DataLayerErrorHandler.isValidationError(error);
+  }
+
+  /// Execute operation with fallback data from cache
+  Future<T> executeWithCacheFallback<T>(
+    Future<T> Function() operation,
+    Future<T> Function() getCachedData,
+    String operationName,
+  ) async {
+    try {
+      return await safeRepositoryCall(operation, operationName);
+    } catch (e) {
+      if (shouldUseCachedData(e)) {
+        log('Using cached data for $operationName due to error: ${getUserFriendlyMessage(e)}');
+        return await getCachedData();
+      }
+      rethrow;
+    }
+  }
+
+  /// Execute operation with smart retry and caching
+  Future<T> executeWithSmartRetry<T>(
+    Future<T> Function() operation,
+    String operationName, {
+    T? fallbackValue,
+    Future<T> Function()? getCachedData,
+    int? maxAttempts,
+  }) async {
+    final attempts = maxAttempts ?? AppConstants.maxRetryAttempts;
+    AppException? lastException;
+    
+    for (int attempt = 1; attempt <= attempts; attempt++) {
+      try {
+        return await safeRepositoryCall(operation, operationName);
+      } catch (e) {
+        if (e is AppException) {
+          lastException = e;
+          
+          // Check if we should use cached data immediately for certain errors
+          if (shouldUseCachedData(e) && getCachedData != null) {
+            log('Using cached data for $operationName due to error: ${e.message}');
+            return await getCachedData();
+          }
+          
+          // Check if we should retry
+          if (!DataLayerErrorHandler.shouldRetry(attempt, e) || attempt >= attempts) {
+            break;
+          }
+          
+          final delay = getRetryDelay(attempt, e);
+          log('Repository operation $operationName failed (attempt $attempt), retrying in ${delay}ms');
+          await Future.delayed(Duration(milliseconds: delay));
+        } else {
+          throw handleRepositoryError(e, operationName);
+        }
+      }
+    }
+    
+    // Try cached data if available
+    if (getCachedData != null && shouldUseCachedData(lastException!)) {
+      log('Using cached data for $operationName after retry exhaustion');
+      return await getCachedData();
+    }
+    
+    // Use fallback value if available
+    if (fallbackValue != null) {
+      log('Repository operation $operationName failed after $attempts attempts, using fallback');
+      return fallbackValue;
+    }
+    
+    throw lastException ?? ServerException(
+      message: AppConstants.unknownErrorMessage,
+      data: {'operation': operationName},
+    );
   }
 }

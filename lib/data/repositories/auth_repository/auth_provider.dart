@@ -9,59 +9,62 @@ class AuthProvider with ProviderErrorMixin {
 
   AuthProvider({http.Client? client}) : client = client ?? http.Client();
 
+  /// Login user with credentials
   Future<String> login(LoginModel loginModel) async {
     const operation = 'login';
     
     final uri = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.loginEndpoint}');
     final headers = buildPostHeaders();
     
-    logHttpRequest('POST', uri.toString(), headers);
-
-    final response = await safeHttpCallWithTimeout(
+    return await executeHttpOperation(
       () => client.post(
         uri,
         headers: headers,
         body: jsonEncode(loginModel.toJson()),
       ),
+      'POST',
+      uri.toString(),
       operation,
-      customTimeout: getTimeoutForOperation('api'),
-    );
-
-    logHttpResponse(response, operation);
-    return extractResponseBody(response, operation);
+      headers: headers,
+      timeout: getTimeoutForOperation('api'),
+      enableRetry: true,
+    ).then((response) => extractResponseBody(response, operation));
   }
 
+  /// Logout user with token
   Future<String> logout(String token) async {
     const operation = 'logout';
     
     final uri = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.logoutEndpoint}');
     final headers = buildStandardHeaders(token: token);
     
-    logHttpRequest('POST', uri.toString(), headers);
-
-    final response = await safeHttpCallWithTimeout(
+    return await executeHttpOperation(
       () => client.post(uri, headers: headers),
+      'POST',
+      uri.toString(),
       operation,
-    );
-
-    logHttpResponse(response, operation);
-    return extractResponseBody(response, operation);
+      headers: headers,
+      timeout: getTimeoutForOperation('api'),
+      enableRetry: false, // Don't retry logout operations
+    ).then((response) => extractResponseBody(response, operation));
   }
 
+  /// Refresh authentication token
   Future<String> refreshToken(String token) async {
     const operation = 'refreshToken';
     
     final uri = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.refreshEndpoint}');
     final headers = buildPostHeaders(token: token);
     
-    logHttpRequest('POST', uri.toString(), headers);
-
-    final response = await safeHttpCallWithTimeout(
+    return await executeHttpOperation(
       () => client.post(uri, headers: headers),
+      'POST',
+      uri.toString(),
       operation,
-    );
-
-    logHttpResponse(response, operation);
-    return extractResponseBody(response, operation);
+      headers: headers,
+      timeout: getTimeoutForOperation('api'),
+      enableRetry: true,
+      maxAttempts: 2, // Limited retries for token refresh
+    ).then((response) => extractResponseBody(response, operation));
   }
 }

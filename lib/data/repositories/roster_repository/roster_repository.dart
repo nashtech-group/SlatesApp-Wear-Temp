@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:developer';
 import 'package:slates_app_wear/core/auth_manager.dart';
+import 'package:slates_app_wear/core/constants/app_constants.dart';
+import 'package:slates_app_wear/core/constants/api_constants.dart';
 import 'package:slates_app_wear/data/models/api_error_model.dart';
 import 'package:slates_app_wear/data/models/roster/guard_duty_summary_model.dart';
 import 'package:slates_app_wear/data/models/roster/roster_response_model.dart';
@@ -17,10 +19,12 @@ import 'package:slates_app_wear/services/connectivity_service.dart';
 import 'package:slates_app_wear/services/sync_service.dart';
 import 'package:slates_app_wear/services/date_service.dart';
 import 'package:slates_app_wear/services/notification_service.dart';
+import '../../../core/error/repository_error_mixin.dart';
+import '../../../core/error/exceptions.dart';
 
 import 'roster_provider.dart';
 
-class RosterRepository {
+class RosterRepository with RepositoryErrorMixin {
   final RosterProvider _rosterProvider;
   final OfflineStorageService _offlineStorage;
   final ConnectivityService _connectivity;
@@ -44,23 +48,23 @@ class RosterRepository {
 
   /// Initialize repository and services
   Future<void> initialize() async {
-    try {
-      // Initialize notification service first
-      final notificationInitialized = await _notificationService.initialize();
-      if (!notificationInitialized) {
-        log('Warning: NotificationService failed to initialize');
-      }
+    return await safeRepositoryCall(
+      () async {
+        // Initialize notification service first
+        final notificationInitialized = await _notificationService.initialize();
+        if (!notificationInitialized) {
+          log('Warning: NotificationService failed to initialize');
+        }
 
-      // Initialize other services
-      _syncService.initialize();
-      await _syncService.scheduleSyncReminders();
-      _connectivity.startMonitoring();
+        // Initialize other services
+        _syncService.initialize();
+        await _syncService.scheduleSyncReminders();
+        _connectivity.startMonitoring();
 
-      log('RosterRepository initialized successfully');
-    } catch (e) {
-      log('Failed to initialize RosterRepository: $e');
-      rethrow;
-    }
+        log('RosterRepository initialized successfully');
+      },
+      'initialize',
+    );
   }
 
   /// Get roster data for a guard from current date
@@ -68,80 +72,80 @@ class RosterRepository {
     required int guardId,
     String? fromDate,
   }) async {
-    try {
-      final token = await AuthManager().getToken();
+    final dateToUse = fromDate ?? _dateService.getTodayFormattedDate();
+    
+    return await executeWithCacheFallback(
+      () => _fetchRosterDataOnline(guardId, dateToUse),
+      () => _getRosterDataFromCache(guardId),
+      'getRosterData',
+    );
+  }
 
-      if (token == null) {
-        throw ApiErrorModel(
-          status: 'error',
-          message: 'No authentication token available',
-        );
-      }
-
-      final dateToUse = fromDate ?? _dateService.getTodayFormattedDate();
-
-      // Try online first if connected
-      if (_connectivity.isConnected) {
-        try {
-          log('Fetching roster data online for guard $guardId from $dateToUse');
-          final responseData = await _rosterProvider.getRosterData(
-            guardId: guardId,
-            fromDate: dateToUse,
-            token: token,
+  /// Fetch roster data online
+  Future<RosterResponseModel> _fetchRosterDataOnline(int guardId, String dateToUse) async {
+    return await safeRepositoryCall(
+      () async {
+        final token = await _getAuthToken();
+        
+        if (!_connectivity.isConnected) {
+          throw const NetworkException(
+            message: AppConstants.networkErrorMessage,
           );
-
-          log('Roster response: $responseData');
-
-          final decodedData = jsonDecode(responseData);
-
-          if (decodedData.containsKey("errors") ||
-              (decodedData.containsKey("status") &&
-                  decodedData["status"] == "error")) {
-            throw ApiErrorModel.fromJson(decodedData);
-          }
-
-          final rosterResponse = RosterResponseModel.fromJson(decodedData);
-
-          // Cache for offline access
-          await _offlineStorage.cacheRosterData(guardId, rosterResponse);
-          log('Roster data cached for offline access');
-
-          // Schedule duty notifications for upcoming duties
-          await _scheduleDutyNotificationsFromRoster(rosterResponse);
-
-          return rosterResponse;
-        } catch (e) {
-          if (e is ApiErrorModel) rethrow;
-          log('Online roster fetch failed, trying offline: $e');
         }
-      } else {
-        // Show offline mode notification
-        await _notificationService.showOfflineModeNotification();
-      }
 
-      // Try offline cache
-      log('Attempting to load roster data from cache for guard $guardId');
-      final cachedData = await _offlineStorage.getCachedRosterData(guardId);
-      if (cachedData != null) {
+        log('Fetching roster data online for guard $guardId from $dateToUse');
+        final responseData = await _rosterProvider.getRosterData(
+          guardId: guardId,
+          fromDate: dateToUse,
+          token: token,
+        );
+
+        log('Roster response received');
+        final decodedData = jsonDecode(responseData);
+
+        if (decodedData.containsKey(ApiConstants.errorsKey) ||
+            (decodedData.containsKey(ApiConstants.statusKey) &&
+                decodedData[ApiConstants.statusKey] == ApiConstants.errorStatus)) {
+          throw ApiErrorModel.fromJson(decodedData);
+        }
+
+        final rosterResponse = RosterResponseModel.fromJson(decodedData);
+
+        // Cache for offline access
+        await _offlineStorage.cacheRosterData(guardId, rosterResponse);
+        log('Roster data cached for offline access');
+
+        // Schedule duty notifications for upcoming duties
+        await _scheduleDutyNotificationsFromRoster(rosterResponse);
+
+        return rosterResponse;
+      },
+      'fetchRosterDataOnline',
+    );
+  }
+
+  /// Get roster data from cache
+  Future<RosterResponseModel> _getRosterDataFromCache(int guardId) async {
+    return await safeRepositoryCall(
+      () async {
+        if (!_connectivity.isConnected) {
+          await _notificationService.showOfflineModeNotification();
+        }
+
+        log('Attempting to load roster data from cache for guard $guardId');
+        final cachedData = await _offlineStorage.getCachedRosterData(guardId);
+        
+        if (cachedData == null) {
+          throw const CacheException(
+            message: 'No offline data available',
+          );
+        }
+
         log('Loaded roster data from cache');
         return cachedData;
-      }
-
-      // No data available
-      throw ApiErrorModel(
-        status: 'error',
-        message: _connectivity.isConnected
-            ? 'Failed to fetch roster data'
-            : 'No internet connection and no offline data available',
-      );
-    } catch (e) {
-      if (e is ApiErrorModel) rethrow;
-
-      throw ApiErrorModel(
-        status: 'error',
-        message: 'Unexpected error: ${e.toString()}',
-      );
-    }
+      },
+      'getRosterDataFromCache',
+    );
   }
 
   /// Submit comprehensive guard duty data
@@ -157,208 +161,95 @@ class RosterRepository {
     );
 
     if (!requestData.hasAnyData) {
-      throw ApiErrorModel(
-        status: 'error',
+      throw const ValidationException(
         message: 'No data provided for submission',
       );
     }
 
-    try {
-      final token = await AuthManager().getToken();
+    return await executeWithSmartRetry(
+      () => _submitGuardDutyOnline(requestData, rosterUpdates, movements, perimeterChecks),
+      'submitComprehensiveGuardDuty',
+      getCachedData: () => _cacheGuardDutyForOfflineSync(requestData, rosterUpdates, movements, perimeterChecks),
+    );
+  }
 
-      if (token == null) {
-        throw ApiErrorModel(
-          status: 'error',
-          message: 'No authentication token available',
-        );
-      }
-
-      // Try online submission if connected
-      if (_connectivity.isConnected) {
-        try {
-          log('Submitting comprehensive guard duty data online');
-          final responseData =
-              await _rosterProvider.submitComprehensiveGuardDuty(
-            requestData: requestData,
-            token: token,
+  /// Submit guard duty data online
+  Future<ComprehensiveGuardDutyResponseModel> _submitGuardDutyOnline(
+    ComprehensiveGuardDutyRequestModel requestData,
+    List<RosterUserUpdateModel>? rosterUpdates,
+    List<GuardMovementModel>? movements,
+    List<PerimeterCheckModel>? perimeterChecks,
+  ) async {
+    return await safeRepositoryCall(
+      () async {
+        final token = await _getAuthToken();
+        
+        if (!_connectivity.isConnected) {
+          throw const NetworkException(
+            message: AppConstants.networkErrorMessage,
           );
-
-          log('Comprehensive guard duty response: $responseData');
-
-          final decodedData = jsonDecode(responseData);
-
-          if (decodedData.containsKey("errors") ||
-              (decodedData.containsKey("status") &&
-                  decodedData["status"] == "error")) {
-            throw ApiErrorModel.fromJson(decodedData);
-          }
-
-          final response =
-              ComprehensiveGuardDutyResponseModel.fromJson(decodedData);
-
-          // Cache successful submission
-          await _offlineStorage.cacheSubmissionRecord(requestData, response);
-
-          // Show sync completed notification
-          final totalItems = (rosterUpdates?.length ?? 0) +
-              (movements?.length ?? 0) +
-              (perimeterChecks?.length ?? 0);
-          await _notificationService.showSyncCompletedNotification(
-              totalItems, 0);
-
-          log('Submission record cached and sync notification shown');
-
-          return response;
-        } catch (e) {
-          if (e is ApiErrorModel) rethrow;
-          log('Online submission failed, caching for offline sync: $e');
         }
-      }
 
-      // Cache for later sync
-      log('Caching submission for offline sync');
-      await _offlineStorage.cachePendingSubmission(requestData);
-
-      // Check days since last sync and show reminder if needed
-      await _checkAndShowSyncReminder();
-
-      return ComprehensiveGuardDutyResponseModel(
-        message: 'Data cached for sync when online',
-        summary: GuardDutySummaryModel(
-          rosterUsersUpdated: rosterUpdates?.length ?? 0,
-          perimeterChecksCreated: perimeterChecks?.length ?? 0,
-          movementsRecorded: movements?.length ?? 0,
-        ),
-        timestamp: DateTime.now(),
-      );
-    } catch (e) {
-      if (e is ApiErrorModel) rethrow;
-
-      throw ApiErrorModel(
-        status: 'error',
-        message: 'Unexpected error: ${e.toString()}',
-      );
-    }
-  }
-
-  /// Schedule duty notifications for upcoming duties in roster
-  Future<void> _scheduleDutyNotificationsFromRoster(
-      RosterResponseModel rosterResponse) async {
-    try {
-      final now = DateTime.now();
-      final upcomingDuties = rosterResponse.data.where((rosterUser) {
-        // Only schedule for duties that haven't started yet
-        return rosterUser.startsAt.isAfter(now);
-      }).toList();
-
-      for (final rosterUser in upcomingDuties) {
-        final scheduledIds =
-            await _notificationService.scheduleDutyNotifications(
-          rosterUser: rosterUser,
-          site: rosterUser.site,
+        log('Submitting comprehensive guard duty data online');
+        final responseData = await _rosterProvider.submitComprehensiveGuardDuty(
+          requestData: requestData,
+          token: token,
         );
 
-        if (scheduledIds.isNotEmpty) {
-          log('Scheduled ${scheduledIds.length} notifications for duty at ${rosterUser.site.name}');
+        log('Comprehensive guard duty response received');
+        final decodedData = jsonDecode(responseData);
+
+        if (decodedData.containsKey(ApiConstants.errorsKey) ||
+            (decodedData.containsKey(ApiConstants.statusKey) &&
+                decodedData[ApiConstants.statusKey] == ApiConstants.errorStatus)) {
+          throw ApiErrorModel.fromJson(decodedData);
         }
-      }
-    } catch (e) {
-      log('Failed to schedule duty notifications: $e');
-    }
+
+        final response = ComprehensiveGuardDutyResponseModel.fromJson(decodedData);
+
+        // Cache successful submission
+        await _offlineStorage.cacheSubmissionRecord(requestData, response);
+
+        // Show sync completed notification
+        final totalItems = (rosterUpdates?.length ?? 0) +
+            (movements?.length ?? 0) +
+            (perimeterChecks?.length ?? 0);
+        await _notificationService.showSyncCompletedNotification(totalItems, 0);
+
+        log('Submission record cached and sync notification shown');
+        return response;
+      },
+      'submitGuardDutyOnline',
+    );
   }
 
-  /// Check sync status and show reminder if needed
-  Future<void> _checkAndShowSyncReminder() async {
-    try {
-      final syncStatus = await _syncService.getSyncStatus();
-      final daysSinceSync = syncStatus['daysSinceLastSync'] as int? ?? 0;
+  /// Cache guard duty data for offline sync
+  Future<ComprehensiveGuardDutyResponseModel> _cacheGuardDutyForOfflineSync(
+    ComprehensiveGuardDutyRequestModel requestData,
+    List<RosterUserUpdateModel>? rosterUpdates,
+    List<GuardMovementModel>? movements,
+    List<PerimeterCheckModel>? perimeterChecks,
+  ) async {
+    return await safeRepositoryCall(
+      () async {
+        log('Caching submission for offline sync');
+        await _offlineStorage.cachePendingSubmission(requestData);
 
-      // Show sync reminder based on days since last sync
-      if (daysSinceSync >= 5) {
-        await _notificationService.showSyncRequiredNotification(daysSinceSync);
-        log('Sync reminder shown for $daysSinceSync days since last sync');
-      }
-    } catch (e) {
-      log('Failed to check sync status: $e');
-    }
-  }
+        // Check days since last sync and show reminder if needed
+        await _checkAndShowSyncReminder();
 
-  /// Show checkpoint completion notification
-  Future<void> showCheckpointCompletionNotification({
-    required String checkpointName,
-    required String siteName,
-  }) async {
-    try {
-      await _notificationService.showCheckpointCompletionAlert(
-        checkpointName: checkpointName,
-        siteName: siteName,
-      );
-      log('Checkpoint completion notification shown: $checkpointName at $siteName');
-    } catch (e) {
-      log('Failed to show checkpoint completion notification: $e');
-    }
-  }
-
-  /// Show position alert for static duty
-  Future<void> showPositionAlert({
-    required String message,
-    required bool isReturnAlert,
-  }) async {
-    try {
-      await _notificationService.showPositionAlert(
-        message: message,
-        isReturnAlert: isReturnAlert,
-      );
-      log('Position alert shown: $message');
-    } catch (e) {
-      log('Failed to show position alert: $e');
-    }
-  }
-
-  /// Show battery alert
-  Future<void> showBatteryAlert({
-    required String message,
-    required int batteryLevel,
-  }) async {
-    try {
-      await _notificationService.showBatteryAlert(
-        message: message,
-        batteryLevel: batteryLevel,
-      );
-      log('Battery alert shown: $message (Battery: $batteryLevel%)');
-    } catch (e) {
-      log('Failed to show battery alert: $e');
-    }
-  }
-
-  /// Show emergency notification
-  Future<void> showEmergencyNotification({
-    required String title,
-    required String message,
-    Map<String, dynamic>? payload,
-  }) async {
-    try {
-      await _notificationService.showEmergencyNotification(
-        title: title,
-        message: message,
-        payload: payload,
-      );
-      log('Emergency notification shown: $title');
-    } catch (e) {
-      log('Failed to show emergency notification: $e');
-    }
-  }
-
-  /// Cancel duty notifications for a specific roster user
-  Future<void> cancelDutyNotifications(List<int> notificationIds) async {
-    try {
-      for (final id in notificationIds) {
-        await _notificationService.cancelNotification(id);
-      }
-      log('Cancelled ${notificationIds.length} duty notifications');
-    } catch (e) {
-      log('Failed to cancel duty notifications: $e');
-    }
+        return ComprehensiveGuardDutyResponseModel(
+          message: 'Data cached for sync when online',
+          summary: GuardDutySummaryModel(
+            rosterUsersUpdated: rosterUpdates?.length ?? 0,
+            perimeterChecksCreated: perimeterChecks?.length ?? 0,
+            movementsRecorded: movements?.length ?? 0,
+          ),
+          timestamp: DateTime.now(),
+        );
+      },
+      'cacheGuardDutyForOfflineSync',
+    );
   }
 
   /// Get roster data with pagination
@@ -368,19 +259,32 @@ class RosterRepository {
     int page = 1,
     int perPage = 15,
   }) async {
-    try {
-      final token = await AuthManager().getToken();
+    final dateToUse = fromDate ?? _dateService.getTodayFormattedDate();
 
-      if (token == null) {
-        throw ApiErrorModel(
-          status: 'error',
-          message: 'No authentication token available',
-        );
-      }
+    return await executeWithCacheFallback(
+      () => _fetchPaginatedRosterOnline(guardId, dateToUse, page, perPage),
+      () => _getPaginatedRosterFromCache(guardId, page, perPage),
+      'getRosterDataPaginated',
+    );
+  }
 
-      final dateToUse = fromDate ?? _dateService.getTodayFormattedDate();
+  /// Fetch paginated roster data online
+  Future<RosterResponseModel> _fetchPaginatedRosterOnline(
+    int guardId, 
+    String dateToUse, 
+    int page, 
+    int perPage,
+  ) async {
+    return await safeRepositoryCall(
+      () async {
+        final token = await _getAuthToken();
 
-      if (_connectivity.isConnected) {
+        if (!_connectivity.isConnected) {
+          throw const NetworkException(
+            message: AppConstants.networkErrorMessage,
+          );
+        }
+
         log('Fetching paginated roster data online for guard $guardId');
         final responseData = await _rosterProvider.getRosterDataPaginated(
           guardId: guardId,
@@ -392,9 +296,9 @@ class RosterRepository {
 
         final decodedData = jsonDecode(responseData);
 
-        if (decodedData.containsKey("errors") ||
-            (decodedData.containsKey("status") &&
-                decodedData["status"] == "error")) {
+        if (decodedData.containsKey(ApiConstants.errorsKey) ||
+            (decodedData.containsKey(ApiConstants.statusKey) &&
+                decodedData[ApiConstants.statusKey] == ApiConstants.errorStatus)) {
           throw ApiErrorModel.fromJson(decodedData);
         }
 
@@ -404,26 +308,29 @@ class RosterRepository {
         await _scheduleDutyNotificationsFromRoster(rosterResponse);
 
         return rosterResponse;
-      }
+      },
+      'fetchPaginatedRosterOnline',
+    );
+  }
 
-      // Fallback to cached data with manual pagination
-      final cachedData = await _offlineStorage.getCachedRosterData(guardId);
-      if (cachedData != null) {
+  /// Get paginated roster data from cache
+  Future<RosterResponseModel> _getPaginatedRosterFromCache(
+    int guardId, 
+    int page, 
+    int perPage,
+  ) async {
+    return await safeRepositoryCall(
+      () async {
+        final cachedData = await _offlineStorage.getCachedRosterData(guardId);
+        if (cachedData == null) {
+          throw const CacheException(
+            message: 'No offline data available',
+          );
+        }
         return _paginateCachedData(cachedData, page, perPage);
-      }
-
-      throw ApiErrorModel(
-        status: 'error',
-        message: 'No internet connection and no offline data available',
-      );
-    } catch (e) {
-      if (e is ApiErrorModel) rethrow;
-
-      throw ApiErrorModel(
-        status: 'error',
-        message: 'Unexpected error: ${e.toString()}',
-      );
-    }
+      },
+      'getPaginatedRosterFromCache',
+    );
   }
 
   /// Get roster data for multiple guards (bulk fetch)
@@ -431,19 +338,18 @@ class RosterRepository {
     required List<int> guardIds,
     String? fromDate,
   }) async {
-    try {
-      final token = await AuthManager().getToken();
+    final dateToUse = fromDate ?? _dateService.getTodayFormattedDate();
 
-      if (token == null) {
-        throw ApiErrorModel(
-          status: 'error',
-          message: 'No authentication token available',
-        );
-      }
+    return await safeRepositoryCall(
+      () async {
+        final token = await _getAuthToken();
 
-      final dateToUse = fromDate ?? _dateService.getTodayFormattedDate();
+        if (!_connectivity.isConnected) {
+          throw const NetworkException(
+            message: 'Bulk roster data requires internet connection',
+          );
+        }
 
-      if (_connectivity.isConnected) {
         log('Fetching bulk roster data for ${guardIds.length} guards');
         final responseData = await _rosterProvider.getBulkRosterData(
           guardIds: guardIds,
@@ -453,9 +359,9 @@ class RosterRepository {
 
         final decodedData = jsonDecode(responseData);
 
-        if (decodedData.containsKey("errors") ||
-            (decodedData.containsKey("status") &&
-                decodedData["status"] == "error")) {
+        if (decodedData.containsKey(ApiConstants.errorsKey) ||
+            (decodedData.containsKey(ApiConstants.statusKey) &&
+                decodedData[ApiConstants.statusKey] == ApiConstants.errorStatus)) {
           throw ApiErrorModel.fromJson(decodedData);
         }
 
@@ -465,20 +371,9 @@ class RosterRepository {
         await _scheduleDutyNotificationsFromRoster(rosterResponse);
 
         return rosterResponse;
-      }
-
-      throw ApiErrorModel(
-        status: 'error',
-        message: 'Bulk roster data requires internet connection',
-      );
-    } catch (e) {
-      if (e is ApiErrorModel) rethrow;
-
-      throw ApiErrorModel(
-        status: 'error',
-        message: 'Unexpected error: ${e.toString()}',
-      );
-    }
+      },
+      'getBulkRosterData',
+    );
   }
 
   /// Get roster data for a specific date range
@@ -487,17 +382,16 @@ class RosterRepository {
     required String fromDate,
     required String toDate,
   }) async {
-    try {
-      final token = await AuthManager().getToken();
+    return await safeRepositoryCall(
+      () async {
+        final token = await _getAuthToken();
 
-      if (token == null) {
-        throw ApiErrorModel(
-          status: 'error',
-          message: 'No authentication token available',
-        );
-      }
+        if (!_connectivity.isConnected) {
+          throw const NetworkException(
+            message: 'Date range queries require internet connection',
+          );
+        }
 
-      if (_connectivity.isConnected) {
         log('Fetching roster data for date range: $fromDate to $toDate');
         final responseData = await _rosterProvider.getRosterDataForDateRange(
           guardId: guardId,
@@ -508,9 +402,9 @@ class RosterRepository {
 
         final decodedData = jsonDecode(responseData);
 
-        if (decodedData.containsKey("errors") ||
-            (decodedData.containsKey("status") &&
-                decodedData["status"] == "error")) {
+        if (decodedData.containsKey(ApiConstants.errorsKey) ||
+            (decodedData.containsKey(ApiConstants.statusKey) &&
+                decodedData[ApiConstants.statusKey] == ApiConstants.errorStatus)) {
           throw ApiErrorModel.fromJson(decodedData);
         }
 
@@ -520,20 +414,407 @@ class RosterRepository {
         await _scheduleDutyNotificationsFromRoster(rosterResponse);
 
         return rosterResponse;
-      }
+      },
+      'getRosterDataForDateRange',
+    );
+  }
 
-      throw ApiErrorModel(
-        status: 'error',
-        message: 'Date range queries require internet connection',
-      );
-    } catch (e) {
-      if (e is ApiErrorModel) rethrow;
+  /// Sync pending submissions manually
+  Future<bool> syncPendingSubmissions() async {
+    return await safeRepositoryCall(
+      () async {
+        log('Starting manual sync of pending submissions via repository');
+        final result = await _syncService.manualSync();
 
-      throw ApiErrorModel(
-        status: 'error',
-        message: 'Unexpected error: ${e.toString()}',
-      );
-    }
+        // Handle UI concerns (notifications) based on SyncResult
+        await _showSyncNotification(result);
+
+        return result.success;
+      },
+      'syncPendingSubmissions',
+      fallbackValue: false,
+    );
+  }
+
+  /// Force sync all pending data
+  Future<SyncResult> forceSyncAll() async {
+    return await safeRepositoryCall(
+      () async {
+        log('Starting enhanced force sync via repository');
+
+        // Show starting notification for better UX
+        await _notificationService.showSyncStartedNotification();
+
+        final result = await _syncService.forceSyncAll();
+
+        // Handle UI concerns and enhanced reporting
+        await _showSyncNotification(result);
+        await _logSyncResult(result);
+
+        return result;
+      },
+      'forceSyncAll',
+      fallbackValue: SyncResult.failure(
+        message: AppConstants.unknownErrorMessage,
+        errors: const ['Failed to execute force sync'],
+      ),
+    );
+  }
+
+  /// Clear sync history
+  Future<SyncResult> clearSyncHistory() async {
+    return await safeRepositoryCall(
+      () async {
+        log('Starting sync history cleanup via repository');
+
+        // Show notification that cleanup is starting
+        await _notificationService.showSyncStartedNotification();
+
+        final result = await _syncService.clearSyncHistory();
+
+        // Handle UI concerns and enhanced reporting
+        await _showSyncNotification(result);
+        await _logSyncResult(result);
+
+        // Additional repository-level logging for sync history clearing
+        if (result.success) {
+          final totalCleared = result.metadata['total_cleared'] as int? ?? 0;
+          final pendingCleared = result.metadata['pending_cleared'] as int? ?? 0;
+          final recordsCleared = result.metadata['records_cleared'] as int? ?? 0;
+
+          log('Repository: Sync history cleared - $pendingCleared pending, $recordsCleared records, $totalCleared total');
+
+          // Could also trigger a notification about storage space freed
+          await _notificationService.showDataCleanupCompletedNotification(totalCleared);
+        }
+
+        return result;
+      },
+      'clearSyncHistory',
+      fallbackValue: SyncResult.failure(
+        message: AppConstants.unknownErrorMessage,
+        errors: const ['Failed to clear sync history'],
+      ),
+    );
+  }
+
+  /// Retry failed submissions
+  Future<SyncResult> retryFailedSubmissions() async {
+    return await safeRepositoryCall(
+      () async {
+        log('Retrying failed submissions via repository');
+
+        // Check connectivity first
+        if (!_connectivity.isConnected) {
+          await _notificationService.showOfflineModeNotification();
+          return SyncResult.failure(
+            message: 'Cannot retry: No internet connection',
+            metadata: const {'reason': 'no_connectivity'},
+          );
+        }
+
+        // Show retry notification
+        await _notificationService.showSyncRetryNotification();
+
+        final result = await _syncService.retryFailedSubmissions();
+
+        // Handle notifications based on result
+        await _showSyncNotification(result);
+
+        return result;
+      },
+      'retryFailedSubmissions',
+      fallbackValue: SyncResult.failure(
+        message: AppConstants.networkErrorMessage,
+        errors: const ['Network error during retry'],
+      ),
+    );
+  }
+
+  /// Clean old sync data
+  Future<SyncResult> cleanOldSyncData() async {
+    return await safeRepositoryCall(
+      () async {
+        log('Starting old sync data cleanup via repository');
+
+        final result = await _syncService.cleanOldSyncData();
+
+        // Show appropriate notifications
+        if (result.success) {
+          await _notificationService.showDataCleanupCompletedNotification(1);
+        } else {
+          await _notificationService.showDataCleanupFailedNotification(result.message);
+        }
+
+        return result;
+      },
+      'cleanOldSyncData',
+      fallbackValue: SyncResult.failure(
+        message: AppConstants.unknownErrorMessage,
+        errors: const ['Failed to clean old data'],
+      ),
+    );
+  }
+
+  /// Store guard movement locally
+  Future<String> storeGuardMovementLocally(GuardMovementModel movement) async {
+    return await safeRepositoryCall(
+      () async {
+        return await _offlineStorage.storeGuardMovement(movement);
+      },
+      'storeGuardMovementLocally',
+    );
+  }
+
+  /// Store perimeter check locally
+  Future<String> storePerimeterCheckLocally(PerimeterCheckModel perimeterCheck) async {
+    return await safeRepositoryCall(
+      () async {
+        return await _offlineStorage.storePerimeterCheck(perimeterCheck);
+      },
+      'storePerimeterCheckLocally',
+    );
+  }
+
+  /// Get unsynced guard movements
+  Future<List<GuardMovementModel>> getUnsyncedGuardMovements({
+    int? guardId,
+    int? limit,
+  }) async {
+    return await safeRepositoryCall(
+      () async {
+        return await _offlineStorage.getUnsyncedGuardMovements(
+          guardId: guardId,
+          limit: limit,
+        );
+      },
+      'getUnsyncedGuardMovements',
+      fallbackValue: [],
+    );
+  }
+
+  /// Get unsynced perimeter checks
+  Future<List<PerimeterCheckModel>> getUnsyncedPerimeterChecks({
+    int? guardId,
+    int? limit,
+  }) async {
+    return await safeRepositoryCall(
+      () async {
+        return await _offlineStorage.getUnsyncedPerimeterChecks(
+          guardId: guardId,
+          limit: limit,
+        );
+      },
+      'getUnsyncedPerimeterChecks',
+      fallbackValue: [],
+    );
+  }
+
+  /// Clear roster cache
+  Future<void> clearRosterCache() async {
+    return await safeRepositoryCall(
+      () async {
+        await _offlineStorage.clearRosterCache();
+        log('Roster cache cleared successfully');
+      },
+      'clearRosterCache',
+    );
+  }
+
+  /// Clear all cache data
+  Future<void> clearAllCache() async {
+    return await safeRepositoryCall(
+      () async {
+        await _offlineStorage.clearAllCache();
+        log('All cache data cleared successfully');
+      },
+      'clearAllCache',
+    );
+  }
+
+  /// Get comprehensive sync report for UI/debugging
+  Future<Map<String, dynamic>> getSyncReport() async {
+    return await safeRepositoryCall(
+      () async {
+        final report = await _syncService.getSyncReport();
+
+        // Add repository-level enhancements
+        report['repositoryLevel'] = {
+          'lastRefresh': DateTime.now().toIso8601String(),
+          'connectivity': _connectivity.isConnected,
+          'hasPendingSubmissions': await hasPendingSubmissions(),
+        };
+
+        return report;
+      },
+      'getSyncReport',
+      fallbackValue: {
+        'error': 'Failed to generate sync report',
+        'generatedAt': DateTime.now().toIso8601String(),
+      },
+    );
+  }
+
+  /// Get sync status for UI
+  Future<Map<String, dynamic>> getSyncStatus() async {
+    return await safeRepositoryCall(
+      () async {
+        final status = await _syncService.getSyncStatus();
+
+        // Show sync reminder if needed
+        final daysSinceSync = status['daysSinceLastSync'] as int? ?? 0;
+        if (daysSinceSync >= 5) {
+          await _notificationService.showSyncRequiredNotification(daysSinceSync);
+        }
+
+        return status;
+      },
+      'getSyncStatus',
+      fallbackValue: {
+        'pendingSubmissions': 0,
+        'unsyncedMovements': 0,
+        'unsyncedPerimeterChecks': 0,
+        'daysSinceLastSync': 999,
+        'isSyncRequired': true,
+        'isConnected': false,
+        'isSyncing': false,
+      },
+    );
+  }
+
+  /// Get storage usage with notifications if needed
+  Future<Map<String, dynamic>> getStorageUsage() async {
+    return await safeRepositoryCall(
+      () async {
+        final usage = await _offlineStorage.getComprehensiveStorageStats();
+
+        // Check if storage is getting full (example threshold)
+        final databaseSizeMB = double.tryParse(usage['databaseSizeMB'] as String? ?? '0') ?? 0;
+        if (databaseSizeMB > 100) {
+          // 100MB threshold
+          await _notificationService.showStorageWarningNotification(databaseSizeMB);
+        }
+
+        return usage;
+      },
+      'getStorageUsage',
+      fallbackValue: {},
+    );
+  }
+
+  /// Show checkpoint completion notification
+  Future<void> showCheckpointCompletionNotification({
+    required String checkpointName,
+    required String siteName,
+  }) async {
+    return await safeRepositoryCall(
+      () async {
+        await _notificationService.showCheckpointCompletionAlert(
+          checkpointName: checkpointName,
+          siteName: siteName,
+        );
+        log('Checkpoint completion notification shown: $checkpointName at $siteName');
+      },
+      'showCheckpointCompletionNotification',
+    );
+  }
+
+  /// Show position alert for static duty
+  Future<void> showPositionAlert({
+    required String message,
+    required bool isReturnAlert,
+  }) async {
+    return await safeRepositoryCall(
+      () async {
+        await _notificationService.showPositionAlert(
+          message: message,
+          isReturnAlert: isReturnAlert,
+        );
+        log('Position alert shown: $message');
+      },
+      'showPositionAlert',
+    );
+  }
+
+  /// Show battery alert
+  Future<void> showBatteryAlert({
+    required String message,
+    required int batteryLevel,
+  }) async {
+    return await safeRepositoryCall(
+      () async {
+        await _notificationService.showBatteryAlert(
+          message: message,
+          batteryLevel: batteryLevel,
+        );
+        log('Battery alert shown: $message (Battery: $batteryLevel%)');
+      },
+      'showBatteryAlert',
+    );
+  }
+
+  /// Show emergency notification
+  Future<void> showEmergencyNotification({
+    required String title,
+    required String message,
+    Map<String, dynamic>? payload,
+  }) async {
+    return await safeRepositoryCall(
+      () async {
+        await _notificationService.showEmergencyNotification(
+          title: title,
+          message: message,
+          payload: payload,
+        );
+        log('Emergency notification shown: $title');
+      },
+      'showEmergencyNotification',
+    );
+  }
+
+  /// Cancel duty notifications for a specific roster user
+  Future<void> cancelDutyNotifications(List<int> notificationIds) async {
+    return await safeRepositoryCall(
+      () async {
+        for (final id in notificationIds) {
+          await _notificationService.cancelNotification(id);
+        }
+        log('Cancelled ${notificationIds.length} duty notifications');
+      },
+      'cancelDutyNotifications',
+    );
+  }
+
+  /// Get today's roster status
+  Future<RosterResponseModel> getTodaysRosterStatus({
+    required int guardId,
+  }) async {
+    return await getRosterData(
+      guardId: guardId,
+      fromDate: _dateService.getTodayFormattedDate(),
+    );
+  }
+
+  /// Get upcoming roster duties
+  Future<RosterResponseModel> getUpcomingRosterDuties({
+    required int guardId,
+  }) async {
+    return await getRosterData(
+      guardId: guardId,
+      fromDate: _dateService.getTodayFormattedDate(),
+    );
+  }
+
+  /// Check if there are pending submissions
+  Future<bool> hasPendingSubmissions() async {
+    return await safeRepositoryCall(
+      () async {
+        final count = await _offlineStorage.getPendingSubmissionsCount();
+        return count > 0;
+      },
+      'hasPendingSubmissions',
+      fallbackValue: false,
+    );
   }
 
   /// Extract unique sites list from roster data
@@ -563,466 +844,8 @@ class RosterRepository {
     final next24Hours = now.add(const Duration(hours: 24));
 
     return rosterResponse.data.where((rosterUser) {
-      return rosterUser.startsAt.isAfter(now) &&
-          rosterUser.startsAt.isBefore(next24Hours);
+      return rosterUser.startsAt.isAfter(now) && rosterUser.startsAt.isBefore(next24Hours);
     }).toList();
-  }
-
-  /// Sync pending submissions manually
-  Future<bool> syncPendingSubmissions() async {
-    try {
-      log('Starting manual sync of pending submissions via repository');
-      final result = await _syncService.manualSync();
-
-      // Handle UI concerns (notifications) based on SyncResult
-      await _showSyncNotification(result);
-
-      return result.success;
-    } catch (e) {
-      log('Failed to sync pending submissions: $e');
-      await _notificationService.showSyncCompletedNotification(0, 1);
-      return false;
-    }
-  }
-
-  /// Force sync all pending data
-  Future<SyncResult> forceSyncAll() async {
-    try {
-      log('Starting enhanced force sync via repository');
-
-      // Show starting notification for better UX
-      await _notificationService.showSyncStartedNotification();
-
-      final result = await _syncService.forceSyncAll();
-
-      // Handle UI concerns and enhanced reporting
-      await _showSyncNotification(result);
-      await _logSyncResult(result);
-
-      return result;
-    } catch (e) {
-      log('Failed to force sync all data: $e');
-
-      final errorResult = SyncResult.failure(
-        message: 'Force sync failed: ${e.toString()}',
-        errors: [e.toString()],
-      );
-
-      await _showSyncNotification(errorResult);
-      return errorResult;
-    }
-  }
-
-  /// Clear sync history - facade method with enhanced UX
-  Future<SyncResult> clearSyncHistory() async {
-    try {
-      log('Starting sync history cleanup via repository');
-
-      // Show notification that cleanup is starting
-      await _notificationService.showSyncStartedNotification();
-
-      final result = await _syncService.clearSyncHistory();
-
-      // Handle UI concerns and enhanced reporting
-      await _showSyncNotification(result);
-      await _logSyncResult(result);
-
-      // Additional repository-level logging for sync history clearing
-      if (result.success) {
-        final totalCleared = result.metadata['total_cleared'] as int? ?? 0;
-        final pendingCleared = result.metadata['pending_cleared'] as int? ?? 0;
-        final recordsCleared = result.metadata['records_cleared'] as int? ?? 0;
-
-        log('Repository: Sync history cleared - $pendingCleared pending, $recordsCleared records, $totalCleared total');
-
-        // Could also trigger a notification about storage space freed
-        await _notificationService
-            .showDataCleanupCompletedNotification(totalCleared);
-      }
-
-      return result;
-    } catch (e) {
-      log('Failed to clear sync history via repository: $e');
-
-      final errorResult = SyncResult.failure(
-        message: 'Failed to clear sync history: ${e.toString()}',
-        errors: [e.toString()],
-      );
-
-      await _showSyncNotification(errorResult);
-      return errorResult;
-    }
-  }
-
-  /// Get comprehensive sync report for UI/debugging
-  Future<Map<String, dynamic>> getSyncReport() async {
-    try {
-      final report = await _syncService.getSyncReport();
-
-      // Add repository-level enhancements
-      report['repositoryLevel'] = {
-        'lastRefresh': DateTime.now().toIso8601String(),
-        'connectivity': _connectivity.isConnected,
-        'hasPendingSubmissions': await hasPendingSubmissions(),
-      };
-
-      return report;
-    } catch (e) {
-      log('Failed to get sync report: $e');
-      return {
-        'error': e.toString(),
-        'generatedAt': DateTime.now().toIso8601String(),
-      };
-    }
-  }
-
-  /// Clean old sync data - facade method with notifications
-  Future<SyncResult> cleanOldSyncData() async {
-    try {
-      log('Starting old sync data cleanup via repository');
-
-      final result = await _syncService.cleanOldSyncData();
-
-      // Show appropriate notifications
-      if (result.success) {
-        await _notificationService.showDataCleanupCompletedNotification(1);
-      } else {
-        await _notificationService
-            .showDataCleanupFailedNotification(result.message);
-      }
-
-      return result;
-    } catch (e) {
-      log('Failed to clean old sync data via repository: $e');
-
-      final errorResult = SyncResult.failure(
-        message: 'Failed to clean old sync data: ${e.toString()}',
-        errors: [e.toString()],
-      );
-
-      await _notificationService
-          .showDataCleanupFailedNotification(errorResult.message);
-      return errorResult;
-    }
-  }
-
-  /// Get sync history for UI display
-  Future<List<Map<String, dynamic>>> getSyncHistory({int limit = 20}) async {
-    try {
-      return await _syncService.getSyncHistory(limit: limit);
-    } catch (e) {
-      log('Failed to get sync history: $e');
-      return [];
-    }
-  }
-
-  /// Retry failed submissions - enhanced facade method
-  Future<SyncResult> retryFailedSubmissions() async {
-    try {
-      log('Retrying failed submissions via repository');
-
-      // Check connectivity first
-      if (!_connectivity.isConnected) {
-        await _notificationService.showOfflineModeNotification();
-        return SyncResult.failure(
-          message: 'Cannot retry: No internet connection',
-          metadata: const {'reason': 'no_connectivity'},
-        );
-      }
-
-      // Show retry notification
-      await _notificationService.showSyncRetryNotification();
-
-      final result = await _syncService.retryFailedSubmissions();
-
-      // Handle notifications based on result
-      await _showSyncNotification(result);
-
-      return result;
-    } catch (e) {
-      log('Failed to retry failed submissions: $e');
-
-      final errorResult = SyncResult.failure(
-        message: 'Failed to retry submissions: ${e.toString()}',
-        errors: [e.toString()],
-      );
-
-      await _showSyncNotification(errorResult);
-      return errorResult;
-    }
-  }
-
-  /// Export sync data for debugging/support
-  Future<Map<String, dynamic>> exportSyncDataForDebug() async {
-    try {
-      // Get data from OfflineStorageService
-      final debugData = await _offlineStorage.exportSyncDataForDebug();
-
-      // Add repository-level context
-      debugData['repositoryContext'] = {
-        'connectivity': _connectivity.isConnected,
-        'lastSyncAttempt': await _syncService.getDaysSinceLastSync(),
-        'isSyncing': _syncService.isSyncing,
-        'exportedFromRepository': true,
-      };
-
-      return debugData;
-    } catch (e) {
-      log('Failed to export sync data for debug: $e');
-      return {
-        'error': e.toString(),
-        'exportedAt': DateTime.now().toIso8601String(),
-      };
-    }
-  }
-
-  /// Get storage usage with notifications if needed
-  Future<Map<String, dynamic>> getStorageUsage() async {
-    try {
-      final usage = await _offlineStorage.getComprehensiveStorageStats();
-
-      // Check if storage is getting full (example threshold)
-      final databaseSizeMB =
-          double.tryParse(usage['databaseSizeMB'] as String? ?? '0') ?? 0;
-      if (databaseSizeMB > 100) {
-        // 100MB threshold
-        await _notificationService
-            .showStorageWarningNotification(databaseSizeMB);
-      }
-
-      return usage;
-    } catch (e) {
-      log('Failed to get storage usage: $e');
-      return {};
-    }
-  }
-
-  /// Private helper to show appropriate sync notifications (Enhanced version)
-  Future<void> _showSyncNotification(SyncResult result) async {
-    try {
-      if (result.isCompleteSuccess) {
-        // Use enhanced notification with timing if available
-        final duration = result.formattedDuration;
-        if (duration != 'Unknown') {
-          await _notificationService.showSyncCompletedWithDetailsNotification(
-            result.successCount,
-            result.failureCount,
-            duration,
-          );
-        } else {
-          await _notificationService.showSyncCompletedNotification(
-            result.successCount,
-            result.failureCount,
-          );
-        }
-      } else if (result.isPartialSuccess) {
-        await _notificationService.showSyncPartialSuccessNotification(
-          result.successCount,
-          result.failureCount,
-        );
-      } else {
-        await _notificationService.showSyncFailedNotification(
-          result.message,
-          result.failureCount,
-        );
-      }
-    } catch (e) {
-      log('Failed to show sync notification: $e');
-    }
-  }
-
-  /// Private helper to log detailed sync results for monitoring
-  Future<void> _logSyncResult(SyncResult result) async {
-    try {
-      final logData = {
-        'timestamp': DateTime.now().toIso8601String(),
-        'operation': 'sync_result',
-        'success': result.success,
-        'success_count': result.successCount,
-        'failure_count': result.failureCount,
-        'total_count': result.totalCount,
-        'success_rate': result.successRate,
-        'success_percentage': result.successPercentage,
-        'duration': result.formattedDuration,
-        'errors': result.errors,
-        'metadata': result.metadata,
-        'result_type': result.isCompleteSuccess
-            ? 'complete_success'
-            : result.isPartialSuccess
-                ? 'partial_success'
-                : 'failure',
-      };
-
-      // Log to your analytics/monitoring service
-      log('Enhanced sync result: ${jsonEncode(logData)}');
-
-      // You could also save to local storage for debugging
-      // await _offlineStorage.saveSyncLog(logData);
-    } catch (e) {
-      log('Failed to log enhanced sync result: $e');
-    }
-  }
-
-  /// Check if there are pending submissions
-  Future<bool> hasPendingSubmissions() async {
-    try {
-      final count = await _offlineStorage.getPendingSubmissionsCount();
-      return count > 0;
-    } catch (e) {
-      log('Failed to check pending submissions: $e');
-      return false;
-    }
-  }
-
-  /// Get sync status for UI
-  Future<Map<String, dynamic>> getSyncStatus() async {
-    try {
-      final status = await _syncService.getSyncStatus();
-
-      // Show sync reminder if needed
-      final daysSinceSync = status['daysSinceLastSync'] as int? ?? 0;
-      if (daysSinceSync >= 5) {
-        await _notificationService.showSyncRequiredNotification(daysSinceSync);
-      }
-
-      return status;
-    } catch (e) {
-      log('Failed to get sync status: $e');
-      return {
-        'pendingSubmissions': 0,
-        'unsyncedMovements': 0,
-        'unsyncedPerimeterChecks': 0,
-        'daysSinceLastSync': 999,
-        'isSyncRequired': true,
-        'isConnected': false,
-        'isSyncing': false,
-      };
-    }
-  }
-
-  /// Get detailed sync statistics
-  Future<Map<String, dynamic>> getSyncStatistics() async {
-    try {
-      return await _syncService.getSyncStatistics();
-    } catch (e) {
-      log('Failed to get sync statistics: $e');
-      return {};
-    }
-  }
-
-  /// Get today's roster status
-  Future<RosterResponseModel> getTodaysRosterStatus({
-    required int guardId,
-  }) async {
-    return await getRosterData(
-      guardId: guardId,
-      fromDate: _dateService.getTodayFormattedDate(),
-    );
-  }
-
-  /// Get upcoming roster duties
-  Future<RosterResponseModel> getUpcomingRosterDuties({
-    required int guardId,
-  }) async {
-    return await getRosterData(
-      guardId: guardId,
-      fromDate: _dateService.getTodayFormattedDate(),
-    );
-  }
-
-  /// Store guard movement locally
-  Future<String> storeGuardMovementLocally(GuardMovementModel movement) async {
-    try {
-      return await _offlineStorage.storeGuardMovement(movement);
-    } catch (e) {
-      log('Failed to store guard movement locally: $e');
-      rethrow;
-    }
-  }
-
-  /// Store perimeter check locally
-  Future<String> storePerimeterCheckLocally(
-      PerimeterCheckModel perimeterCheck) async {
-    try {
-      return await _offlineStorage.storePerimeterCheck(perimeterCheck);
-    } catch (e) {
-      log('Failed to store perimeter check locally: $e');
-      rethrow;
-    }
-  }
-
-  /// Get unsynced guard movements
-  Future<List<GuardMovementModel>> getUnsyncedGuardMovements({
-    int? guardId,
-    int? limit,
-  }) async {
-    try {
-      return await _offlineStorage.getUnsyncedGuardMovements(
-        guardId: guardId,
-        limit: limit,
-      );
-    } catch (e) {
-      log('Failed to get unsynced guard movements: $e');
-      return [];
-    }
-  }
-
-  /// Get unsynced perimeter checks
-  Future<List<PerimeterCheckModel>> getUnsyncedPerimeterChecks({
-    int? guardId,
-    int? limit,
-  }) async {
-    try {
-      return await _offlineStorage.getUnsyncedPerimeterChecks(
-        guardId: guardId,
-        limit: limit,
-      );
-    } catch (e) {
-      log('Failed to get unsynced perimeter checks: $e');
-      return [];
-    }
-  }
-
-  /// Get storage statistics
-  Future<Map<String, int>> getStorageStatistics() async {
-    try {
-      return await _offlineStorage.getStorageStatistics();
-    } catch (e) {
-      log('Failed to get storage statistics: $e');
-      return {};
-    }
-  }
-
-  /// Clear all roster cache
-  Future<void> clearRosterCache() async {
-    try {
-      await _offlineStorage.clearRosterCache();
-      log('Roster cache cleared successfully');
-    } catch (e) {
-      log('Failed to clear roster cache: $e');
-      rethrow;
-    }
-  }
-
-  /// Clear all cache data
-  Future<void> clearAllCache() async {
-    try {
-      await _offlineStorage.clearAllCache();
-      log('All cache data cleared successfully');
-    } catch (e) {
-      log('Failed to clear all cache: $e');
-      rethrow;
-    }
-  }
-
-  /// Clean old data
-  Future<void> cleanOldData() async {
-    try {
-      await _offlineStorage.cleanOldData();
-      log('Old data cleaned successfully');
-    } catch (e) {
-      log('Failed to clean old data: $e');
-    }
   }
 
   /// Check connectivity status
@@ -1032,6 +855,60 @@ class RosterRepository {
   Stream<bool> get connectivityStream => _connectivity.connectivityStream;
 
   /// Private helper methods
+
+  /// Get authentication token with error handling
+  Future<String> _getAuthToken() async {
+    final token = await AuthManager().getToken();
+    if (token == null) {
+      throw const AuthException(
+        message: AppConstants.sessionExpiredMessage,
+        statusCode: ApiConstants.unauthorizedCode,
+      );
+    }
+    return token;
+  }
+
+  /// Schedule duty notifications for upcoming duties in roster
+  Future<void> _scheduleDutyNotificationsFromRoster(RosterResponseModel rosterResponse) async {
+    return await safeRepositoryCall(
+      () async {
+        final now = DateTime.now();
+        final upcomingDuties = rosterResponse.data.where((rosterUser) {
+          // Only schedule for duties that haven't started yet
+          return rosterUser.startsAt.isAfter(now);
+        }).toList();
+
+        for (final rosterUser in upcomingDuties) {
+          final scheduledIds = await _notificationService.scheduleDutyNotifications(
+            rosterUser: rosterUser,
+            site: rosterUser.site,
+          );
+
+          if (scheduledIds.isNotEmpty) {
+            log('Scheduled ${scheduledIds.length} notifications for duty at ${rosterUser.site.name}');
+          }
+        }
+      },
+      'scheduleDutyNotificationsFromRoster',
+    );
+  }
+
+  /// Check sync status and show reminder if needed
+  Future<void> _checkAndShowSyncReminder() async {
+    return await safeRepositoryCall(
+      () async {
+        final syncStatus = await _syncService.getSyncStatus();
+        final daysSinceSync = syncStatus['daysSinceLastSync'] as int? ?? 0;
+
+        // Show sync reminder based on days since last sync
+        if (daysSinceSync >= 5) {
+          await _notificationService.showSyncRequiredNotification(daysSinceSync);
+          log('Sync reminder shown for $daysSinceSync days since last sync');
+        }
+      },
+      'checkAndShowSyncReminder',
+    );
+  }
 
   /// Apply pagination to cached data
   RosterResponseModel _paginateCachedData(
@@ -1045,9 +922,7 @@ class RosterRepository {
     final paginatedItems = cachedData.data.length > startIndex
         ? cachedData.data.sublist(
             startIndex,
-            endIndex > cachedData.data.length
-                ? cachedData.data.length
-                : endIndex,
+            endIndex > cachedData.data.length ? cachedData.data.length : endIndex,
           )
         : <RosterUserModel>[];
 
@@ -1055,6 +930,140 @@ class RosterRepository {
       data: paginatedItems,
       links: cachedData.links,
       meta: cachedData.meta,
+    );
+  }
+
+  /// Show appropriate sync notifications
+  Future<void> _showSyncNotification(SyncResult result) async {
+    return await safeRepositoryCall(
+      () async {
+        if (result.isCompleteSuccess) {
+          // Use enhanced notification with timing if available
+          final duration = result.formattedDuration;
+          if (duration != 'Unknown') {
+            await _notificationService.showSyncCompletedWithDetailsNotification(
+              result.successCount,
+              result.failureCount,
+              duration,
+            );
+          } else {
+            await _notificationService.showSyncCompletedNotification(
+              result.successCount,
+              result.failureCount,
+            );
+          }
+        } else if (result.isPartialSuccess) {
+          await _notificationService.showSyncPartialSuccessNotification(
+            result.successCount,
+            result.failureCount,
+          );
+        } else {
+          await _notificationService.showSyncFailedNotification(
+            result.message,
+            result.failureCount,
+          );
+        }
+      },
+      'showSyncNotification',
+    );
+  }
+
+  /// Log detailed sync results for monitoring
+  Future<void> _logSyncResult(SyncResult result) async {
+    return await safeRepositoryCall(
+      () async {
+        final logData = {
+          'timestamp': DateTime.now().toIso8601String(),
+          'operation': 'sync_result',
+          'success': result.success,
+          'success_count': result.successCount,
+          'failure_count': result.failureCount,
+          'total_count': result.totalCount,
+          'success_rate': result.successRate,
+          'success_percentage': result.successPercentage,
+          'duration': result.formattedDuration,
+          'errors': result.errors,
+          'metadata': result.metadata,
+          'result_type': result.isCompleteSuccess
+              ? 'complete_success'
+              : result.isPartialSuccess
+                  ? 'partial_success'
+                  : 'failure',
+        };
+
+        // Log to your analytics/monitoring service
+        log('Enhanced sync result: ${jsonEncode(logData)}');
+      },
+      'logSyncResult',
+    );
+  }
+
+  /// Get detailed sync statistics
+  Future<Map<String, dynamic>> getSyncStatistics() async {
+    return await safeRepositoryCall(
+      () async {
+        return await _syncService.getSyncStatistics();
+      },
+      'getSyncStatistics',
+      fallbackValue: {},
+    );
+  }
+
+  /// Get sync history for UI display
+  Future<List<Map<String, dynamic>>> getSyncHistory({int limit = 20}) async {
+    return await safeRepositoryCall(
+      () async {
+        return await _syncService.getSyncHistory(limit: limit);
+      },
+      'getSyncHistory',
+      fallbackValue: [],
+    );
+  }
+
+  /// Export sync data for debugging/support
+  Future<Map<String, dynamic>> exportSyncDataForDebug() async {
+    return await safeRepositoryCall(
+      () async {
+        // Get data from OfflineStorageService
+        final debugData = await _offlineStorage.exportSyncDataForDebug();
+
+        // Add repository-level context
+        debugData['repositoryContext'] = {
+          'connectivity': _connectivity.isConnected,
+          'lastSyncAttempt': await _syncService.getDaysSinceLastSync(),
+          'isSyncing': _syncService.isSyncing,
+          'exportedFromRepository': true,
+        };
+
+        return debugData;
+      },
+      'exportSyncDataForDebug',
+      fallbackValue: {
+        'error': 'Failed to export debug data',
+        'exportedAt': DateTime.now().toIso8601String(),
+      },
+    );
+  }
+
+  /// Get storage statistics
+  Future<Map<String, int>> getStorageStatistics() async {
+    return await safeRepositoryCall(
+      () async {
+        return await _offlineStorage.getStorageStatistics();
+      },
+      'getStorageStatistics',
+      fallbackValue: {},
+    );
+  }
+
+  /// Clean old data
+  Future<void> cleanOldData() async {
+    return await safeRepositoryCall(
+      () async {
+        await _offlineStorage.cleanOldData();
+        log('Old data cleaned successfully');
+      },
+      'cleanOldData',
     );
   }
 
@@ -1066,7 +1075,7 @@ class RosterRepository {
       _notificationService.dispose();
       log('RosterRepository disposed successfully');
     } catch (e) {
-      log('Error disposing RosterRepository: $e');
+      log('Error disposing RosterRepository: ${getUserFriendlyMessage(e)}');
     }
   }
 }
