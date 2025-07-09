@@ -15,7 +15,7 @@ mixin ProviderErrorMixin {
     return await DataLayerErrorHandler.safeHttpCall(httpCall, operation);
   }
 
-  /// Execute HTTP call with automatic timeout using ApiConstants
+  /// Execute HTTP call with automatic timeout 
   Future<http.Response> safeHttpCallWithTimeout(
     Future<http.Response> Function() httpCall,
     String operation, {
@@ -29,7 +29,7 @@ mixin ProviderErrorMixin {
     );
   }
 
-  /// Execute HTTP call with retry logic using AppConstants
+  /// Execute HTTP call with retry logic 
   Future<http.Response> safeHttpCallWithRetry(
     Future<http.Response> Function() httpCall,
     String operation, {
@@ -139,7 +139,7 @@ mixin ProviderErrorMixin {
     }
   }
 
-  /// Build standard headers using ApiConstants
+  /// Build standard headers 
   Map<String, String> buildStandardHeaders({String? token}) {
     final headers = <String, String>{
       ApiConstants.acceptHeader: ApiConstants.jsonContentType,
@@ -152,7 +152,7 @@ mixin ProviderErrorMixin {
     return headers;
   }
 
-  /// Build POST/PATCH headers using ApiConstants
+  /// Build POST/PATCH headers 
   Map<String, String> buildPostHeaders({String? token}) {
     final headers = buildStandardHeaders(token: token);
     headers[ApiConstants.contentTypeHeader] = ApiConstants.jsonContentType;
@@ -198,17 +198,17 @@ mixin ProviderErrorMixin {
     }
   }
 
-  /// Check if response indicates success using ApiConstants
+  /// Check if response indicates success 
   bool isSuccessResponse(http.Response response) {
     return ApiConstants.isSuccessStatusCode(response.statusCode);
   }
 
-  /// Check if response indicates client error using ApiConstants
+  /// Check if response indicates client error 
   bool isClientError(http.Response response) {
     return ApiConstants.isClientError(response.statusCode);
   }
 
-  /// Check if response indicates server error using ApiConstants
+  /// Check if response indicates server error 
   bool isServerError(http.Response response) {
     return ApiConstants.isServerError(response.statusCode);
   }
@@ -218,7 +218,7 @@ mixin ProviderErrorMixin {
     return ApiConstants.requiresAuthentication(response.statusCode);
   }
 
-  /// Get appropriate timeout for operation type using AppConstants
+  /// Get appropriate timeout for operation type 
   Duration getTimeoutForOperation(String operationType) {
     switch (operationType.toLowerCase()) {
       case 'upload':
