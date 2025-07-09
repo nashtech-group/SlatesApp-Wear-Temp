@@ -136,7 +136,7 @@ class RosterRepository with RepositoryErrorMixin {
         final cachedData = await _offlineStorage.getCachedRosterData(guardId);
         
         if (cachedData == null) {
-          throw const CacheException(
+          throw  CacheException(
             message: 'No offline data available',
           );
         }
@@ -161,7 +161,7 @@ class RosterRepository with RepositoryErrorMixin {
     );
 
     if (!requestData.hasAnyData) {
-      throw const ValidationException(
+      throw  ValidationException(
         message: 'No data provided for submission',
       );
     }
@@ -185,7 +185,7 @@ class RosterRepository with RepositoryErrorMixin {
         final token = await _getAuthToken();
         
         if (!_connectivity.isConnected) {
-          throw const NetworkException(
+          throw  NetworkException(
             message: AppConstants.networkErrorMessage,
           );
         }
@@ -280,7 +280,7 @@ class RosterRepository with RepositoryErrorMixin {
         final token = await _getAuthToken();
 
         if (!_connectivity.isConnected) {
-          throw const NetworkException(
+          throw  NetworkException(
             message: AppConstants.networkErrorMessage,
           );
         }

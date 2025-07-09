@@ -102,7 +102,7 @@ class AuthRepository with RepositoryErrorMixin {
         final token = await AuthManager().getToken();
         
         if (token == null) {
-          throw const AuthException(
+          throw  AuthException(
             message: AppConstants.sessionExpiredMessage,
             statusCode: ApiConstants.unauthorizedCode,
           );
@@ -209,7 +209,7 @@ class AuthRepository with RepositoryErrorMixin {
       return offlineData;
     }
 
-    throw const AuthException(
+    throw  AuthException(
       message: AppConstants.noOfflineDataMessage,
       statusCode: ApiConstants.notFoundCode,
     );
@@ -305,7 +305,7 @@ class AuthRepository with RepositoryErrorMixin {
   Future<LoginResponseModel> _attemptOfflineLogin(LoginModel loginModel) async {
     // Check if this is a guard login (employeeId format)
     if (!_isGuardEmployeeId(loginModel.identifier)) {
-      throw const AuthException(
+      throw  AuthException(
         message: AppConstants.offlineLoginUnavailable,
         statusCode: ApiConstants.forbiddenCode,
       );
@@ -314,7 +314,7 @@ class AuthRepository with RepositoryErrorMixin {
     final offlineData = await _getOfflineLoginData(loginModel.identifier);
     
     if (offlineData == null) {
-      throw const AuthException(
+      throw  AuthException(
         message: AppConstants.noOfflineDataMessage,
         statusCode: ApiConstants.notFoundCode,
       );
@@ -343,7 +343,7 @@ class AuthRepository with RepositoryErrorMixin {
             expiresIn: timeUntilExpiry.inSeconds,
           );
         } else {
-          throw const AuthException(
+          throw  AuthException(
             message: AppConstants.expiredOfflineDataMessage,
             statusCode: ApiConstants.unauthorizedCode,
           );
