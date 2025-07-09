@@ -12,12 +12,12 @@ abstract class Failure extends Equatable {
   final dynamic data;
   final DateTime timestamp;
 
-  const Failure({
+  Failure({
     required this.message,
     this.statusCode,
     this.data,
     DateTime? timestamp,
-  }) : timestamp = timestamp ?? const DateTime.now();
+  }) : timestamp = timestamp ?? DateTime.now();
 
   @override
   List<Object?> get props => [message, statusCode, data, timestamp];
@@ -91,7 +91,7 @@ abstract class Failure extends Equatable {
 
 /// Server-related failures
 class ServerFailure extends Failure {
-  const ServerFailure({
+  ServerFailure({
     String? message,
     super.statusCode,
     super.data,
@@ -111,7 +111,7 @@ class ServerFailure extends Failure {
 
 /// Network-related failures
 class NetworkFailure extends Failure {
-  const NetworkFailure({
+  NetworkFailure({
     String? message,
     super.statusCode,
     super.data,
@@ -131,7 +131,7 @@ class NetworkFailure extends Failure {
 
 /// Cache-related failures
 class CacheFailure extends Failure {
-  const CacheFailure({
+  CacheFailure({
     String? message,
     super.statusCode,
     super.data,
@@ -153,7 +153,7 @@ class CacheFailure extends Failure {
 class ValidationFailure extends Failure {
   final Map<String, List<String>>? validationErrors;
 
-  const ValidationFailure({
+  ValidationFailure({
     String? message,
     super.statusCode,
     super.data,
@@ -212,7 +212,7 @@ class ValidationFailure extends Failure {
 
 /// Authentication and authorization related failures
 class AuthFailure extends Failure {
-  const AuthFailure({
+  AuthFailure({
     String? message,
     super.statusCode,
     super.data,
@@ -232,7 +232,7 @@ class AuthFailure extends Failure {
 
 /// Specific authentication failures with predefined messages from constants
 class UnauthorizedFailure extends AuthFailure {
-  const UnauthorizedFailure({
+  UnauthorizedFailure({
     String? message,
     super.data,
     super.timestamp,
@@ -250,7 +250,7 @@ class UnauthorizedFailure extends AuthFailure {
 }
 
 class ForbiddenFailure extends AuthFailure {
-  const ForbiddenFailure({
+  ForbiddenFailure({
     String? message,
     super.data,
     super.timestamp,
@@ -268,7 +268,7 @@ class ForbiddenFailure extends AuthFailure {
 }
 
 class SessionExpiredFailure extends AuthFailure {
-  const SessionExpiredFailure({
+  SessionExpiredFailure({
     String? message,
     super.data,
     super.timestamp,
@@ -286,7 +286,7 @@ class SessionExpiredFailure extends AuthFailure {
 }
 
 class AccountLockedFailure extends AuthFailure {
-  const AccountLockedFailure({
+  AccountLockedFailure({
     String? message,
     super.data,
     super.timestamp,
@@ -305,7 +305,7 @@ class AccountLockedFailure extends AuthFailure {
 
 /// Resource not found failure
 class NotFoundFailure extends Failure {
-  const NotFoundFailure({
+  NotFoundFailure({
     String? message,
     super.data,
     super.timestamp,
@@ -324,7 +324,7 @@ class NotFoundFailure extends Failure {
 
 /// Timeout-related failures
 class TimeoutFailure extends NetworkFailure {
-  const TimeoutFailure({
+  TimeoutFailure({
     String? message,
     super.data,
     super.timestamp,
@@ -343,7 +343,7 @@ class TimeoutFailure extends NetworkFailure {
 
 /// Rate limiting failure
 class RateLimitFailure extends ServerFailure {
-  const RateLimitFailure({
+  RateLimitFailure({
     String? message,
     super.data,
     super.timestamp,
@@ -362,7 +362,7 @@ class RateLimitFailure extends ServerFailure {
 
 /// Maintenance mode failure
 class MaintenanceFailure extends ServerFailure {
-  const MaintenanceFailure({
+  MaintenanceFailure({
     String? message,
     super.data,
     super.timestamp,
@@ -381,7 +381,7 @@ class MaintenanceFailure extends ServerFailure {
 
 /// Location/GPS related failures
 class LocationFailure extends Failure {
-  const LocationFailure({
+  LocationFailure({
     String? message,
     super.statusCode,
     super.data,
@@ -400,7 +400,7 @@ class LocationFailure extends Failure {
 }
 
 class GeofenceViolationFailure extends LocationFailure {
-  const GeofenceViolationFailure({
+  GeofenceViolationFailure({
     String? message,
     super.data,
     super.timestamp,
@@ -418,7 +418,7 @@ class GeofenceViolationFailure extends LocationFailure {
 
 /// Offline data related failures
 class OfflineDataFailure extends Failure {
-  const OfflineDataFailure({
+  OfflineDataFailure({
     String? message,
     super.statusCode,
     super.data,
@@ -437,7 +437,7 @@ class OfflineDataFailure extends Failure {
 }
 
 class ExpiredOfflineDataFailure extends OfflineDataFailure {
-  const ExpiredOfflineDataFailure({
+  ExpiredOfflineDataFailure({
     String? message,
     super.data,
     super.timestamp,
@@ -455,7 +455,7 @@ class ExpiredOfflineDataFailure extends OfflineDataFailure {
 
 /// Device/Hardware related failures
 class DeviceFailure extends Failure {
-  const DeviceFailure({
+  DeviceFailure({
     String? message,
     super.statusCode,
     super.data,
@@ -474,7 +474,7 @@ class DeviceFailure extends Failure {
 }
 
 class UntrustedDeviceFailure extends DeviceFailure {
-  const UntrustedDeviceFailure({
+  UntrustedDeviceFailure({
     String? message,
     super.data,
     super.timestamp,
@@ -492,7 +492,7 @@ class UntrustedDeviceFailure extends DeviceFailure {
 
 /// Data synchronization failures
 class SyncFailure extends Failure {
-  const SyncFailure({
+  SyncFailure({
     String? message,
     super.statusCode,
     super.data,
@@ -512,7 +512,7 @@ class SyncFailure extends Failure {
 
 /// Business logic failures for guard duty specific operations
 class GuardDutyFailure extends Failure {
-  const GuardDutyFailure({
+  GuardDutyFailure({
     required super.message,
     super.statusCode,
     super.data,
@@ -529,7 +529,7 @@ class GuardDutyFailure extends Failure {
 }
 
 class RosterFailure extends GuardDutyFailure {
-  const RosterFailure({
+  RosterFailure({
     String? message,
     super.statusCode,
     super.data,
@@ -548,7 +548,7 @@ class RosterFailure extends GuardDutyFailure {
 }
 
 class MovementFailure extends GuardDutyFailure {
-  const MovementFailure({
+  MovementFailure({
     String? message,
     super.statusCode,
     super.data,
@@ -567,7 +567,7 @@ class MovementFailure extends GuardDutyFailure {
 }
 
 class PerimeterCheckFailure extends GuardDutyFailure {
-  const PerimeterCheckFailure({
+  PerimeterCheckFailure({
     String? message,
     super.statusCode,
     super.data,

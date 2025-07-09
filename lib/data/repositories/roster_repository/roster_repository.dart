@@ -88,7 +88,7 @@ class RosterRepository with RepositoryErrorMixin {
         final token = await _getAuthToken();
         
         if (!_connectivity.isConnected) {
-          throw const NetworkException(
+          throw  NetworkException(
             message: AppConstants.networkErrorMessage,
           );
         }
@@ -323,7 +323,7 @@ class RosterRepository with RepositoryErrorMixin {
       () async {
         final cachedData = await _offlineStorage.getCachedRosterData(guardId);
         if (cachedData == null) {
-          throw const CacheException(
+          throw  CacheException(
             message: 'No offline data available',
           );
         }
@@ -345,7 +345,7 @@ class RosterRepository with RepositoryErrorMixin {
         final token = await _getAuthToken();
 
         if (!_connectivity.isConnected) {
-          throw const NetworkException(
+          throw  NetworkException(
             message: 'Bulk roster data requires internet connection',
           );
         }
@@ -387,7 +387,7 @@ class RosterRepository with RepositoryErrorMixin {
         final token = await _getAuthToken();
 
         if (!_connectivity.isConnected) {
-          throw const NetworkException(
+          throw  NetworkException(
             message: 'Date range queries require internet connection',
           );
         }
@@ -860,7 +860,7 @@ class RosterRepository with RepositoryErrorMixin {
   Future<String> _getAuthToken() async {
     final token = await AuthManager().getToken();
     if (token == null) {
-      throw const AuthException(
+      throw  AuthException(
         message: AppConstants.sessionExpiredMessage,
         statusCode: ApiConstants.unauthorizedCode,
       );

@@ -10,12 +10,12 @@ abstract class AppException implements Exception {
   final dynamic data;
   final DateTime timestamp;
 
-  const AppException({
+  AppException({
     required this.message,
     this.statusCode,
     this.data,
     DateTime? timestamp,
-  }) : timestamp = timestamp ?? const DateTime.now();
+  }) : timestamp = timestamp ?? DateTime.now();
 
   @override
   String toString() => 'AppException: $message';
@@ -81,7 +81,7 @@ abstract class AppException implements Exception {
 
 /// Server-related exceptions
 class ServerException extends AppException {
-  const ServerException({
+  ServerException({
     String? message,
     super.statusCode,
     super.data,
@@ -96,7 +96,7 @@ class ServerException extends AppException {
 
 /// Network-related exceptions
 class NetworkException extends AppException {
-  const NetworkException({
+  NetworkException({
     String? message,
     super.statusCode,
     super.data,
@@ -111,7 +111,7 @@ class NetworkException extends AppException {
 
 /// Cache-related exceptions
 class CacheException extends AppException {
-  const CacheException({
+  CacheException({
     String? message,
     super.statusCode,
     super.data,
@@ -128,7 +128,7 @@ class CacheException extends AppException {
 class ValidationException extends AppException {
   final Map<String, List<String>>? validationErrors;
 
-  const ValidationException({
+  ValidationException({
     String? message,
     super.statusCode,
     super.data,
@@ -178,7 +178,7 @@ class ValidationException extends AppException {
 
 /// Authentication and authorization related exceptions
 class AuthException extends AppException {
-  const AuthException({
+  AuthException({
     String? message,
     super.statusCode,
     super.data,
@@ -193,7 +193,7 @@ class AuthException extends AppException {
 
 /// Specific authentication exceptions with predefined messages from constants
 class UnauthorizedException extends AuthException {
-  const UnauthorizedException({
+  UnauthorizedException({
     String? message,
     super.data,
     super.timestamp,
@@ -204,7 +204,7 @@ class UnauthorizedException extends AuthException {
 }
 
 class ForbiddenException extends AuthException {
-  const ForbiddenException({
+  ForbiddenException({
     String? message,
     super.data,
     super.timestamp,
@@ -215,7 +215,7 @@ class ForbiddenException extends AuthException {
 }
 
 class SessionExpiredException extends AuthException {
-  const SessionExpiredException({
+  SessionExpiredException({
     String? message,
     super.data,
     super.timestamp,
@@ -226,7 +226,7 @@ class SessionExpiredException extends AuthException {
 }
 
 class AccountLockedException extends AuthException {
-  const AccountLockedException({
+  AccountLockedException({
     String? message,
     super.data,
     super.timestamp,
@@ -238,7 +238,7 @@ class AccountLockedException extends AuthException {
 
 /// Resource not found exception
 class NotFoundException extends AppException {
-  const NotFoundException({
+  NotFoundException({
     String? message,
     super.data,
     super.timestamp,
@@ -253,7 +253,7 @@ class NotFoundException extends AppException {
 
 /// Timeout-related exceptions
 class TimeoutException extends NetworkException {
-  const TimeoutException({
+  TimeoutException({
     String? message,
     super.data,
     super.timestamp,
@@ -268,7 +268,7 @@ class TimeoutException extends NetworkException {
 
 /// Rate limiting exception
 class RateLimitException extends ServerException {
-  const RateLimitException({
+  RateLimitException({
     String? message,
     super.data,
     super.timestamp,
@@ -280,7 +280,7 @@ class RateLimitException extends ServerException {
 
 /// Maintenance mode exception
 class MaintenanceException extends ServerException {
-  const MaintenanceException({
+  MaintenanceException({
     String? message,
     super.data,
     super.timestamp,
@@ -292,7 +292,7 @@ class MaintenanceException extends ServerException {
 
 /// Location/GPS related exceptions
 class LocationException extends AppException {
-  const LocationException({
+  LocationException({
     String? message,
     super.statusCode,
     super.data,
@@ -306,7 +306,7 @@ class LocationException extends AppException {
 }
 
 class GeofenceViolationException extends LocationException {
-  const GeofenceViolationException({
+  GeofenceViolationException({
     String? message,
     super.data,
     super.timestamp,
@@ -317,7 +317,7 @@ class GeofenceViolationException extends LocationException {
 
 /// Offline data related exceptions
 class OfflineDataException extends AppException {
-  const OfflineDataException({
+  OfflineDataException({
     String? message,
     super.statusCode,
     super.data,
@@ -331,7 +331,7 @@ class OfflineDataException extends AppException {
 }
 
 class ExpiredOfflineDataException extends OfflineDataException {
-  const ExpiredOfflineDataException({
+  ExpiredOfflineDataException({
     String? message,
     super.data,
     super.timestamp,
@@ -342,7 +342,7 @@ class ExpiredOfflineDataException extends OfflineDataException {
 
 /// Device/Hardware related exceptions
 class DeviceException extends AppException {
-  const DeviceException({
+  DeviceException({
     String? message,
     super.statusCode,
     super.data,
@@ -356,7 +356,7 @@ class DeviceException extends AppException {
 }
 
 class UntrustedDeviceException extends DeviceException {
-  const UntrustedDeviceException({
+  UntrustedDeviceException({
     String? message,
     super.data,
     super.timestamp,
@@ -367,7 +367,7 @@ class UntrustedDeviceException extends DeviceException {
 
 /// Data synchronization exceptions
 class SyncException extends AppException {
-  const SyncException({
+  SyncException({
     String? message,
     super.statusCode,
     super.data,
@@ -382,7 +382,7 @@ class SyncException extends AppException {
 
 /// Business logic exceptions for guard duty specific operations
 class GuardDutyException extends AppException {
-  const GuardDutyException({
+  GuardDutyException({
     required super.message,
     super.statusCode,
     super.data,
@@ -394,7 +394,7 @@ class GuardDutyException extends AppException {
 }
 
 class RosterException extends GuardDutyException {
-  const RosterException({
+  RosterException({
     String? message,
     super.statusCode,
     super.data,
@@ -405,7 +405,7 @@ class RosterException extends GuardDutyException {
 }
 
 class MovementException extends GuardDutyException {
-  const MovementException({
+  MovementException({
     String? message,
     super.statusCode,
     super.data,
@@ -416,7 +416,7 @@ class MovementException extends GuardDutyException {
 }
 
 class PerimeterCheckException extends GuardDutyException {
-  const PerimeterCheckException({
+  PerimeterCheckException({
     String? message,
     super.statusCode,
     super.data,

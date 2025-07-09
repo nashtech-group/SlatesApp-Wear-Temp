@@ -1,3 +1,4 @@
+// lib/core/error/data_layer_error_handler.dart
 import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
@@ -73,7 +74,6 @@ class DataLayerErrorHandler {
     if (error is TimeoutException) {
       return TimeoutException(
         message: AppConstants.connectionTimeoutMessage,
-        statusCode: 408, // Request Timeout
         data: {'operation': operation, 'type': 'timeout_exception'},
       );
     }
@@ -152,19 +152,19 @@ class DataLayerErrorHandler {
       case ApiConstants.unauthorizedCode: // 401
         return UnauthorizedException(
           message: message,
-
+          data: {'apiError': apiError},
         );
         
       case ApiConstants.forbiddenCode: // 403
         return ForbiddenException(
           message: message,
-      
+          data: {'apiError': apiError},
         );
         
       case ApiConstants.notFoundCode: // 404
         return NotFoundException(
           message: message,
-      
+          data: {'apiError': apiError},
         );
         
       case ApiConstants.conflictCode: // 409
@@ -254,21 +254,18 @@ class DataLayerErrorHandler {
       case ApiConstants.unauthorizedCode: // 401
         return UnauthorizedException(
           message: message,
-          statusCode: statusCode,
           data: data,
         );
         
       case ApiConstants.forbiddenCode: // 403
         return ForbiddenException(
           message: message,
-          statusCode: statusCode,
           data: data,
         );
         
       case ApiConstants.notFoundCode: // 404
         return NotFoundException(
           message: message,
-          statusCode: statusCode,
           data: data,
         );
         

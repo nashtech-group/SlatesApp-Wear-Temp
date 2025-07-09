@@ -9,10 +9,10 @@ abstract class BaseErrorState extends Equatable {
   final BlocErrorInfo errorInfo;
   final DateTime timestamp;
 
-  const BaseErrorState({
+  BaseErrorState({
     required this.errorInfo,
     DateTime? timestamp,
-  }) : timestamp = timestamp ?? const DateTime.now();
+  }) : timestamp = timestamp ?? DateTime.now();
 
   @override
   List<Object?> get props => [errorInfo, timestamp];
@@ -100,7 +100,7 @@ abstract class BaseErrorState extends Equatable {
 
 /// Generic error state for simple BLoCs
 class GenericErrorState extends BaseErrorState {
-  const GenericErrorState({required super.errorInfo, super.timestamp});
+  GenericErrorState({required super.errorInfo, super.timestamp});
 
   @override
   BaseErrorState copyWith({BlocErrorInfo? errorInfo}) {
@@ -113,7 +113,7 @@ class GenericErrorState extends BaseErrorState {
 
 /// Network-related error states
 class NetworkErrorState extends BaseErrorState {
-  const NetworkErrorState({required super.errorInfo, super.timestamp});
+  NetworkErrorState({required super.errorInfo, super.timestamp});
 
   @override
   String get errorTitle => 'Connection Problem';
@@ -128,7 +128,7 @@ class NetworkErrorState extends BaseErrorState {
 }
 
 class TimeoutErrorState extends BaseErrorState {
-  const TimeoutErrorState({required super.errorInfo, super.timestamp});
+  TimeoutErrorState({required super.errorInfo, super.timestamp});
 
   @override
   String get errorTitle => 'Request Timed Out';
@@ -144,7 +144,7 @@ class TimeoutErrorState extends BaseErrorState {
 
 /// Authentication-related error states
 class AuthenticationErrorState extends BaseErrorState {
-  const AuthenticationErrorState({required super.errorInfo, super.timestamp});
+  AuthenticationErrorState({required super.errorInfo, super.timestamp});
 
   @override
   String get errorTitle => 'Authentication Required';
@@ -159,7 +159,7 @@ class AuthenticationErrorState extends BaseErrorState {
 }
 
 class SessionExpiredErrorState extends AuthenticationErrorState {
-  const SessionExpiredErrorState({required super.errorInfo, super.timestamp});
+  SessionExpiredErrorState({required super.errorInfo, super.timestamp});
 
   @override
   String get errorTitle => 'Session Expired';
@@ -177,7 +177,7 @@ class SessionExpiredErrorState extends AuthenticationErrorState {
 }
 
 class AuthorizationErrorState extends BaseErrorState {
-  const AuthorizationErrorState({required super.errorInfo, super.timestamp});
+  AuthorizationErrorState({required super.errorInfo, super.timestamp});
 
   @override
   String get errorTitle => 'Access Denied';
@@ -192,7 +192,7 @@ class AuthorizationErrorState extends BaseErrorState {
 }
 
 class ForbiddenErrorState extends AuthorizationErrorState {
-  const ForbiddenErrorState({required super.errorInfo, super.timestamp});
+  ForbiddenErrorState({required super.errorInfo, super.timestamp});
 
   @override
   String get userMessage => AppConstants.forbiddenMessage;
@@ -208,7 +208,7 @@ class ForbiddenErrorState extends AuthorizationErrorState {
 
 /// Validation-related error states
 class ValidationErrorState extends BaseErrorState {
-  const ValidationErrorState({required super.errorInfo, super.timestamp});
+  ValidationErrorState({required super.errorInfo, super.timestamp});
 
   @override
   String get errorTitle => 'Validation Error';
@@ -225,7 +225,7 @@ class ValidationErrorState extends BaseErrorState {
 class FieldValidationErrorState extends ValidationErrorState {
   final Map<String, List<String>> fieldErrors;
 
-  const FieldValidationErrorState({
+  FieldValidationErrorState({
     required super.errorInfo,
     required this.fieldErrors,
     super.timestamp,
@@ -270,7 +270,7 @@ class FieldValidationErrorState extends ValidationErrorState {
 
 /// Server-related error states
 class ServerErrorState extends BaseErrorState {
-  const ServerErrorState({required super.errorInfo, super.timestamp});
+  ServerErrorState({required super.errorInfo, super.timestamp});
 
   @override
   String get errorTitle => 'Server Error';
@@ -285,7 +285,7 @@ class ServerErrorState extends BaseErrorState {
 }
 
 class RateLimitErrorState extends ServerErrorState {
-  const RateLimitErrorState({required super.errorInfo, super.timestamp});
+  RateLimitErrorState({required super.errorInfo, super.timestamp});
 
   @override
   String get errorTitle => 'Too Many Requests';
@@ -303,7 +303,7 @@ class RateLimitErrorState extends ServerErrorState {
 }
 
 class MaintenanceErrorState extends ServerErrorState {
-  const MaintenanceErrorState({required super.errorInfo, super.timestamp});
+  MaintenanceErrorState({required super.errorInfo, super.timestamp});
 
   @override
   String get errorTitle => 'Maintenance Mode';
@@ -321,7 +321,7 @@ class MaintenanceErrorState extends ServerErrorState {
 }
 
 class ServiceUnavailableErrorState extends ServerErrorState {
-  const ServiceUnavailableErrorState({required super.errorInfo, super.timestamp});
+  ServiceUnavailableErrorState({required super.errorInfo, super.timestamp});
 
   @override
   String get errorTitle => 'Service Unavailable';
@@ -340,7 +340,7 @@ class ServiceUnavailableErrorState extends ServerErrorState {
 
 /// Resource-related error states
 class NotFoundErrorState extends BaseErrorState {
-  const NotFoundErrorState({required super.errorInfo, super.timestamp});
+  NotFoundErrorState({required super.errorInfo, super.timestamp});
 
   @override
   String get errorTitle => 'Not Found';
@@ -356,7 +356,7 @@ class NotFoundErrorState extends BaseErrorState {
 
 /// Data-related error states
 class ParsingErrorState extends BaseErrorState {
-  const ParsingErrorState({required super.errorInfo, super.timestamp});
+  ParsingErrorState({required super.errorInfo, super.timestamp});
 
   @override
   String get errorTitle => 'Data Error';
@@ -372,7 +372,7 @@ class ParsingErrorState extends BaseErrorState {
 
 /// Location-related error states
 class LocationErrorState extends BaseErrorState {
-  const LocationErrorState({required super.errorInfo, super.timestamp});
+  LocationErrorState({required super.errorInfo, super.timestamp});
 
   @override
   String get errorTitle => 'Location Error';
@@ -390,7 +390,7 @@ class LocationErrorState extends BaseErrorState {
 }
 
 class GeofenceViolationErrorState extends LocationErrorState {
-  const GeofenceViolationErrorState({required super.errorInfo, super.timestamp});
+  GeofenceViolationErrorState({required super.errorInfo, super.timestamp});
 
   @override
   String get errorTitle => 'Location Violation';
@@ -409,7 +409,7 @@ class GeofenceViolationErrorState extends LocationErrorState {
 
 /// Offline data error states
 class OfflineDataErrorState extends BaseErrorState {
-  const OfflineDataErrorState({required super.errorInfo, super.timestamp});
+  OfflineDataErrorState({required super.errorInfo, super.timestamp});
 
   @override
   String get errorTitle => 'Offline Data Error';
@@ -427,7 +427,7 @@ class OfflineDataErrorState extends BaseErrorState {
 }
 
 class ExpiredOfflineDataErrorState extends OfflineDataErrorState {
-  const ExpiredOfflineDataErrorState({required super.errorInfo, super.timestamp});
+  ExpiredOfflineDataErrorState({required super.errorInfo, super.timestamp});
 
   @override
   String get errorTitle => 'Offline Data Expired';
@@ -446,7 +446,7 @@ class ExpiredOfflineDataErrorState extends OfflineDataErrorState {
 
 /// Device-related error states
 class DeviceErrorState extends BaseErrorState {
-  const DeviceErrorState({required super.errorInfo, super.timestamp});
+  DeviceErrorState({required super.errorInfo, super.timestamp});
 
   @override
   String get errorTitle => 'Device Error';
@@ -464,7 +464,7 @@ class DeviceErrorState extends BaseErrorState {
 }
 
 class UntrustedDeviceErrorState extends DeviceErrorState {
-  const UntrustedDeviceErrorState({required super.errorInfo, super.timestamp});
+  UntrustedDeviceErrorState({required super.errorInfo, super.timestamp});
 
   @override
   String get errorTitle => 'Device Not Trusted';
@@ -483,7 +483,7 @@ class UntrustedDeviceErrorState extends DeviceErrorState {
 
 /// Guard duty specific error states
 class GuardDutyOperationErrorState extends BaseErrorState {
-  const GuardDutyOperationErrorState({required super.errorInfo, super.timestamp});
+  GuardDutyOperationErrorState({required super.errorInfo, super.timestamp});
 
   @override
   String get errorTitle => 'Guard Duty Error';
@@ -501,7 +501,7 @@ class GuardDutyOperationErrorState extends BaseErrorState {
 }
 
 class RosterErrorState extends GuardDutyOperationErrorState {
-  const RosterErrorState({required super.errorInfo, super.timestamp});
+  RosterErrorState({required super.errorInfo, super.timestamp});
 
   @override
   String get errorTitle => 'Roster Error';
@@ -516,7 +516,7 @@ class RosterErrorState extends GuardDutyOperationErrorState {
 }
 
 class MovementErrorState extends GuardDutyOperationErrorState {
-  const MovementErrorState({required super.errorInfo, super.timestamp});
+  MovementErrorState({required super.errorInfo, super.timestamp});
 
   @override
   String get errorTitle => 'Movement Tracking Error';
@@ -534,7 +534,7 @@ class MovementErrorState extends GuardDutyOperationErrorState {
 }
 
 class PerimeterCheckErrorState extends GuardDutyOperationErrorState {
-  const PerimeterCheckErrorState({required super.errorInfo, super.timestamp});
+  PerimeterCheckErrorState({required super.errorInfo, super.timestamp});
 
   @override
   String get errorTitle => 'Perimeter Check Error';
@@ -557,7 +557,7 @@ abstract class RetryableErrorState extends BaseErrorState {
   final int maxRetries;
   final int currentAttempt;
 
-  const RetryableErrorState({
+  RetryableErrorState({
     required super.errorInfo,
     this.onRetry,
     this.maxRetries = 3,
@@ -591,7 +591,7 @@ abstract class RetryableErrorState extends BaseErrorState {
 }
 
 class RetryableNetworkErrorState extends RetryableErrorState {
-  const RetryableNetworkErrorState({
+  RetryableNetworkErrorState({
     required super.errorInfo,
     super.onRetry,
     super.maxRetries,
@@ -615,7 +615,7 @@ class RetryableNetworkErrorState extends RetryableErrorState {
 }
 
 class RetryableServerErrorState extends RetryableErrorState {
-  const RetryableServerErrorState({
+  RetryableServerErrorState({
     required super.errorInfo,
     super.onRetry,
     super.maxRetries,
@@ -639,7 +639,7 @@ class RetryableServerErrorState extends RetryableErrorState {
 }
 
 class RetryableGenericErrorState extends RetryableErrorState {
-  const RetryableGenericErrorState({
+  RetryableGenericErrorState({
     required super.errorInfo,
     super.onRetry,
     super.maxRetries,

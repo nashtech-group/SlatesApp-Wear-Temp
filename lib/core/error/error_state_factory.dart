@@ -272,10 +272,6 @@ class ErrorStateFactory {
       return SessionExpiredErrorState(errorInfo: errorInfo);
     }
     
-    if (errorInfo.statusCode == ApiConstants.forbiddenCode) {
-      return ForbiddenErrorState(errorInfo: errorInfo);
-    }
-
     return AuthenticationErrorState(errorInfo: errorInfo);
   }
 
