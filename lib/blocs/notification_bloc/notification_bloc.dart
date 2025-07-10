@@ -58,7 +58,7 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState>
     Emitter<NotificationState> emit,
   ) async {
     try {
-      emit(NotificationLoading());
+      emit(const NotificationLoading());
       
       final initialized = await _notificationService.initialize();
       

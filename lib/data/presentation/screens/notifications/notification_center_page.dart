@@ -384,8 +384,7 @@ class _NotificationCenterPageState extends State<NotificationCenterPage>
         icon = Icons.check_circle_outline;
         break;
       case NotificationFilter.all:
-      default:
-        title = 'No Notifications';
+      title = 'No Notifications';
         subtitle = 'Notifications will appear here when you receive them.';
         icon = Icons.notifications_off;
         break;
