@@ -21,6 +21,11 @@ migrate_working_dir/
 # is commented out by default.
 #.vscode/
 
+# VS Code specific files you might want to ignore
+.vscode/settings.json
+.vscode/launch.json
+.vscode/extensions.json
+
 # Flutter/Dart/Pub related
 **/doc/api/
 **/ios/Flutter/.last_build_id
@@ -30,6 +35,8 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+.packages
+pubspec.lock
 
 # Symbolication related
 app.*.symbols
@@ -41,3 +48,127 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+/android/app/.cxx/
+/android/app/build/
+
+# Additional Android files
+/android/.gradle/
+/android/captures/
+/android/gradlew
+/android/gradlew.bat
+/android/local.properties
+
+*.jks
+*.keystore
+
+# iOS related
+**/ios/**/*.mode1v3
+**/ios/**/*.mode2v3
+**/ios/**/*.moved-aside
+**/ios/**/*.pbxuser
+**/ios/**/*.perspectivev3
+**/ios/**/*sync/
+**/ios/**/.sconsign.dblite
+**/ios/**/.tags*
+**/ios/**/.vagrant/
+**/ios/**/DerivedData/
+**/ios/**/Icon?
+**/ios/**/Pods/
+**/ios/**/.symlinks/
+**/ios/**/profile
+**/ios/**/xcuserdata
+**/ios/.generated/
+**/ios/Flutter/App.framework
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/app.flx
+**/ios/Flutter/app.zip
+**/ios/Flutter/flutter_assets/
+**/ios/ServiceDefinitions.json
+**/ios/Runner/GeneratedPluginRegistrant.*
+
+# Web related
+/web/favicon.png
+/web/icons/
+/web/manifest.json
+/web/.dart_tool/
+
+# macOS related
+**/macos/Flutter/GeneratedPluginRegistrant.swift
+**/macos/Flutter/Flutter-Debug.xcconfig
+**/macos/Flutter/Flutter-Release.xcconfig
+
+# Windows related
+**/windows/flutter/generated_plugin_registrant.cc
+**/windows/flutter/generated_plugin_registrant.h
+
+# Linux related  
+**/linux/flutter/generated_plugin_registrant.cc
+**/linux/flutter/generated_plugin_registrant.h
+
+# Coverage and testing
+coverage/
+test/.test_coverage.dart
+**/coverage/lcov.info
+
+# Debug and development files
+*.orig
+*.rej
+*~
+.flutter-devtools/
+.dart_tool/package_config.json
+
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+secrets.json
+google-services.json
+GoogleService-Info.plist
+firebase_options.dart
+
+# Generated files
+*.g.dart
+*.freezed.dart
+*.chopper.dart
+**/generated/
+**/*.generated.dart
+
+# Localization
+**/l10n/*.arb
+**/l10n/app_localizations.dart
+**/l10n/app_localizations_*.dart
+
+# Firebase
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+
+# Temporary files
+*.tmp
+*.temp
+.tmp/
+
+# Logs and crash reports
+*.crash
+*.stackdump
+**/logs/
+*.hprof
+
+# Build artifacts
+*.app
+*.apk
+*.aab
+*.ipa
+*.dmg
+*.exe
+*.msi
+*.deb
+*.rpm
+
+# Platform specific caches
+.gradle/
+node_modules/
+/.pnp
+.pnp.js
