@@ -394,6 +394,173 @@ class ErrorScreen extends StatefulWidget {
     }
   }
 
+  // ====================
+  // STATIC UTILITY METHODS - PROPERLY PLACED IN MAIN CLASS
+  // ====================
+
+  /// Show error dialog using the error handling system
+  static Future<void> showErrorDialog(
+    BuildContext context, {
+    BaseErrorState? errorState,
+    AppException? exception,
+    Failure? failure,
+    dynamic error,
+    VoidCallback? onRetry,
+    VoidCallback? onDismiss,
+  }) {
+    final responsive = context.responsive;
+    final theme = Theme.of(context);
+
+    // Determine error state
+    BaseErrorState finalErrorState;
+    if (errorState != null) {
+      finalErrorState = errorState;
+    } else if (exception != null) {
+      finalErrorState = ErrorStateFactory.createFromException(exception);
+    } else if (failure != null) {
+      finalErrorState = ErrorStateFactory.createFromFailure(failure);
+    } else if (error != null) {
+      finalErrorState = ErrorStateFactory.createFromDynamicError(error);
+    } else {
+      finalErrorState = GenericErrorState(
+        errorInfo: BlocErrorInfo(
+          type: ErrorType.unknown,
+          message: AppConstants.unknownErrorMessage,
+        ),
+      );
+    }
+    
+    return showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(responsive.borderRadius),
+        ),
+        contentPadding: responsive.formPadding,
+        title: Row(
+          children: [
+            Icon(
+              Icons.error_outline,
+              color: theme.colorScheme.error,
+              size: responsive.largeIconSize,
+            ),
+            responsive.smallHorizontalSpacer,
+            Expanded(
+              child: Text(
+                finalErrorState.errorTitle,
+                style: responsive.getTitleStyle(),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              finalErrorState.userMessage,
+              style: responsive.getBodyStyle(),
+            ),
+            if (finalErrorState.errorCode != null) ...[
+              responsive.smallSpacer,
+              Container(
+                padding: EdgeInsets.all(responsive.padding * 0.5),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.errorContainer.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(responsive.borderRadius),
+                ),
+                child: Text(
+                  'Error Code: ${finalErrorState.errorCode}',
+                  style: responsive.getCaptionStyle()?.copyWith(
+                    fontFamily: 'monospace',
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          if (onRetry != null && finalErrorState.canRetry)
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                onRetry();
+              },
+              child: Text(
+                'Try Again',
+                style: responsive.getBodyStyle(),
+              ),
+            ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              onDismiss?.call();
+            },
+            style: AppTheme.responsivePrimaryButtonStyle(context),
+            child: Text(
+              'OK',
+              style: responsive.getBodyStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Show error snackbar using the error handling system
+  static void showErrorSnackBar(
+    BuildContext context, {
+    BaseErrorState? errorState,
+    String? message,
+    VoidCallback? onRetry,
+    Duration duration = const Duration(seconds: 4),
+  }) {
+    final theme = Theme.of(context);
+    final responsive = context.responsive;
+    
+    final finalMessage = message ?? 
+        errorState?.userMessage ?? 
+        AppConstants.unknownErrorMessage;
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              Icons.error_outline,
+              color: theme.colorScheme.onError,
+              size: responsive.iconSize,
+            ),
+            responsive.smallHorizontalSpacer,
+            Expanded(
+              child: Text(
+                finalMessage,
+                style: responsive.getCaptionStyle(
+                  color: theme.colorScheme.onError,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: theme.colorScheme.error,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(responsive.borderRadius),
+        ),
+        margin: responsive.containerPadding,
+        action: onRetry != null
+            ? SnackBarAction(
+                label: 'Retry',
+                textColor: theme.colorScheme.onError,
+                onPressed: onRetry,
+              )
+            : null,
+        duration: duration,
+      ),
+    );
+  }
+
   @override
   State<ErrorScreen> createState() => _ErrorScreenState();
 }
@@ -1231,176 +1398,5 @@ class _ErrorScreenState extends State<ErrorScreen> {
         (Route<dynamic> route) => false,
       );
     }
-  }
-
-  // ====================
-  // STATIC UTILITY METHODS
-  // ====================
-
-  // ====================
-  // STATIC UTILITY METHODS
-  // ====================
-
-  /// Show error dialog using the error handling system
-  static Future<void> showErrorDialog(
-    BuildContext context, {
-    BaseErrorState? errorState,
-    AppException? exception,
-    Failure? failure,
-    dynamic error,
-    VoidCallback? onRetry,
-    VoidCallback? onDismiss,
-  }) {
-    final responsive = context.responsive;
-    final theme = Theme.of(context);
-
-    // Determine error state
-    BaseErrorState finalErrorState;
-    if (errorState != null) {
-      finalErrorState = errorState;
-    } else if (exception != null) {
-      finalErrorState = ErrorStateFactory.createFromException(exception);
-    } else if (failure != null) {
-      finalErrorState = ErrorStateFactory.createFromFailure(failure);
-    } else if (error != null) {
-      finalErrorState = ErrorStateFactory.createFromDynamicError(error);
-    } else {
-      finalErrorState = GenericErrorState(
-        errorInfo: BlocErrorInfo(
-          type: ErrorType.unknown,
-          message: AppConstants.unknownErrorMessage,
-        ),
-      );
-    }
-    
-    return showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(responsive.borderRadius),
-        ),
-        contentPadding: responsive.formPadding,
-        title: Row(
-          children: [
-            Icon(
-              Icons.error_outline,
-              color: theme.colorScheme.error,
-              size: responsive.largeIconSize,
-            ),
-            responsive.smallHorizontalSpacer,
-            Expanded(
-              child: Text(
-                finalErrorState.errorTitle,
-                style: responsive.getTitleStyle(),
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              finalErrorState.userMessage,
-              style: responsive.getBodyStyle(),
-            ),
-            if (finalErrorState.errorCode != null) ...[
-              responsive.smallSpacer,
-              Container(
-                padding: EdgeInsets.all(responsive.padding * 0.5),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.errorContainer.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(responsive.borderRadius),
-                ),
-                child: Text(
-                  'Error Code: ${finalErrorState.errorCode}',
-                  style: responsive.getCaptionStyle()?.copyWith(
-                    fontFamily: 'monospace',
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
-        actions: [
-          if (onRetry != null && finalErrorState.canRetry)
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                onRetry();
-              },
-              child: Text(
-                'Try Again',
-                style: responsive.getBodyStyle(),
-              ),
-            ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              onDismiss?.call();
-            },
-            style: AppTheme.responsivePrimaryButtonStyle(context),
-            child: Text(
-              'OK',
-              style: responsive.getBodyStyle(color: Colors.white),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Show error snackbar using the error handling system
-  static void showErrorSnackBar(
-    BuildContext context, {
-    BaseErrorState? errorState,
-    String? message,
-    VoidCallback? onRetry,
-    Duration duration = const Duration(seconds: 4),
-  }) {
-    final theme = Theme.of(context);
-    final responsive = context.responsive;
-    
-    final finalMessage = message ?? 
-        errorState?.userMessage ?? 
-        AppConstants.unknownErrorMessage;
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(
-              Icons.error_outline,
-              color: theme.colorScheme.onError,
-              size: responsive.iconSize,
-            ),
-            responsive.smallHorizontalSpacer,
-            Expanded(
-              child: Text(
-                finalMessage,
-                style: responsive.getCaptionStyle(
-                  color: theme.colorScheme.onError,
-                ),
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: theme.colorScheme.error,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(responsive.borderRadius),
-        ),
-        margin: responsive.containerPadding,
-        action: onRetry != null
-            ? SnackBarAction(
-                label: 'Retry',
-                textColor: theme.colorScheme.onError,
-                onPressed: onRetry,
-              )
-            : null,
-        duration: duration,
-      ),
-    );
   }
 }
