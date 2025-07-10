@@ -10,12 +10,14 @@ import 'package:slates_app_wear/core/theme/app_theme.dart';
 import 'package:slates_app_wear/core/theme/theme_provider.dart';
 import 'package:slates_app_wear/core/error/common_error_states.dart';
 import 'package:slates_app_wear/core/error/error_handler.dart';
-import 'package:slates_app_wear/core/error/error_state_factory.dart';
+import 'package:slates_app_wear/core/error/error_state_factory.dart' hide VoidCallback;
+import 'package:slates_app_wear/core/auth_manager.dart';
 import 'package:slates_app_wear/data/models/user/user_model.dart';
 import 'package:slates_app_wear/data/presentation/screens/error_screen.dart';
 import 'package:slates_app_wear/data/presentation/screens/widgets/common/app_logo.dart';
 import 'package:slates_app_wear/data/presentation/screens/widgets/common/role_badge.dart';
 import 'package:slates_app_wear/data/presentation/screens/widgets/wearable/large_button.dart';
+import 'package:slates_app_wear/services/connectivity_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -29,12 +31,17 @@ class _HomeScreenState extends State<HomeScreen>
   late AnimationController _greetingController;
   late Animation<double> _greetingAnimation;
   int _selectedIndex = 0;
+  
+  // Services for DRY integration
+  final AuthManager _authManager = AuthManager();
+  final ConnectivityService _connectivityService = ConnectivityService();
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _setupAnimations();
+    _initializeServices();
     // Check auth status when screen loads
     context.read<AuthBloc>().add(const CheckAuthStatusEvent());
   }
@@ -43,12 +50,13 @@ class _HomeScreenState extends State<HomeScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _greetingController.dispose();
+    _connectivityService.stopMonitoring();
     super.dispose();
   }
 
   void _setupAnimations() {
     _greetingController = AnimationController(
-      duration: const Duration(milliseconds: 1200),
+      duration: const Duration(milliseconds: AppConstants.longAnimationDuration * 2),
       vsync: this,
     );
 
@@ -63,10 +71,33 @@ class _HomeScreenState extends State<HomeScreen>
     _greetingController.forward();
   }
 
+  void _initializeServices() {
+    // Start monitoring connectivity for better offline/online handling
+    _connectivityService.startMonitoring();
+    
+    // Listen to connectivity changes
+    _connectivityService.connectivityStream.listen((isConnected) {
+      if (mounted) {
+        _handleConnectivityChange(isConnected);
+      }
+    });
+  }
+
+  void _handleConnectivityChange(bool isConnected) {
+    if (isConnected) {
+      // Connection restored - try to sync if in offline mode
+      final currentState = context.read<AuthBloc>().state;
+      if (currentState is AuthOfflineMode) {
+        context.read<AuthBloc>().add(const RefreshTokenEvent());
+      }
+    }
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Handle app lifecycle changes for security
+    // Handle app lifecycle changes for security using AuthManager
     if (state == AppLifecycleState.resumed) {
+      _authManager.saveLastActivityTime(DateTime.now());
       context.read<AuthBloc>().add(const CheckAuthStatusEvent());
     }
   }
@@ -81,34 +112,9 @@ class _HomeScreenState extends State<HomeScreen>
             (Route<dynamic> route) => false,
           );
         } else if (state is AuthSessionExpired) {
-          ErrorScreen.showErrorDialog(
-            context,
-            errorState: SessionExpiredErrorState(
-              errorInfo: BlocErrorInfo(
-                type: ErrorType.authentication,
-                message: state.message,
-                statusCode: ApiConstants.unauthorizedCode,
-              ),
-            ),
-            onRetry: () {
-              Navigator.of(context).pushNamedAndRemoveUntil(
-                RouteConstants.login,
-                (Route<dynamic> route) => false,
-              );
-            },
-          );
+          _handleSessionExpired(state);
         } else if (state is AuthError) {
-          ErrorScreen.showErrorSnackBar(
-            context,
-            errorState: ErrorStateFactory.createFromDynamicError(
-              state,
-              context: 'AuthBloc Error',
-              additionalData: {'errorCode': state.errorCode},
-            ),
-            onRetry: () {
-              context.read<AuthBloc>().add(const CheckAuthStatusEvent());
-            },
-          );
+          _handleAuthError(state);
         }
       },
       builder: (context, state) {
@@ -123,6 +129,8 @@ class _HomeScreenState extends State<HomeScreen>
             selectedIndex: _selectedIndex,
             onIndexChanged: (index) => setState(() => _selectedIndex = index),
             greetingAnimation: _greetingAnimation,
+            authManager: _authManager,
+            connectivityService: _connectivityService,
           );
         }
 
@@ -133,19 +141,14 @@ class _HomeScreenState extends State<HomeScreen>
             selectedIndex: _selectedIndex,
             onIndexChanged: (index) => setState(() => _selectedIndex = index),
             greetingAnimation: _greetingAnimation,
+            authManager: _authManager,
+            connectivityService: _connectivityService,
           );
         }
 
         if (state is AuthError) {
           return ErrorScreen(
-            errorState: ErrorStateFactory.createFromDynamicError(
-              state,
-              context: 'Authentication Error',
-              additionalData: {
-                'message': state.message,
-                'errorCode': state.errorCode,
-              },
-            ),
+            errorState: ErrorStateFactory.createErrorState(state.errorInfo),
             onRetry: () {
               context.read<AuthBloc>().add(const CheckAuthStatusEvent());
             },
@@ -163,6 +166,71 @@ class _HomeScreenState extends State<HomeScreen>
         return const SizedBox.shrink();
       },
     );
+  }
+
+  /// Handle session expired with AuthManager integration
+  void _handleSessionExpired(AuthSessionExpired state) async {
+    // Check if offline data is available for fallback
+    final lastEmployeeId = await _authManager.getLastEmployeeId();
+    final hasOfflineData = lastEmployeeId != null 
+        ? await _authManager.hasBasicOfflineLoginData(lastEmployeeId)
+        : false;
+
+    if (!mounted) return;
+
+    ErrorScreen.showErrorDialog(
+      context,
+      errorState: ErrorStateFactory.createErrorState(state.errorInfo),
+      onRetry: () {
+        if (hasOfflineData) {
+          // Try offline login fallback
+          context.read<AuthBloc>().add(AutoLoginEvent(employeeId: lastEmployeeId));
+        } else {
+          // Redirect to login
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            RouteConstants.login,
+            (Route<dynamic> route) => false,
+          );
+        }
+      },
+    );
+  }
+
+  /// Handle auth errors with ConnectivityService integration
+  void _handleAuthError(AuthError state) async {
+    // Check connectivity before showing error
+    final isConnected = await _connectivityService.checkConnectivity();
+    
+    if (!mounted) return;
+
+    if (!isConnected && state.isNetworkError) {
+      // Network error while offline - try to help user
+      final lastEmployeeId = await _authManager.getLastEmployeeId();
+      final hasOfflineData = lastEmployeeId != null 
+          ? await _authManager.hasBasicOfflineLoginData(lastEmployeeId)
+          : false;
+
+      final message = hasOfflineData 
+          ? 'You\'re offline. Tap retry to try offline login with saved data.'
+          : 'You\'re offline and no offline data is available. Please connect to internet.';
+
+      ErrorScreen.showErrorSnackBar(
+        context,
+        message: message,
+        onRetry: hasOfflineData ? () {
+          context.read<AuthBloc>().add(AutoLoginEvent(employeeId: lastEmployeeId));
+        } : null,
+      );
+    } else {
+      // Regular error handling
+      ErrorScreen.showErrorSnackBar(
+        context,
+        errorState: ErrorStateFactory.createErrorState(state.errorInfo),
+        onRetry: () {
+          context.read<AuthBloc>().add(const CheckAuthStatusEvent());
+        },
+      );
+    }
   }
 }
 
@@ -210,6 +278,8 @@ class _AuthenticatedHomeScreen extends StatelessWidget {
   final int selectedIndex;
   final Function(int) onIndexChanged;
   final Animation<double> greetingAnimation;
+  final AuthManager authManager;
+  final ConnectivityService connectivityService;
 
   const _AuthenticatedHomeScreen({
     required this.user,
@@ -217,6 +287,8 @@ class _AuthenticatedHomeScreen extends StatelessWidget {
     required this.selectedIndex,
     required this.onIndexChanged,
     required this.greetingAnimation,
+    required this.authManager,
+    required this.connectivityService,
   });
 
   @override
@@ -395,7 +467,7 @@ class _AuthenticatedHomeScreen extends StatelessWidget {
             ),
           ),
           TextButton(
-            onPressed: () => _handleMenuSelection(context, 'sync'),
+            onPressed: () => _handleSync(context),
             child: Text(
               'Sync',
               style: TextStyle(
@@ -485,11 +557,38 @@ class _AuthenticatedHomeScreen extends StatelessWidget {
         Navigator.of(context).pushNamed(RouteConstants.settings);
         break;
       case 'sync':
-        context.read<AuthBloc>().add(const RefreshTokenEvent());
+        _handleSync(context);
         break;
       case 'logout':
         _showLogoutConfirmation(context);
         break;
+    }
+  }
+
+  /// Handle sync with proper connectivity and auth management
+  Future<void> _handleSync(BuildContext context) async {
+    // Check connectivity first
+    final isConnected = await connectivityService.checkConnectivity();
+    
+    if (!isConnected) {
+      ErrorScreen.showErrorSnackBar(
+        context,
+        message: AppConstants.networkErrorMessage,
+      );
+      return;
+    }
+
+    // Update last activity time
+    await authManager.saveLastActivityTime(DateTime.now());
+    
+    // Trigger auth refresh which will sync data
+    if (context.mounted) {
+      context.read<AuthBloc>().add(const RefreshTokenEvent());
+      
+      ErrorScreen.showErrorSnackBar(
+        context,
+        message: 'Syncing data...',
+      );
     }
   }
 
@@ -511,16 +610,37 @@ class _AuthenticatedHomeScreen extends StatelessWidget {
             const Text('Logout'),
           ],
         ),
-        content: const Text('Are you sure you want to logout?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Are you sure you want to logout?'),
+            if (isOffline) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Note: You are currently in offline mode.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+            ],
+          ],
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(context).pop();
-              context.read<AuthBloc>().add(const LogoutEvent());
+              
+              // Update last activity before logout
+              await authManager.saveLastActivityTime(DateTime.now());
+              
+              if (context.mounted) {
+                context.read<AuthBloc>().add(const LogoutEvent());
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.error,

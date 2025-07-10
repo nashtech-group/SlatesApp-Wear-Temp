@@ -8,6 +8,8 @@ import 'package:slates_app_wear/core/error/error_handler.dart';
 import 'package:slates_app_wear/core/error/exceptions.dart';
 import 'package:slates_app_wear/core/error/failures.dart';
 import 'package:slates_app_wear/core/theme/app_theme.dart';
+import 'package:slates_app_wear/core/auth_manager.dart';
+import 'package:slates_app_wear/services/connectivity_service.dart';
 
 /// Production-ready error screen that integrates with the comprehensive error handling system
 /// Follows DRY principles and uses centralized error management
@@ -32,7 +34,6 @@ class ErrorScreen extends StatefulWidget {
     this.canPop = true,
     this.config,
   });
-
 
   // ====================
   // FACTORY CONSTRUCTORS FOR COMMON ERROR SCENARIOS
@@ -1050,8 +1051,143 @@ class _ErrorScreenState extends State<ErrorScreen> {
   }
 
   void _handleEnableOfflineMode() {
-    // Implement offline mode logic
-    // This would typically update app state to enable offline mode
+    // Use AuthManager and ConnectivityService for proper offline mode handling
+    _showOfflineModeDialog();
+  }
+
+  void _showOfflineModeDialog() async {
+    final context = this.context;
+    final authManager = AuthManager();
+    final connectivityService = ConnectivityService();
+    
+    // Check if offline data is available
+    final lastEmployeeId = await authManager.getLastEmployeeId();
+    final hasOfflineData = lastEmployeeId != null 
+        ? await authManager.hasBasicOfflineLoginData(lastEmployeeId)
+        : false;
+
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(context.responsive.borderRadius),
+        ),
+        title: Row(
+          children: [
+            Icon(
+              Icons.cloud_off,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            const SizedBox(width: 12),
+            const Text('Offline Mode'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'You appear to be offline. Choose how to proceed:',
+            ),
+            const SizedBox(height: 16),
+            if (hasOfflineData) ...[
+              ListTile(
+                leading: const Icon(Icons.offline_pin),
+                title: const Text('Use Offline Login'),
+                subtitle: Text('Login with saved data for $lastEmployeeId'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _navigateToOfflineLogin(lastEmployeeId!);
+                },
+              ),
+              const Divider(),
+            ],
+            ListTile(
+              leading: const Icon(Icons.refresh),
+              title: const Text('Check Connection'),
+              subtitle: const Text('Try to reconnect to the internet'),
+              onTap: () {
+                Navigator.of(context).pop();
+                _checkConnectivity();
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.home),
+              title: const Text('Go to Home'),
+              subtitle: const Text('Return to home screen'),
+              onTap: () {
+                Navigator.of(context).pop();
+                _handleDismiss();
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _navigateToOfflineLogin(String employeeId) {
+    // Navigate to login screen with offline mode enabled
+    Navigator.of(context).pushNamedAndRemoveUntil(
+      '/login',
+      (Route<dynamic> route) => false,
+      arguments: {'offlineMode': true, 'employeeId': employeeId},
+    );
+  }
+
+  Future<void> _checkConnectivity() async {
+    final connectivityService = ConnectivityService();
+    
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    try {
+      // Check connectivity using the service
+      final isConnected = await connectivityService.checkConnectivity();
+      
+      if (!mounted) return;
+      Navigator.of(context).pop(); // Close loading dialog
+
+      if (isConnected) {
+        ErrorScreen.showErrorSnackBar(
+          context,
+          message: 'Connection restored! You can now use online features.',
+        );
+        // Optionally refresh the current screen or navigate back
+        if (widget.onRetry != null) {
+          widget.onRetry!();
+        }
+      } else {
+        ErrorScreen.showErrorSnackBar(
+          context,
+          message: 'Still offline. Please check your internet connection.',
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.of(context).pop(); // Close loading dialog
+      
+      ErrorScreen.showErrorSnackBar(
+        context,
+        message: 'Failed to check connectivity. Please try again.',
+      );
+    }
   }
 
   void _handleCheckConnection() {
@@ -1096,6 +1232,10 @@ class _ErrorScreenState extends State<ErrorScreen> {
       );
     }
   }
+
+  // ====================
+  // STATIC UTILITY METHODS
+  // ====================
 
   // ====================
   // STATIC UTILITY METHODS
