@@ -8,7 +8,6 @@ import '../constants/app_constants.dart';
 import '../constants/api_constants.dart';
 
 /// Comprehensive factory for creating appropriate error states for presentation layer
-/// Follows DRY principles and provides centralized error state creation logic
 class ErrorStateFactory {
   static const String _logTag = 'ErrorStateFactory';
 

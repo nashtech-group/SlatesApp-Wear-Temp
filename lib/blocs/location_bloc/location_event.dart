@@ -7,10 +7,12 @@ abstract class LocationEvent extends Equatable {
   List<Object?> get props => [];
 }
 
+/// Initialize location tracking system
 class InitializeLocationTracking extends LocationEvent {
   const InitializeLocationTracking();
 }
 
+/// Start location tracking for a specific guard and site
 class StartLocationTracking extends LocationEvent {
   final int guardId;
   final int rosterUserId;
@@ -28,10 +30,12 @@ class StartLocationTracking extends LocationEvent {
   List<Object?> get props => [guardId, rosterUserId, site, isDutyActive];
 }
 
+/// Stop location tracking
 class StopLocationTracking extends LocationEvent {
   const StopLocationTracking();
 }
 
+/// Update location tracking settings
 class UpdateLocationSettings extends LocationEvent {
   final int updateIntervalSeconds;
   final double accuracyThreshold;
@@ -45,6 +49,7 @@ class UpdateLocationSettings extends LocationEvent {
   List<Object?> get props => [updateIntervalSeconds, accuracyThreshold];
 }
 
+/// Check geofence status for current position
 class CheckGeofenceStatus extends LocationEvent {
   final Position position;
 
@@ -54,6 +59,7 @@ class CheckGeofenceStatus extends LocationEvent {
   List<Object?> get props => [position];
 }
 
+/// Check proximity to checkpoints
 class CheckCheckpointProximity extends LocationEvent {
   final Position position;
   final List<CheckPointModel> checkpoints;
@@ -67,6 +73,7 @@ class CheckCheckpointProximity extends LocationEvent {
   List<Object?> get props => [position, checkpoints];
 }
 
+/// Record a movement entry
 class RecordMovement extends LocationEvent {
   final Position position;
   final String? movementType;
@@ -82,10 +89,17 @@ class RecordMovement extends LocationEvent {
   List<Object?> get props => [position, movementType, notes];
 }
 
+/// Request location permission from user
 class RequestLocationPermission extends LocationEvent {
   const RequestLocationPermission();
 }
 
+/// Check if location services are enabled
 class CheckLocationServices extends LocationEvent {
   const CheckLocationServices();
+}
+
+/// Clear current location error state (following DRY pattern from reference files)
+class ClearLocationError extends LocationEvent {
+  const ClearLocationError();
 }

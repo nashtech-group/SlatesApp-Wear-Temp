@@ -9,6 +9,7 @@ import 'package:slates_app_wear/core/constants/app_constants.dart';
 import 'package:slates_app_wear/services/offline_storage_service.dart';
 import '../../core/error/bloc_error_mixin.dart';
 import '../../core/error/error_handler.dart';
+import '../../core/error/error_state_mixin.dart';
 
 part 'location_event.dart';
 part 'location_state.dart';
@@ -45,20 +46,11 @@ class LocationBloc extends Bloc<LocationEvent, LocationState>
     on<RecordMovement>(_onRecordMovement);
     on<RequestLocationPermission>(_onRequestLocationPermission);
     on<CheckLocationServices>(_onCheckLocationServices);
+    on<ClearLocationError>(_onClearLocationError);
   }
 
   @override
   LocationState createDefaultErrorState(BlocErrorInfo errorInfo) {
-    // Custom error state logic for location-specific errors
-    if (errorInfo.message.toLowerCase().contains('permission')) {
-      return const LocationPermissionDenied(
-        message: 'Location permission is required for guard duties'
-      );
-    } else if (errorInfo.message.toLowerCase().contains('service')) {
-      return const LocationServiceDisabled(
-        message: 'Please enable location services to continue'
-      );
-    }
     return LocationError(errorInfo: errorInfo);
   }
 
@@ -71,13 +63,15 @@ class LocationBloc extends Bloc<LocationEvent, LocationState>
       final permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied || 
           permission == LocationPermission.deniedForever) {
-        handleError(
+        handleErrorWithState(
           'Location permission denied',
           emit,
-          context: 'Initialize Location Tracking',
-          customErrorState: (errorInfo) => const LocationPermissionDenied(
-            message: 'Location permission is required for guard duties',
+          (errorInfo) => LocationPermissionDenied(
+            errorInfo: errorInfo.copyWith(
+              message: 'Location permission is required for guard duties',
+            ),
           ),
+          context: 'Initialize Location Tracking',
         );
         return;
       }
@@ -85,13 +79,15 @@ class LocationBloc extends Bloc<LocationEvent, LocationState>
       // Check if location services are enabled
       final isEnabled = await Geolocator.isLocationServiceEnabled();
       if (!isEnabled) {
-        handleError(
+        handleErrorWithState(
           'Location services disabled',
           emit,
-          context: 'Initialize Location Tracking',
-          customErrorState: (errorInfo) => const LocationServiceDisabled(
-            message: 'Please enable location services to continue',
+          (errorInfo) => LocationServiceDisabled(
+            errorInfo: errorInfo.copyWith(
+              message: 'Please enable location services to continue',
+            ),
           ),
+          context: 'Initialize Location Tracking',
         );
         return;
       }
@@ -430,13 +426,15 @@ class LocationBloc extends Bloc<LocationEvent, LocationState>
 
       if (permission == LocationPermission.denied || 
           permission == LocationPermission.deniedForever) {
-        handleError(
+        handleErrorWithState(
           'Location permission denied by user',
           emit,
-          context: 'Request Location Permission',
-          customErrorState: (errorInfo) => const LocationPermissionDenied(
-            message: 'Location permission is required for guard duties. Please enable it in settings.',
+          (errorInfo) => LocationPermissionDenied(
+            errorInfo: errorInfo.copyWith(
+              message: 'Location permission is required for guard duties. Please enable it in settings.',
+            ),
           ),
+          context: 'Request Location Permission',
         );
       } else {
         add(const CheckLocationServices());
@@ -458,13 +456,15 @@ class LocationBloc extends Bloc<LocationEvent, LocationState>
       final isEnabled = await Geolocator.isLocationServiceEnabled();
       
       if (!isEnabled) {
-        handleError(
+        handleErrorWithState(
           'Location services are disabled',
           emit,
-          context: 'Check Location Services',
-          customErrorState: (errorInfo) => const LocationServiceDisabled(
-            message: 'Location services are disabled. Please enable them in settings.',
+          (errorInfo) => LocationServiceDisabled(
+            errorInfo: errorInfo.copyWith(
+              message: 'Location services are disabled. Please enable them in settings.',
+            ),
           ),
+          context: 'Check Location Services',
         );
       } else {
         emit(const LocationTrackingInactive(
@@ -480,7 +480,16 @@ class LocationBloc extends Bloc<LocationEvent, LocationState>
     }
   }
 
-  // Helper Methods
+  Future<void> _onClearLocationError(
+    ClearLocationError event,
+    Emitter<LocationState> emit,
+  ) async {
+    if (_isErrorState(state)) {
+      emit(LocationInitial());
+    }
+  }
+
+  // ===== HELPER METHODS =====
 
   bool _isWithinGeofence(Position position, SiteModel site) {
     // Check if position is within any of the site's perimeters
@@ -536,10 +545,54 @@ class LocationBloc extends Bloc<LocationEvent, LocationState>
     return AppConstants.idleMovement;
   }
 
-  // Public methods for external access
+  /// Check if current state is an error state
+  bool _isErrorState(LocationState state) {
+    return state is LocationError ||
+           state is LocationPermissionDenied ||
+           state is LocationServiceDisabled;
+  }
+
+  // ===== PUBLIC GETTERS =====
+
+  /// Get current position
   Position? get currentPosition => _lastPosition;
+  
+  /// Check if tracking is active
   bool get isTrackingActive => _isTrackingActive;
+  
+  /// Get recent movements
   List<GuardMovementModel> get recentMovements => List.from(_recentMovements);
+
+  /// Check if bloc has error
+  bool get hasError => _isErrorState(state);
+
+  /// Get current error info if in error state
+  BlocErrorInfo? get currentError {
+    return switch (state) {
+      LocationError(:final errorInfo) => errorInfo,
+      LocationPermissionDenied(:final errorInfo) => errorInfo,
+      LocationServiceDisabled(:final errorInfo) => errorInfo,
+      _ => null,
+    };
+  }
+
+  /// Check if can retry current operation
+  bool get canRetry {
+    final error = currentError;
+    return error?.canRetry ?? false;
+  }
+
+  /// Get location summary for UI
+  Map<String, dynamic> get locationSummary {
+    return {
+      'isTrackingActive': _isTrackingActive,
+      'hasCurrentPosition': _lastPosition != null,
+      'recentMovementsCount': _recentMovements.length,
+      'currentGuardId': _currentGuardId,
+      'currentSite': _currentSite?.name,
+      'lastUpdate': _lastMovementRecord,
+    };
+  }
 
   @override
   Future<void> close() {

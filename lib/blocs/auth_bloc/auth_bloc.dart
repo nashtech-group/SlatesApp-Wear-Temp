@@ -1,18 +1,19 @@
 import 'dart:developer';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
+import 'package:slates_app_wear/core/error/error_state_mixin.dart';
 import 'package:slates_app_wear/data/models/user/login_model.dart';
 import 'package:slates_app_wear/data/models/user/user_model.dart';
 import '../../core/auth_manager.dart';
-import '../../core/error/bloc_error_mixin.dart';
 import '../../core/error/error_handler.dart';
+import '../../core/error/error_state_factory.dart';
+import '../../core/constants/app_constants.dart';
 import '../../data/repositories/auth_repository/auth_repository.dart';
 
 part 'auth_event.dart';
 part 'auth_state.dart';
 
-class AuthBloc extends Bloc<AuthEvent, AuthState>
-    with BlocErrorMixin<AuthEvent, AuthState> {
+class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthRepository authRepository;
 
   AuthBloc({required this.authRepository}) : super(const AuthInitial()) {
@@ -24,25 +25,40 @@ class AuthBloc extends Bloc<AuthEvent, AuthState>
     on<ClearAuthErrorEvent>(_onClearAuthError);
   }
 
-  @override
-  AuthState createDefaultErrorState(BlocErrorInfo errorInfo) {
-    // Handle specific error types for Auth
-    if (errorInfo.isType(ErrorType.authentication)) {
-      return AuthError(errorInfo: errorInfo);
-    } else if (errorInfo.shouldLogoutUser()) {
-      return AuthSessionExpired(errorInfo: errorInfo);
-    } else if (errorInfo.shouldTriggerOfflineMode()) {
-      return AuthError(
-          errorInfo: errorInfo.copyWith(
-        message:
-            'No internet connection. Try offline login or connect to internet.',
-      ));
-    }
+  /// Centralized error handling for auth operations
+  AuthState _handleAuthError(
+    dynamic error, {
+    required String context,
+    Map<String, dynamic>? additionalData,
+  }) {
+    final errorInfo = ErrorHandler.handleError(
+      error,
+      context: 'AuthBloc.$context',
+      additionalData: additionalData,
+    );
 
-    return AuthError(errorInfo: errorInfo);
+    // Use ErrorStateFactory to determine UI behavior
+    final uiBehavior = ErrorStateFactory.getErrorUIBehavior(errorInfo);
+
+    // Create appropriate auth state based on error type and UI behavior
+    switch (uiBehavior) {
+      case ErrorUIBehavior.logout:
+      case ErrorUIBehavior.redirectToLogin:
+        return AuthSessionExpired(errorInfo: errorInfo);
+      case ErrorUIBehavior.enableOfflineMode:
+        // Modify error message for offline context
+        return AuthError(
+          errorInfo: errorInfo.copyWith(
+            message:
+                'No internet connection. Try offline login or connect to internet.',
+          ),
+        );
+      default:
+        return AuthError(errorInfo: errorInfo);
+    }
   }
 
-  /// Handle login event
+  /// Handle login event with enhanced error handling
   Future<void> _onLogin(LoginEvent event, Emitter<AuthState> emit) async {
     emit(const AuthLoading());
 
@@ -62,35 +78,47 @@ class AuthBloc extends Bloc<AuthEvent, AuthState>
 
       log('Login successful for user: ${loginResponse.user.fullName}');
     } catch (error) {
-      // Check if this is a network error and try offline login
-      if (shouldTriggerOfflineMode(error)) {
-        try {
-          final offlineResponse =
-              await authRepository.autoLogin(event.identifier);
-          if (offlineResponse != null) {
-            emit(AuthOfflineMode(
-              user: offlineResponse.user,
-              message:
-                  'Logged in offline. Connect to internet for full features.',
-            ));
-            return;
-          }
-        } catch (offlineError) {
-          log('Offline login failed: $offlineError');
+      final errorInfo = ErrorHandler.handleError(
+        error,
+        context: 'AuthBloc.login',
+        additionalData: {'identifier': event.identifier},
+      );
+
+      // Check if should trigger offline mode and try offline login
+      if (errorInfo.shouldTriggerOfflineMode()) {
+        final offlineResult = await _attemptOfflineLogin(event.identifier);
+        if (offlineResult != null) {
+          emit(offlineResult);
+          return;
         }
       }
 
-      // Use centralized error handling
-      handleError(
+      emit(_handleAuthError(
         error,
-        emit,
-        context: 'Login',
+        context: 'login',
         additionalData: {'identifier': event.identifier},
-      );
+      ));
     }
   }
 
-  /// Handle logout event
+  /// Attempt offline login with error handling
+  Future<AuthState?> _attemptOfflineLogin(String identifier) async {
+    try {
+      final offlineResponse = await authRepository.autoLogin(identifier);
+      if (offlineResponse != null) {
+        log('Offline login successful for: $identifier');
+        return AuthOfflineMode(
+          user: offlineResponse.user,
+          message: AppConstants.offlineLoginSuccessMessage,
+        );
+      }
+    } catch (offlineError) {
+      log('Offline login failed for $identifier: $offlineError');
+    }
+    return null;
+  }
+
+  /// Handle logout event with comprehensive cleanup
   Future<void> _onLogout(LogoutEvent event, Emitter<AuthState> emit) async {
     emit(const AuthLoading());
 
@@ -99,28 +127,27 @@ class AuthBloc extends Bloc<AuthEvent, AuthState>
       emit(const AuthUnauthenticated());
       log('Logout successful');
     } catch (error) {
-      // Even if server logout fails, clear local data
-      await AuthManager().clear();
+      // Even if server logout fails, clear local data and proceed
+      await authRepository.clearAuthData();
       emit(const AuthUnauthenticated());
-      log('Logout completed with errors: $error');
+      log('Logout completed with server errors (local data cleared): $error');
     }
   }
 
-  /// Handle token refresh event
+  /// Handle token refresh with smart error handling
   Future<void> _onRefreshToken(
       RefreshTokenEvent event, Emitter<AuthState> emit) async {
     final currentState = state;
 
-    // Only refresh if currently authenticated
+    // Validate current state
     if (currentState is! AuthAuthenticated) {
-      handleError(
-        'Not authenticated',
-        emit,
-        context: 'Token Refresh',
-        customErrorState: (errorInfo) => AuthError(
-          errorInfo: errorInfo.copyWith(message: 'Not authenticated'),
+      emit(AuthError(
+        errorInfo: BlocErrorInfo(
+          type: ErrorType.authentication,
+          message: 'Cannot refresh token: Not authenticated',
+          errorCode: 'NOT_AUTHENTICATED',
         ),
-      );
+      ));
       return;
     }
 
@@ -137,38 +164,35 @@ class AuthBloc extends Bloc<AuthEvent, AuthState>
 
       log('Token refresh successful');
     } catch (error) {
-      // If refresh fails, user needs to login again
-      await AuthManager().clear();
+      // Clear auth data on refresh failure
+      await authRepository.clearAuthData();
 
-      if (shouldLogoutUser(error)) {
-        emit(AuthSessionExpired(
-          errorInfo: processError(error, context: 'Token Refresh'),
-        ));
-      } else {
-        handleError(error, emit, context: 'Token Refresh');
-      }
+      final errorInfo = ErrorHandler.handleError(
+        error,
+        context: 'AuthBloc.refreshToken',
+      );
+
+      // Always treat refresh failure as session expired
+      emit(AuthSessionExpired(errorInfo: errorInfo));
     }
   }
 
-  /// Handle auto-login event with improved error handling
+  /// Handle auto-login with improved validation
   Future<void> _onAutoLogin(
       AutoLoginEvent event, Emitter<AuthState> emit) async {
     emit(const AuthLoading());
 
     try {
-      // Check if user is already authenticated
-      final isAuthenticated = await authRepository.isAuthenticated();
+      // Check current authentication status
+      final authStatus = await authRepository.getAuthStatus();
 
-      if (isAuthenticated) {
+      if (authStatus['isAuthenticated'] == true) {
         final user = await authRepository.getCurrentUser();
         final token = await AuthManager().getToken();
 
         if (user != null && token != null) {
-          // Check if token is close to expiry and refresh if needed
-          final timeUntilExpiry = await AuthManager().getTimeUntilExpiry();
-
-          if (timeUntilExpiry != null && timeUntilExpiry.inMinutes < 30) {
-            // Try to refresh token
+          // Check if token needs refresh
+          if (authStatus['needsRefresh'] == true) {
             add(const RefreshTokenEvent());
             return;
           }
@@ -182,17 +206,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState>
         }
       }
 
-      // Try auto-login for guards with offline data
+      // Try offline auto-login for guards
       if (event.employeeId != null) {
-        final autoLoginResponse =
-            await authRepository.autoLogin(event.employeeId!);
-
-        if (autoLoginResponse != null) {
-          emit(AuthAuthenticated(
-            user: autoLoginResponse.user,
-            token: autoLoginResponse.accessToken,
-            isOffline: true,
-          ));
+        final offlineState = await _attemptOfflineLogin(event.employeeId!);
+        if (offlineState != null) {
+          emit(offlineState);
           return;
         }
       }
@@ -200,19 +218,19 @@ class AuthBloc extends Bloc<AuthEvent, AuthState>
       // No valid authentication found
       emit(const AuthUnauthenticated());
     } catch (error) {
-      // For auto-login, we typically want to silently fail to unauthenticated
+      // Auto-login failures should silently fall back to unauthenticated
       emit(const AuthUnauthenticated());
-      log('Auto-login failed: $error');
+      log('Auto-login failed: ${ErrorHandler.handleError(error).message}');
     }
   }
 
-  /// Handle check authentication status event
+  /// Handle authentication status check
   Future<void> _onCheckAuthStatus(
       CheckAuthStatusEvent event, Emitter<AuthState> emit) async {
     try {
-      final isAuthenticated = await authRepository.isAuthenticated();
+      final isValid = await authRepository.validateAuthState();
 
-      if (isAuthenticated) {
+      if (isValid) {
         final user = await authRepository.getCurrentUser();
         final token = await AuthManager().getToken();
 
@@ -222,19 +240,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState>
             token: token,
             isOffline: false,
           ));
-        } else {
-          emit(const AuthUnauthenticated());
+          return;
         }
-      } else {
-        emit(const AuthUnauthenticated());
       }
+
+      emit(const AuthUnauthenticated());
     } catch (error) {
       emit(const AuthUnauthenticated());
-      log('Auth status check failed: $error');
+      log('Auth status check failed: ${ErrorHandler.handleError(error).message}');
     }
   }
 
-  /// Handle clear auth error event
+  /// Handle clear auth error
   Future<void> _onClearAuthError(
       ClearAuthErrorEvent event, Emitter<AuthState> emit) async {
     if (state is AuthError || state is AuthSessionExpired) {
@@ -242,33 +259,24 @@ class AuthBloc extends Bloc<AuthEvent, AuthState>
     }
   }
 
-  /// Helper method to get current user if authenticated
-  UserModel? get currentUser {
-    final currentState = state;
-    if (currentState is AuthAuthenticated) {
-      return currentState.user;
-    } else if (currentState is AuthOfflineMode) {
-      return currentState.user;
-    }
-    return null;
+  /// Check if in offline mode
+  bool get isOfflineMode => state is AuthOfflineMode;
+
+  /// Check if current state is error
+  bool get hasError => state is AuthError || state is AuthSessionExpired;
+
+  /// Get current error info if in error state
+  BlocErrorInfo? get currentError {
+    return switch (state) {
+      AuthError(:final errorInfo) => errorInfo,
+      AuthSessionExpired(:final errorInfo) => errorInfo,
+      _ => null,
+    };
   }
 
-  /// Helper method to check if user is authenticated
-  bool get isAuthenticated {
-    return state is AuthAuthenticated || state is AuthOfflineMode;
-  }
-
-  /// Helper method to check if in offline mode
-  bool get isOfflineMode {
-    return state is AuthOfflineMode;
-  }
-
-  /// Helper method to get current token
-  String? get currentToken {
-    final currentState = state;
-    if (currentState is AuthAuthenticated) {
-      return currentState.token;
-    }
-    return null;
+  /// Check if can retry current operation
+  bool get canRetry {
+    final error = currentError;
+    return error?.canRetry ?? false;
   }
 }

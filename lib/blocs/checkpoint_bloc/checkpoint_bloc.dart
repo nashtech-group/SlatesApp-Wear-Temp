@@ -2,20 +2,20 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:slates_app_wear/core/error/error_state_mixin.dart';
 import 'package:slates_app_wear/data/models/guard/guard_position_model.dart';
 import 'package:slates_app_wear/data/models/sites/checkpoint_model.dart';
 import 'package:slates_app_wear/data/models/sites/perimeter_check_model.dart';
 import 'package:slates_app_wear/data/models/sites/site_model.dart';
 import 'package:slates_app_wear/core/constants/app_constants.dart';
 import 'package:slates_app_wear/services/offline_storage_service.dart';
-import '../../core/error/bloc_error_mixin.dart';
 import '../../core/error/error_handler.dart';
+import '../../core/error/error_state_factory.dart';
 
 part 'checkpoint_event.dart';
 part 'checkpoint_state.dart';
 
-class CheckpointBloc extends Bloc<CheckpointEvent, CheckpointState> 
-    with BlocErrorMixin<CheckpointEvent, CheckpointState> {
+class CheckpointBloc extends Bloc<CheckpointEvent, CheckpointState> {
   final OfflineStorageService _offlineStorage;
 
   // Current state
@@ -41,8 +41,18 @@ class CheckpointBloc extends Bloc<CheckpointEvent, CheckpointState>
     on<GetCheckpointProgress>(_onGetCheckpointProgress);
   }
 
-  @override
-  CheckpointState createDefaultErrorState(BlocErrorInfo errorInfo) {
+  /// Centralized error handling for checkpoint operations
+  CheckpointState _handleCheckpointError(
+    dynamic error, {
+    required String context,
+    Map<String, dynamic>? additionalData,
+  }) {
+    final errorInfo = ErrorHandler.handleError(
+      error,
+      context: 'CheckpointBloc.$context',
+      additionalData: additionalData,
+    );
+
     return CheckpointError(errorInfo: errorInfo);
   }
 
@@ -76,7 +86,6 @@ class CheckpointBloc extends Bloc<CheckpointEvent, CheckpointState>
         _designatedCheckpoint = designatedCheckpoint;
       } else {
         // For patrol duty, find the nearest checkpoint as starting point
-        // This would require current position, so we'll set it later
         nextCheckpoint = _checkpoints.isNotEmpty ? _checkpoints.first : null;
       }
 
@@ -91,16 +100,15 @@ class CheckpointBloc extends Bloc<CheckpointEvent, CheckpointState>
       ));
 
     } catch (error) {
-      handleError(
+      emit(_handleCheckpointError(
         error,
-        emit,
-        context: 'Initialize Checkpoints',
+        context: 'initializeCheckpoints',
         additionalData: {
           'siteId': event.site.id,
           'guardId': event.guardId,
           'dutyType': event.guardPosition.isStaticGuard ? 'static' : 'patrol',
         },
-      );
+      ));
     }
   }
 
@@ -141,16 +149,15 @@ class CheckpointBloc extends Bloc<CheckpointEvent, CheckpointState>
         }
       }
     } catch (error) {
-      handleError(
+      emit(_handleCheckpointError(
         error,
-        emit,
-        context: 'Check Proximity To Checkpoints',
+        context: 'checkProximityToCheckpoints',
         additionalData: {
           'latitude': event.currentPosition.latitude,
           'longitude': event.currentPosition.longitude,
           'checkpointsCount': _checkpoints.length,
         },
-      );
+      ));
     }
   }
 
@@ -159,17 +166,14 @@ class CheckpointBloc extends Bloc<CheckpointEvent, CheckpointState>
     Emitter<CheckpointState> emit,
   ) async {
     if (_guardId == null || _rosterUserId == null) {
-      handleError(
+      emit(_handleCheckpointError(
         'Guard or roster user not initialized',
-        emit,
-        context: 'Complete Checkpoint',
-        customErrorState: (errorInfo) => CheckpointError(
-          errorInfo: errorInfo.copyWith(
-            message: 'Guard or roster user not initialized',
-            canRetry: false,
-          ),
-        ),
-      );
+        context: 'completeCheckpoint',
+        additionalData: {
+          'guardIdNull': _guardId == null,
+          'rosterUserIdNull': _rosterUserId == null,
+        },
+      ));
       return;
     }
 
@@ -183,21 +187,21 @@ class CheckpointBloc extends Bloc<CheckpointEvent, CheckpointState>
       );
 
       if (distance > AppConstants.geofenceRadiusMeters) {
-        handleError(
+        final errorInfo = ErrorHandler.handleError(
           'Too far from checkpoint',
-          emit,
-          context: 'Complete Checkpoint',
+          context: 'CheckpointBloc.completeCheckpoint',
           additionalData: {
             'distance': distance,
             'requiredDistance': AppConstants.geofenceRadiusMeters,
           },
-          customErrorState: (errorInfo) => CheckpointError(
-            errorInfo: errorInfo.copyWith(
-              message: 'Too far from checkpoint to complete (${distance.toStringAsFixed(1)}m away)',
-              canRetry: false,
-            ),
-          ),
         );
+
+        emit(CheckpointError(
+          errorInfo: errorInfo.copyWith(
+            message: 'Too far from checkpoint to complete (${distance.toStringAsFixed(1)}m away)',
+            canRetry: false,
+          ),
+        ));
         return;
       }
 
@@ -247,16 +251,15 @@ class CheckpointBloc extends Bloc<CheckpointEvent, CheckpointState>
       }
 
     } catch (error) {
-      handleError(
+      emit(_handleCheckpointError(
         error,
-        emit,
-        context: 'Complete Checkpoint',
+        context: 'completeCheckpoint',
         additionalData: {
           'checkpointId': event.checkpoint.id,
           'guardId': _guardId,
           'rosterUserId': _rosterUserId,
         },
-      );
+      ));
     }
   }
 
@@ -291,16 +294,15 @@ class CheckpointBloc extends Bloc<CheckpointEvent, CheckpointState>
         ));
       }
     } catch (error) {
-      handleError(
+      emit(_handleCheckpointError(
         error,
-        emit,
-        context: 'Get Next Checkpoint',
+        context: 'getNextCheckpoint',
         additionalData: {
           'latitude': event.currentPosition.latitude,
           'longitude': event.currentPosition.longitude,
           'dutyType': _dutyType,
         },
-      );
+      ));
     }
   }
 
@@ -325,12 +327,11 @@ class CheckpointBloc extends Bloc<CheckpointEvent, CheckpointState>
         ));
       }
     } catch (error) {
-      handleError(
+      emit(_handleCheckpointError(
         error,
-        emit,
-        context: 'Reset Checkpoints',
+        context: 'resetCheckpoints',
         additionalData: {'checkpointsCount': _checkpoints.length},
-      );
+      ));
     }
   }
 
@@ -361,12 +362,11 @@ class CheckpointBloc extends Bloc<CheckpointEvent, CheckpointState>
         ));
       }
     } catch (error) {
-      handleError(
+      emit(_handleCheckpointError(
         error,
-        emit,
-        context: 'Update Duty Type',
+        context: 'updateDutyType',
         additionalData: {'dutyType': event.dutyType},
-      );
+      ));
     }
   }
 
@@ -394,16 +394,15 @@ class CheckpointBloc extends Bloc<CheckpointEvent, CheckpointState>
       ));
 
     } catch (error) {
-      handleError(
+      emit(_handleCheckpointError(
         error,
-        emit,
-        context: 'Check Static Position',
+        context: 'checkStaticPosition',
         additionalData: {
           'checkpointId': event.designatedCheckpoint.id,
           'latitude': event.currentPosition.latitude,
           'longitude': event.currentPosition.longitude,
         },
-      );
+      ));
     }
   }
 
@@ -433,19 +432,17 @@ class CheckpointBloc extends Bloc<CheckpointEvent, CheckpointState>
         remainingCheckpoints: remainingCheckpoints,
       ));
     } catch (error) {
-      handleError(
+      emit(_handleCheckpointError(
         error,
-        emit,
-        context: 'Get Checkpoint Progress',
+        context: 'getCheckpointProgress',
         additionalData: {'checkpointsCount': _checkpoints.length},
-      );
+      ));
     }
   }
 
-  // Helper Methods
+  // ===== HELPER METHODS =====
 
   CheckPointModel? _findNextCheckpoint(Position currentPosition) {
-    // Find nearest uncompleted checkpoint
     CheckPointModel? nearestCheckpoint;
     double? nearestDistance;
 
@@ -477,11 +474,8 @@ class CheckpointBloc extends Bloc<CheckpointEvent, CheckpointState>
     return null;
   }
 
-  double _calculateBearing(double lat1, double lon1, double lat2, double lon2) {
-    return Geolocator.bearingBetween(lat1, lon1, lat2, lon2);
-  }
+  // ===== PUBLIC GETTERS =====
 
-  // Public getters for external access
   List<CheckPointModel> get checkpoints => List.from(_checkpoints);
   Map<int, bool> get completionStatus => Map.from(_completionStatus);
   Map<int, DateTime> get completionTimes => Map.from(_completionTimes);
@@ -497,4 +491,17 @@ class CheckpointBloc extends Bloc<CheckpointEvent, CheckpointState>
   
   bool get isAllCheckpointsCompleted => 
       completedCheckpointsCount == _checkpoints.length;
+
+  /// Get current checkpoint status for UI
+  Map<String, dynamic> get checkpointSummary {
+    return {
+      'totalCheckpoints': _checkpoints.length,
+      'completedCheckpoints': completedCheckpointsCount,
+      'remainingCheckpoints': _checkpoints.length - completedCheckpointsCount,
+      'progressPercentage': progressPercentage,
+      'dutyType': _dutyType,
+      'isAllCompleted': isAllCheckpointsCompleted,
+      'hasDesignatedCheckpoint': _designatedCheckpoint != null,
+    };
+  }
 }

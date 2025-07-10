@@ -1,4 +1,4 @@
-part of 'checkpoint_bloc.dart';
+ part of 'checkpoint_bloc.dart';
 
 abstract class CheckpointState extends Equatable {
   const CheckpointState();
@@ -70,6 +70,17 @@ class CheckpointsInitialized extends CheckpointState {
 
   double get progressPercentage => 
       totalCheckpoints > 0 ? (completedCheckpoints / totalCheckpoints) * 100 : 0;
+
+  bool get isStaticDuty => dutyType == 'static';
+  bool get isPatrolDuty => dutyType == 'patrol';
+  bool get hasCheckpoints => checkpoints.isNotEmpty;
+  bool get isCompleted => completedCheckpoints == totalCheckpoints && totalCheckpoints > 0;
+  
+  List<CheckPointModel> get completedCheckpointsList => 
+      checkpoints.where((cp) => completionStatus[cp.id] == true).toList();
+  
+  List<CheckPointModel> get remainingCheckpoints => 
+      checkpoints.where((cp) => completionStatus[cp.id] != true).toList();
 }
 
 class CheckpointProximityDetected extends CheckpointState {
@@ -85,6 +96,9 @@ class CheckpointProximityDetected extends CheckpointState {
 
   @override
   List<Object?> get props => [checkpoint, distance, isWithinCompletionRange];
+
+  String get formattedDistance => '${distance.toStringAsFixed(1)}m';
+  bool get canComplete => isWithinCompletionRange;
 }
 
 class CheckpointCompleted extends CheckpointState {
@@ -110,6 +124,9 @@ class CheckpointCompleted extends CheckpointState {
         progressPercentage,
         isAllCompleted,
       ];
+
+  String get formattedProgress => '${progressPercentage.toStringAsFixed(1)}%';
+  bool get hasNextCheckpoint => nextCheckpoint != null;
 }
 
 class StaticPositionStatus extends CheckpointState {
@@ -135,6 +152,11 @@ class StaticPositionStatus extends CheckpointState {
         requiresReturn,
         lastCheck,
       ];
+
+  String get formattedDistance => '${distanceFromPosition.toStringAsFixed(1)}m';
+  String get positionStatus => isInPosition ? 'In Position' : 'Out of Position';
+  String get formattedLastCheck => 
+      '${lastCheck.hour.toString().padLeft(2, '0')}:${lastCheck.minute.toString().padLeft(2, '0')}';
 }
 
 class NextCheckpointCalculated extends CheckpointState {
@@ -150,6 +172,16 @@ class NextCheckpointCalculated extends CheckpointState {
 
   @override
   List<Object?> get props => [nextCheckpoint, distance, bearing];
+
+  String get formattedDistance => '${distance.toStringAsFixed(1)}m';
+  String get formattedBearing => '${bearing.toStringAsFixed(0)}°';
+  String get compassDirection => _getCompassDirection(bearing);
+
+  String _getCompassDirection(double bearing) {
+    const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+    final index = ((bearing + 22.5) / 45).floor() % 8;
+    return directions[index];
+  }
 }
 
 class CheckpointProgress extends CheckpointState {
@@ -175,9 +207,15 @@ class CheckpointProgress extends CheckpointState {
         completedCheckpointsList,
         remainingCheckpoints,
       ];
+
+  String get formattedProgress => '${progressPercentage.toStringAsFixed(1)}%';
+  String get progressText => '$completedCheckpoints of $totalCheckpoints completed';
+  bool get isCompleted => completedCheckpoints == totalCheckpoints && totalCheckpoints > 0;
+  bool get hasRemaining => remainingCheckpoints.isNotEmpty;
 }
 
-class CheckpointError extends CheckpointState {
+class CheckpointError extends CheckpointState with ErrorStateMixin {
+  @override
   final BlocErrorInfo errorInfo;
 
   const CheckpointError({required this.errorInfo});
@@ -185,9 +223,8 @@ class CheckpointError extends CheckpointState {
   @override
   List<Object?> get props => [errorInfo];
 
-  // Convenience getters for backward compatibility
-  String get message => errorInfo.message;
-  bool get canRetry => errorInfo.canRetry;
-  bool get isNetworkError => errorInfo.isNetworkError;
-  ErrorType get errorType => errorInfo.type;
+  /// Create copy with updated error info
+  CheckpointError copyWith({BlocErrorInfo? errorInfo}) {
+    return CheckpointError(errorInfo: errorInfo ?? this.errorInfo);
+  }
 }

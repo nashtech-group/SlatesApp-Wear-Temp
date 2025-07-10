@@ -28,7 +28,8 @@ class AuthManager {
 
   /// Save refresh token
   Future<void> saveRefreshToken(String refreshToken) async {
-    await _secureStorage.write(key: StorageConstants.refreshToken, value: refreshToken);
+    await _secureStorage.write(
+        key: StorageConstants.refreshToken, value: refreshToken);
   }
 
   /// Get refresh token
@@ -39,7 +40,7 @@ class AuthManager {
   /// Save token expiry time
   Future<void> saveTokenExpiry(DateTime expiryTime) async {
     await _secureStorage.write(
-      key: StorageConstants.tokenExpiry, 
+      key: StorageConstants.tokenExpiry,
       value: expiryTime.toIso8601String(),
     );
   }
@@ -47,7 +48,8 @@ class AuthManager {
   /// Get token expiry time
   Future<DateTime?> getTokenExpiry() async {
     try {
-      final expiryString = await _secureStorage.read(key: StorageConstants.tokenExpiry);
+      final expiryString =
+          await _secureStorage.read(key: StorageConstants.tokenExpiry);
       if (expiryString != null) {
         return DateTime.parse(expiryString);
       }
@@ -80,22 +82,60 @@ class AuthManager {
     return await _secureStorage.read(key: StorageConstants.userId);
   }
 
+  /// Get current user role
+  Future<String?> getUserRole() async {
+    final user = await getUserData();
+    return user?.role;
+  }
+
+  /// Check if current user is a guard
+  Future<bool> isGuard() async {
+    final user = await getUserData();
+    return user?.isGuard ?? false;
+  }
+
+  /// Check if current user is an admin
+  Future<bool> isAdmin() async {
+    final user = await getUserData();
+    return user?.isAdmin ?? false;
+  }
+
+  /// Check if current user is a manager
+  Future<bool> isManager() async {
+    final user = await getUserData();
+    return user?.isManager ?? false;
+  }
+
+  /// Get user's full name
+  Future<String?> getUserName() async {
+    final user = await getUserData();
+    return user?.fullName;
+  }
+
+  /// Get user's employee ID
+  Future<String?> getEmployeeId() async {
+    final user = await getUserData();
+    return user?.employeeId;
+  }
+
   /// Save complete user data
   Future<void> saveUserData(UserModel user) async {
     final userJson = jsonEncode(user.toJson());
     await _secureStorage.write(key: StorageConstants.userData, value: userJson);
     await saveUserId(user.id.toString());
-    
+
     // Save last employee ID for guards
     if (user.isGuard) {
-      await _secureStorage.write(key: StorageConstants.lastEmployeeId, value: user.employeeId);
+      await _secureStorage.write(
+          key: StorageConstants.lastEmployeeId, value: user.employeeId);
     }
   }
 
   /// Get complete user data
   Future<UserModel?> getUserData() async {
     try {
-      final userJson = await _secureStorage.read(key: StorageConstants.userData);
+      final userJson =
+          await _secureStorage.read(key: StorageConstants.userData);
       if (userJson != null) {
         final userMap = jsonDecode(userJson) as Map<String, dynamic>;
         return UserModel.fromJson(userMap);
@@ -110,7 +150,8 @@ class AuthManager {
 
   /// Save login type (guard/admin/manager)
   Future<void> saveLoginType(String loginType) async {
-    await _secureStorage.write(key: StorageConstants.loginType, value: loginType);
+    await _secureStorage.write(
+        key: StorageConstants.loginType, value: loginType);
   }
 
   /// Get login type
@@ -138,7 +179,8 @@ class AuthManager {
   /// Get session start time
   Future<DateTime?> getSessionStartTime() async {
     try {
-      final timeString = await _secureStorage.read(key: StorageConstants.sessionStartTime);
+      final timeString =
+          await _secureStorage.read(key: StorageConstants.sessionStartTime);
       if (timeString != null) {
         return DateTime.parse(timeString);
       }
@@ -159,7 +201,8 @@ class AuthManager {
   /// Get last activity time
   Future<DateTime?> getLastActivityTime() async {
     try {
-      final timeString = await _secureStorage.read(key: StorageConstants.lastActivityTime);
+      final timeString =
+          await _secureStorage.read(key: StorageConstants.lastActivityTime);
       if (timeString != null) {
         return DateTime.parse(timeString);
       }
@@ -180,7 +223,8 @@ class AuthManager {
   /// Get last online sync time
   Future<DateTime?> getLastOnlineSync() async {
     try {
-      final timeString = await _secureStorage.read(key: StorageConstants.lastOnlineSync);
+      final timeString =
+          await _secureStorage.read(key: StorageConstants.lastOnlineSync);
       if (timeString != null) {
         return DateTime.parse(timeString);
       }
@@ -206,7 +250,8 @@ class AuthManager {
 
   /// Save device fingerprint
   Future<void> saveDeviceFingerprint(String fingerprint) async {
-    await _secureStorage.write(key: StorageConstants.deviceFingerprint, value: fingerprint);
+    await _secureStorage.write(
+        key: StorageConstants.deviceFingerprint, value: fingerprint);
   }
 
   /// Get device fingerprint
@@ -224,7 +269,8 @@ class AuthManager {
 
   /// Get remember device preference
   Future<bool> getRememberDevice() async {
-    final value = await _secureStorage.read(key: StorageConstants.rememberDevice);
+    final value =
+        await _secureStorage.read(key: StorageConstants.rememberDevice);
     return value?.toLowerCase() == 'true';
   }
 
@@ -235,13 +281,15 @@ class AuthManager {
   /// Save basic offline login data for guards (authentication only)
   Future<void> saveBasicOfflineLoginData(Map<String, dynamic> data) async {
     final dataJson = jsonEncode(data);
-    await _secureStorage.write(key: StorageConstants.offlineLoginData, value: dataJson);
+    await _secureStorage.write(
+        key: StorageConstants.offlineLoginData, value: dataJson);
   }
 
   /// Get basic offline login data for guards
   Future<Map<String, dynamic>?> getBasicOfflineLoginData() async {
     try {
-      final dataJson = await _secureStorage.read(key: StorageConstants.offlineLoginData);
+      final dataJson =
+          await _secureStorage.read(key: StorageConstants.offlineLoginData);
       if (dataJson != null) {
         return jsonDecode(dataJson) as Map<String, dynamic>;
       }
@@ -261,7 +309,7 @@ class AuthManager {
       if (userData == null) return false;
 
       final user = UserModel.fromJson(userData);
-      
+
       // Check if it's the same employee and if data is still valid
       if (user.employeeId == employeeId) {
         final loginTimeStr = offlineData['loginTime'] as String?;
@@ -271,7 +319,7 @@ class AuthManager {
           return daysSinceLogin <= AppConstants.offlineLoginValidityDays;
         }
       }
-      
+
       return false;
     } catch (e) {
       return false;
@@ -304,17 +352,17 @@ class AuthManager {
   Future<bool> isAuthenticated() async {
     final token = await getToken();
     final expiry = await getTokenExpiry();
-    
+
     if (token == null || token.isEmpty) {
       return false;
     }
-    
+
     // Check if token is expired
     if (expiry != null && DateTime.now().isAfter(expiry)) {
       await clear(); // Clear expired token
       return false;
     }
-    
+
     return true;
   }
 
@@ -322,7 +370,7 @@ class AuthManager {
   Future<bool> isTokenExpired() async {
     final expiry = await getTokenExpiry();
     if (expiry == null) return true;
-    
+
     return DateTime.now().isAfter(expiry);
   }
 
@@ -330,10 +378,10 @@ class AuthManager {
   Future<Duration?> getTimeUntilExpiry() async {
     final expiry = await getTokenExpiry();
     if (expiry == null) return null;
-    
+
     final now = DateTime.now();
     if (now.isAfter(expiry)) return Duration.zero;
-    
+
     return expiry.difference(now);
   }
 
@@ -341,8 +389,9 @@ class AuthManager {
   Future<bool> needsTokenRefresh() async {
     final timeUntilExpiry = await getTimeUntilExpiry();
     if (timeUntilExpiry == null) return true;
-    
-    return timeUntilExpiry.inMinutes < AppConstants.tokenRefreshThresholdMinutes;
+
+    return timeUntilExpiry.inMinutes <
+        AppConstants.tokenRefreshThresholdMinutes;
   }
 
   /// Check if device should remember user (for guards)
@@ -350,9 +399,9 @@ class AuthManager {
     final lastEmployeeId = await getLastEmployeeId();
     final loginType = await getLoginType();
     final rememberDevice = await getRememberDevice();
-    return lastEmployeeId != null && 
-           loginType == AppConstants.guardLoginType && 
-           rememberDevice;
+    return lastEmployeeId != null &&
+        loginType == AppConstants.guardLoginType &&
+        rememberDevice;
   }
 
   // ====================
@@ -367,15 +416,15 @@ class AuthManager {
     String? refreshToken,
   }) async {
     final now = DateTime.now();
-    
+
     await saveToken(token);
     await saveUserData(user);
     await saveSessionStartTime(now);
     await saveLastActivityTime(now);
-    
+
     final expiryTime = now.add(Duration(seconds: expiresIn));
     await saveTokenExpiry(expiryTime);
-    
+
     if (refreshToken != null) {
       await saveRefreshToken(refreshToken);
     }
@@ -383,7 +432,7 @@ class AuthManager {
     // Save login type based on user role
     if (user.isGuard) {
       await saveLoginType(AppConstants.guardLoginType);
-      
+
       // Save basic offline login data for guards (authentication only)
       final basicOfflineData = {
         'user': user.toJson(),
@@ -426,21 +475,21 @@ class AuthManager {
   Future<bool> checkSessionActivity() async {
     final expiry = await getTokenExpiry();
     if (expiry == null) return false;
-    
+
     final now = DateTime.now();
     if (now.isAfter(expiry)) {
       await clear();
       return false;
     }
-    
+
     // Auto-extend session if user is active and close to expiry
     if (expiry.difference(now).inHours < AppConstants.sessionExtensionHours) {
       await extendSession();
     }
-    
+
     // Update last activity time
     await saveLastActivityTime(now);
-    
+
     return true;
   }
 
@@ -448,13 +497,14 @@ class AuthManager {
   Future<Duration?> getSessionDuration() async {
     final sessionStart = await getSessionStartTime();
     if (sessionStart == null) return null;
-    
+
     return DateTime.now().difference(sessionStart);
   }
 
   /// Check if session was extended
   Future<bool> wasSessionExtended() async {
-    final extendedTime = await _secureStorage.read(key: StorageConstants.sessionExtended);
+    final extendedTime =
+        await _secureStorage.read(key: StorageConstants.sessionExtended);
     return extendedTime != null;
   }
 
@@ -465,7 +515,7 @@ class AuthManager {
   /// Validate token format (basic validation)
   bool isValidTokenFormat(String? token) {
     if (token == null || token.isEmpty) return false;
-    
+
     // Basic token format validation for Laravel Sanctum tokens: "1|randomstring"
     return token.contains('|') && token.length > 10;
   }
@@ -493,7 +543,7 @@ class AuthManager {
     final lastEmployeeId = await getLastEmployeeId();
     final sessionStart = await getSessionStartTime();
     final lastActivity = await getLastActivityTime();
-    
+
     return {
       'hasToken': token != null,
       'hasUser': user != null,
@@ -547,11 +597,11 @@ class AuthManager {
   /// Get all stored keys (for debugging)
   Future<Map<String, String?>> getAllStoredData() async {
     final Map<String, String?> allData = {};
-    
+
     for (final key in StorageConstants.secureStorageKeys) {
       allData[key] = await _secureStorage.read(key: key);
     }
-    
+
     return allData;
   }
 
@@ -641,7 +691,7 @@ class AuthManager {
     // Clear all auth-related keys
     final futures = StorageConstants.authKeys.map((key) => _clearKey(key));
     await Future.wait(futures);
-    
+
     // Also clear device and session data
     await clearDeviceData();
     await clearSessionData();

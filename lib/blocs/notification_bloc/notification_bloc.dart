@@ -9,6 +9,7 @@ import 'package:slates_app_wear/data/models/sites/site_model.dart';
 import 'package:slates_app_wear/services/notification_service.dart';
 import '../../core/error/bloc_error_mixin.dart';
 import '../../core/error/error_handler.dart';
+import '../../core/error/error_state_mixin.dart';
 
 part 'notification_event.dart';
 part 'notification_state.dart';
@@ -44,6 +45,7 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState>
     on<CancelScheduledNotification>(_onCancelScheduledNotification);
     on<CancelAllScheduledNotifications>(_onCancelAllScheduledNotifications);
     on<GetPendingNotifications>(_onGetPendingNotifications);
+    on<ClearNotificationError>(_onClearNotificationError);
   }
 
   @override
@@ -64,16 +66,16 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState>
         emit(const NotificationInitialized(permissionGranted: true));
         log('NotificationBloc: Service initialized successfully');
       } else {
-        handleError(
+        handleErrorWithState(
           'Failed to initialize notification service',
           emit,
-          context: 'Initialize Notifications',
-          customErrorState: (errorInfo) => NotificationError(
+          (errorInfo) => NotificationError(
             errorInfo: errorInfo.copyWith(
               message: 'Failed to initialize notification service',
               canRetry: true,
             ),
           ),
+          context: 'Initialize Notifications',
         );
       }
     } catch (error) {
@@ -116,20 +118,20 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState>
         _trimHistory();
         log('NotificationBloc: Scheduled ${scheduledIds.length} duty notifications');
       } else {
-        handleError(
+        handleErrorWithState(
           'No notifications were scheduled',
           emit,
-          context: 'Schedule Duty Notifications',
-          additionalData: {
-            'rosterId': event.rosterUser.id,
-            'siteId': event.site.id,
-          },
-          customErrorState: (errorInfo) => NotificationError(
+          (errorInfo) => NotificationError(
             errorInfo: errorInfo.copyWith(
               message: 'No notifications were scheduled',
               canRetry: true,
             ),
           ),
+          context: 'Schedule Duty Notifications',
+          additionalData: {
+            'rosterId': event.rosterUser.id,
+            'siteId': event.site.id,
+          },
         );
       }
     } catch (error) {
@@ -483,17 +485,17 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState>
         ));
         log('NotificationBloc: Notification marked as read');
       } else {
-        handleError(
+        handleErrorWithState(
           'Notification not found',
           emit,
-          context: 'Mark Notification As Read',
-          additionalData: {'notificationId': event.notificationId},
-          customErrorState: (errorInfo) => NotificationError(
+          (errorInfo) => NotificationError(
             errorInfo: errorInfo.copyWith(
               message: 'Notification not found',
               canRetry: false,
             ),
           ),
+          context: 'Mark Notification As Read',
+          additionalData: {'notificationId': event.notificationId},
         );
       }
     } catch (error) {
@@ -548,17 +550,17 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState>
         ));
         log('NotificationBloc: Notification deleted');
       } else {
-        handleError(
+        handleErrorWithState(
           'Notification not found',
           emit,
-          context: 'Delete Notification',
-          additionalData: {'notificationId': event.notificationId},
-          customErrorState: (errorInfo) => NotificationError(
+          (errorInfo) => NotificationError(
             errorInfo: errorInfo.copyWith(
               message: 'Notification not found',
               canRetry: false,
             ),
           ),
+          context: 'Delete Notification',
+          additionalData: {'notificationId': event.notificationId},
         );
       }
     } catch (error) {
@@ -700,7 +702,16 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState>
     }
   }
 
-  // Helper methods
+  Future<void> _onClearNotificationError(
+    ClearNotificationError event,
+    Emitter<NotificationState> emit,
+  ) async {
+    if (_isErrorState(state)) {
+      emit(NotificationInitial());
+    }
+  }
+
+  // ===== HELPER METHODS =====
 
   String _getChannelIdForType(NotificationType type) {
     switch (type) {
@@ -776,9 +787,48 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState>
     }
   }
 
-  // Public getters
+  /// Check if current state is an error state
+  bool _isErrorState(NotificationState state) {
+    return state is NotificationError;
+  }
+
+  // ===== PUBLIC GETTERS =====
+
+  /// Get notification history
   List<AppNotification> get notificationHistory => List.from(_notificationHistory);
+  
+  /// Get unread count
   int get unreadCount => _notificationHistory.where((n) => !n.isRead).length;
+
+  /// Check if bloc has error
+  bool get hasError => _isErrorState(state);
+
+  /// Get current error info if in error state
+  BlocErrorInfo? get currentError {
+    return switch (state) {
+      NotificationError(:final errorInfo) => errorInfo,
+      _ => null,
+    };
+  }
+
+  /// Check if can retry current operation
+  bool get canRetry {
+    final error = currentError;
+    return error?.canRetry ?? false;
+  }
+
+  /// Get notification summary for UI
+  Map<String, dynamic> get notificationSummary {
+    return {
+      'totalNotifications': _notificationHistory.length,
+      'unreadCount': unreadCount,
+      'typeCounts': _calculateTypeCounts(),
+      'hasHistory': _notificationHistory.isNotEmpty,
+      'lastNotificationTime': _notificationHistory.isNotEmpty 
+          ? _notificationHistory.first.timestamp 
+          : null,
+    };
+  }
 
   @override
   Future<void> close() {

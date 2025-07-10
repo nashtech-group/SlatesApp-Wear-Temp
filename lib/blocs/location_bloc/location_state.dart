@@ -7,24 +7,8 @@ abstract class LocationState extends Equatable {
   List<Object?> get props => [];
 }
 
-class LocationInitial extends LocationState {}
-
-class LocationPermissionDenied extends LocationState {
-  final String message;
-
-  const LocationPermissionDenied({required this.message});
-
-  @override
-  List<Object?> get props => [message];
-}
-
-class LocationServiceDisabled extends LocationState {
-  final String message;
-
-  const LocationServiceDisabled({required this.message});
-
-  @override
-  List<Object?> get props => [message];
+class LocationInitial extends LocationState {
+  const LocationInitial();
 }
 
 class LocationTrackingActive extends LocationState {
@@ -81,6 +65,34 @@ class LocationTrackingActive extends LocationState {
       trackingStatus: trackingStatus ?? this.trackingStatus,
     );
   }
+
+  /// Convenience getters for UI
+  bool get hasNearestCheckpoint => nearestCheckpoint != null;
+  bool get hasRecentMovements => recentMovements.isNotEmpty;
+  String get geofenceStatus => isWithinGeofence ? 'Inside' : 'Outside';
+  String get accuracyText => '${accuracy.toStringAsFixed(1)}m';
+  
+  /// Get formatted last update time
+  String get formattedLastUpdate {
+    final now = DateTime.now();
+    final difference = now.difference(lastUpdate);
+    
+    if (difference.inSeconds < 60) {
+      return 'Just now';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes}m ago';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours}h ago';
+    } else {
+      return '${difference.inDays}d ago';
+    }
+  }
+
+  /// Get formatted distance to checkpoint
+  String get formattedDistanceToCheckpoint {
+    if (distanceToCheckpoint == null) return 'Unknown';
+    return '${distanceToCheckpoint!.toStringAsFixed(1)}m';
+  }
 }
 
 class LocationTrackingInactive extends LocationState {
@@ -90,21 +102,6 @@ class LocationTrackingInactive extends LocationState {
 
   @override
   List<Object?> get props => [reason];
-}
-
-class LocationError extends LocationState {
-  final BlocErrorInfo errorInfo;
-
-  const LocationError({required this.errorInfo});
-
-  @override
-  List<Object?> get props => [errorInfo];
-
-  // Convenience getters for backward compatibility
-  String get message => errorInfo.message;
-  bool get canRetry => errorInfo.canRetry;
-  bool get isNetworkError => errorInfo.isNetworkError;
-  ErrorType get errorType => errorInfo.type;
 }
 
 class GeofenceStatusChanged extends LocationState {
@@ -120,6 +117,17 @@ class GeofenceStatusChanged extends LocationState {
 
   @override
   List<Object?> get props => [isWithinGeofence, siteName, timestamp];
+
+  /// Get user-friendly status message
+  String get statusMessage => 
+      isWithinGeofence 
+          ? 'Entered geofence at $siteName' 
+          : 'Exited geofence at $siteName';
+
+  /// Get formatted timestamp
+  String get formattedTimestamp {
+    return '${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}';
+  }
 }
 
 class CheckpointProximityDetected extends LocationState {
@@ -137,6 +145,18 @@ class CheckpointProximityDetected extends LocationState {
 
   @override
   List<Object?> get props => [checkpoint, distance, isWithinRange, timestamp];
+
+  /// Get formatted distance
+  String get formattedDistance => '${distance.toStringAsFixed(1)}m';
+
+  /// Get proximity message
+  String get proximityMessage => 
+      'Near checkpoint: ${checkpoint.title} ($formattedDistance)';
+
+  /// Get formatted timestamp
+  String get formattedTimestamp {
+    return '${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}';
+  }
 }
 
 class MovementRecorded extends LocationState {
@@ -150,4 +170,93 @@ class MovementRecorded extends LocationState {
 
   @override
   List<Object?> get props => [movement, message];
+
+  /// Get formatted movement type
+  String? get formattedMovementType {
+    switch (movement.movementType) {
+      case 'patrol':
+        return 'Patrol';
+      case 'checkpoint':
+        return 'Checkpoint';
+      case 'break':
+        return 'Break';
+      case 'emergency':
+        return 'Emergency';
+      case 'idle':
+        return 'Idle';
+      case 'transit':
+        return 'Transit';
+      default:
+        return movement.movementType?.replaceAll('_', ' ').toUpperCase();
+    }
+  }
+
+  /// Get formatted coordinates
+  String get formattedCoordinates => 
+      '${movement.latitude.toStringAsFixed(6)}, ${movement.longitude.toStringAsFixed(6)}';
+}
+
+class LocationError extends LocationState with ErrorStateMixin {
+  @override
+  final BlocErrorInfo errorInfo;
+
+  const LocationError({required this.errorInfo});
+
+  @override
+  List<Object?> get props => [errorInfo];
+
+  @override
+  String get errorTitle => 'Location Error';
+
+  @override
+  String get errorIcon => 'location_off';
+
+  /// Create copy with updated error info
+  LocationError copyWith({BlocErrorInfo? errorInfo}) {
+    return LocationError(errorInfo: errorInfo ?? this.errorInfo);
+  }
+}
+
+/// Location permission denied error state with ErrorStateMixin
+class LocationPermissionDenied extends LocationState with ErrorStateMixin {
+  @override
+  final BlocErrorInfo errorInfo;
+
+  const LocationPermissionDenied({required this.errorInfo});
+
+  @override
+  List<Object?> get props => [errorInfo];
+
+  @override
+  String get errorTitle => 'Permission Required';
+
+  @override
+  String get errorIcon => 'location_disabled';
+
+  /// Create copy with updated error info
+  LocationPermissionDenied copyWith({BlocErrorInfo? errorInfo}) {
+    return LocationPermissionDenied(errorInfo: errorInfo ?? this.errorInfo);
+  }
+}
+
+/// Location service disabled error state with ErrorStateMixin
+class LocationServiceDisabled extends LocationState with ErrorStateMixin {
+  @override
+  final BlocErrorInfo errorInfo;
+
+  const LocationServiceDisabled({required this.errorInfo});
+
+  @override
+  List<Object?> get props => [errorInfo];
+
+  @override
+  String get errorTitle => 'Location Service Disabled';
+
+  @override
+  String get errorIcon => 'gps_off';
+
+  /// Create copy with updated error info
+  LocationServiceDisabled copyWith({BlocErrorInfo? errorInfo}) {
+    return LocationServiceDisabled(errorInfo: errorInfo ?? this.errorInfo);
+  }
 }
