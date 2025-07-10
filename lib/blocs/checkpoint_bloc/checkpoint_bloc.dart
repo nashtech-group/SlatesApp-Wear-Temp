@@ -10,7 +10,6 @@ import 'package:slates_app_wear/data/models/sites/site_model.dart';
 import 'package:slates_app_wear/core/constants/app_constants.dart';
 import 'package:slates_app_wear/services/offline_storage_service.dart';
 import '../../core/error/error_handler.dart';
-import '../../core/error/error_state_factory.dart';
 
 part 'checkpoint_event.dart';
 part 'checkpoint_state.dart';
