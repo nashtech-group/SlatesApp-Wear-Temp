@@ -2,6 +2,7 @@ import 'dart:developer';
 import 'dart:io';
 import 'package:equatable/equatable.dart';
 import '../constants/app_constants.dart';
+import '../constants/api_constants.dart'; // Added ApiConstants import
 import '../../data/models/api_error_model.dart';
 import 'exceptions.dart';
 
@@ -51,28 +52,28 @@ class ErrorHandler {
     bool canRetry = false;
     bool isNetworkError = false;
 
-    // Determine error type based on status code
+    // Use ApiConstants instead of hardcoded status codes
     switch (error.statusCode) {
-      case 401:
+      case ApiConstants.unauthorizedCode:
         errorType = ErrorType.authentication;
         break;
-      case 403:
+      case ApiConstants.forbiddenCode:
         errorType = ErrorType.authorization;
         break;
-      case 404:
+      case ApiConstants.notFoundCode:
         errorType = ErrorType.notFound;
         break;
-      case 422:
+      case ApiConstants.validationErrorCode:
         errorType = ErrorType.validation;
         break;
-      case 429:
+      case ApiConstants.tooManyRequestsCode:
         errorType = ErrorType.rateLimited;
         canRetry = true;
         break;
-      case 500:
-      case 502:
-      case 503:
-      case 504:
+      case ApiConstants.serverErrorCode:
+      case ApiConstants.badGatewayCode:
+      case ApiConstants.serviceUnavailableCode:
+      case ApiConstants.gatewayTimeoutCode:
         errorType = ErrorType.server;
         canRetry = true;
         break;
@@ -85,6 +86,15 @@ class ErrorHandler {
         } else {
           errorType = ErrorType.unknown;
         }
+    }
+
+    // Use ApiConstants helper methods for better logic
+    if (error.statusCode != null) {
+      canRetry = canRetry || ApiConstants.isRetryableStatusCode(error.statusCode!);
+      isNetworkError = isNetworkError || 
+          (ApiConstants.isServerError(error.statusCode!) && 
+           [ApiConstants.badGatewayCode, ApiConstants.gatewayTimeoutCode]
+               .contains(error.statusCode));
     }
 
     return BlocErrorInfo(
@@ -107,10 +117,10 @@ class ErrorHandler {
       message:
           _getHumanReadableMessage(error.message, ErrorType.authentication),
       originalError: error,
-      statusCode: error.statusCode,
+      statusCode: error.statusCode ?? ApiConstants.unauthorizedCode, // Use ApiConstants default
       canRetry: false,
       isNetworkError: false,
-      errorCode: error.statusCode?.toString(),
+      errorCode: error.statusCode?.toString() ?? ApiConstants.unauthorizedCode.toString(),
     );
   }
 
@@ -129,12 +139,12 @@ class ErrorHandler {
           ? validationMessages.first
           : _getHumanReadableMessage(error.message, ErrorType.validation),
       originalError: error,
-      statusCode: error.statusCode,
+      statusCode: error.statusCode ?? ApiConstants.validationErrorCode, // Use ApiConstants default
       canRetry: false,
       isNetworkError: false,
       validationErrors:
           validationMessages.isNotEmpty ? validationMessages : null,
-      errorCode: error.statusCode?.toString(),
+      errorCode: error.statusCode?.toString() ?? ApiConstants.validationErrorCode.toString(),
     );
   }
 
@@ -147,20 +157,22 @@ class ErrorHandler {
       statusCode: error.statusCode,
       canRetry: true,
       isNetworkError: true,
-      errorCode: error.statusCode?.toString(),
+      errorCode: error.statusCode?.toString() ?? 'NETWORK_ERROR',
     );
   }
 
   /// Handle server exceptions
   static BlocErrorInfo _handleServerException(ServerException error) {
+    final statusCode = error.statusCode ?? ApiConstants.serverErrorCode;
+    
     return BlocErrorInfo(
       type: ErrorType.server,
       message: _getHumanReadableMessage(error.message, ErrorType.server),
       originalError: error,
-      statusCode: error.statusCode,
-      canRetry: true,
+      statusCode: statusCode,
+      canRetry: ApiConstants.isRetryableStatusCode(statusCode), // Use ApiConstants logic
       isNetworkError: false,
-      errorCode: error.statusCode?.toString(),
+      errorCode: statusCode.toString(),
     );
   }
 
@@ -277,13 +289,13 @@ class ErrorHandler {
             ? originalMessage
             : AppConstants.validationErrorMessage;
       case ErrorType.authorization:
-        return AppConstants.unauthorizedMessage;
+        return AppConstants.forbiddenMessage; // Use from AppConstants
       case ErrorType.notFound:
-        return 'The requested resource was not found.';
+        return AppConstants.notFoundMessage; // Use from AppConstants
       case ErrorType.timeout:
-        return 'Request timed out. Please check your connection and try again.';
+        return AppConstants.connectionTimeoutMessage; // Use from AppConstants
       case ErrorType.rateLimited:
-        return 'Too many requests. Please wait a moment and try again.';
+        return AppConstants.tooManyRequestsMessage; // Use from AppConstants
       case ErrorType.parsing:
         return 'Invalid data received. Please try again.';
       case ErrorType.unknown:
@@ -312,6 +324,14 @@ class ErrorHandler {
     if (error is ApiErrorModel) {
       logMessage.writeln('Status Code: ${error.statusCode}');
       logMessage.writeln('API Status: ${error.status}');
+      
+      // Use ApiConstants for categorization
+      if (error.statusCode != null) {
+        logMessage.writeln('Error Category: ${ApiConstants.getErrorCategory(error.statusCode!)}');
+        logMessage.writeln('Is Retryable: ${ApiConstants.isRetryableStatusCode(error.statusCode!)}');
+        logMessage.writeln('Requires Auth: ${ApiConstants.requiresAuthentication(error.statusCode!)}');
+      }
+      
       if (error.hasValidationErrors) {
         logMessage.writeln('Validation Errors: ${error.errors}');
       }
@@ -334,7 +354,8 @@ class ErrorHandler {
   /// Check if error indicates authentication issues
   static bool isAuthError(BlocErrorInfo errorInfo) {
     return errorInfo.type == ErrorType.authentication ||
-        errorInfo.statusCode == 401;
+        (errorInfo.statusCode != null && 
+         ApiConstants.requiresAuthentication(errorInfo.statusCode!)); // Use ApiConstants
   }
 
   /// Check if error indicates session expiry
@@ -344,24 +365,53 @@ class ErrorHandler {
             errorInfo.message.toLowerCase().contains('invalid token'));
   }
 
-  /// Get retry delay in milliseconds based on error type
-  static int getRetryDelay(ErrorType errorType, int attemptNumber) {
-    switch (errorType) {
-      case ErrorType.network:
-      case ErrorType.timeout:
-        return (1000 * attemptNumber * 2)
-            .clamp(1000, 10000); // Exponential backoff
-      case ErrorType.server:
-        return (2000 * attemptNumber).clamp(2000, 15000);
-      case ErrorType.rateLimited:
-        return 5000 * attemptNumber; // Fixed delay for rate limits
-      default:
-        return 1000;
+  /// Get retry delay in milliseconds based on error type and status code
+  static int getRetryDelay(ErrorType errorType, int attemptNumber, {int? statusCode}) {
+    // Use ApiConstants to determine base delay for specific status codes
+    int baseDelay = 1000;
+    
+    if (statusCode != null) {
+      switch (statusCode) {
+        case ApiConstants.tooManyRequestsCode:
+          baseDelay = 5000; // Longer delay for rate limits
+          break;
+        case ApiConstants.serviceUnavailableCode:
+          baseDelay = 10000; // Longer delay for service unavailable
+          break;
+        case ApiConstants.badGatewayCode:
+        case ApiConstants.gatewayTimeoutCode:
+          baseDelay = 3000; // Medium delay for gateway issues
+          break;
+        default:
+          if (ApiConstants.isServerError(statusCode)) {
+            baseDelay = 2000; // Standard server error delay
+          }
+      }
+    } else {
+      // Fallback to error type-based delays
+      switch (errorType) {
+        case ErrorType.network:
+        case ErrorType.timeout:
+          baseDelay = 1000;
+          break;
+        case ErrorType.server:
+          baseDelay = 2000;
+          break;
+        case ErrorType.rateLimited:
+          baseDelay = 5000;
+          break;
+        default:
+          baseDelay = 1000;
+      }
     }
+
+    // Exponential backoff with max limit
+    final delay = (baseDelay * attemptNumber * 2).clamp(baseDelay, 15000);
+    return delay;
   }
 }
 
-/// Enumeration of error types
+// Enumeration of error types (unchanged)
 enum ErrorType {
   network,
   server,
@@ -375,7 +425,7 @@ enum ErrorType {
   unknown,
 }
 
-/// Standardized error information for BLoCs
+// BlocErrorInfo class remains the same but with enhanced constructor
 class BlocErrorInfo extends Equatable {
   final ErrorType type;
   final String message;
@@ -392,12 +442,14 @@ class BlocErrorInfo extends Equatable {
     required this.message,
     this.originalError,
     this.statusCode,
-    this.canRetry = false,
+    bool? canRetry,
     this.isNetworkError = false,
     this.validationErrors,
     this.errorCode,
     DateTime? timestamp,
-  }) : timestamp = timestamp ?? DateTime.now();
+  }) : canRetry = canRetry ?? 
+           (statusCode != null ? ApiConstants.isRetryableStatusCode(statusCode) : false), // Smart retry detection
+       timestamp = timestamp ?? DateTime.now();
 
   @override
   List<Object?> get props => [
@@ -449,7 +501,11 @@ class BlocErrorInfo extends Equatable {
 
   /// Check if this error should trigger offline mode
   bool shouldTriggerOfflineMode() {
-    return isNetworkError || type == ErrorType.network;
+    return isNetworkError || 
+           type == ErrorType.network ||
+           (statusCode != null && 
+            [ApiConstants.badGatewayCode, ApiConstants.gatewayTimeoutCode]
+                .contains(statusCode));
   }
 
   /// Check if this error should logout user
@@ -457,5 +513,18 @@ class BlocErrorInfo extends Equatable {
     return type == ErrorType.authentication &&
         (message.toLowerCase().contains('expired') ||
             message.toLowerCase().contains('invalid'));
+  }
+
+  /// Get error category using ApiConstants
+  String get errorCategory {
+    if (statusCode != null) {
+      return ApiConstants.getErrorCategory(statusCode!);
+    }
+    return type.toString().split('.').last;
+  }
+
+  /// Check if this error requires authentication using ApiConstants
+  bool get requiresAuthentication {
+    return statusCode != null && ApiConstants.requiresAuthentication(statusCode!);
   }
 }

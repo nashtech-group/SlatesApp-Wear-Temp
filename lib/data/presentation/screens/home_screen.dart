@@ -4,9 +4,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:slates_app_wear/blocs/auth_bloc/auth_bloc.dart';
 import 'package:slates_app_wear/core/constants/app_constants.dart';
+import 'package:slates_app_wear/core/constants/api_constants.dart';
 import 'package:slates_app_wear/core/constants/route_constants.dart';
 import 'package:slates_app_wear/core/theme/app_theme.dart';
 import 'package:slates_app_wear/core/theme/theme_provider.dart';
+import 'package:slates_app_wear/core/error/common_error_states.dart';
+import 'package:slates_app_wear/core/error/error_handler.dart';
+import 'package:slates_app_wear/core/error/error_state_factory.dart';
 import 'package:slates_app_wear/data/models/user/user_model.dart';
 import 'package:slates_app_wear/data/presentation/screens/error_screen.dart';
 import 'package:slates_app_wear/data/presentation/screens/widgets/common/app_logo.dart';
@@ -79,8 +83,13 @@ class _HomeScreenState extends State<HomeScreen>
         } else if (state is AuthSessionExpired) {
           ErrorScreen.showErrorDialog(
             context,
-            title: 'Session Expired',
-            message: state.message,
+            errorState: SessionExpiredErrorState(
+              errorInfo: BlocErrorInfo(
+                type: ErrorType.authentication,
+                message: state.message,
+                statusCode: ApiConstants.unauthorizedCode,
+              ),
+            ),
             onRetry: () {
               Navigator.of(context).pushNamedAndRemoveUntil(
                 RouteConstants.login,
@@ -91,7 +100,11 @@ class _HomeScreenState extends State<HomeScreen>
         } else if (state is AuthError) {
           ErrorScreen.showErrorSnackBar(
             context,
-            message: state.message,
+            errorState: ErrorStateFactory.createFromDynamicError(
+              state,
+              context: 'AuthBloc Error',
+              additionalData: {'errorCode': state.errorCode},
+            ),
             onRetry: () {
               context.read<AuthBloc>().add(const CheckAuthStatusEvent());
             },
@@ -124,9 +137,15 @@ class _HomeScreenState extends State<HomeScreen>
         }
 
         if (state is AuthError) {
-          return ErrorScreen.fromApiError(
-            state.message,
-            errorCode: state.errorCode,
+          return ErrorScreen(
+            errorState: ErrorStateFactory.createFromDynamicError(
+              state,
+              context: 'Authentication Error',
+              additionalData: {
+                'message': state.message,
+                'errorCode': state.errorCode,
+              },
+            ),
             onRetry: () {
               context.read<AuthBloc>().add(const CheckAuthStatusEvent());
             },

@@ -1,69 +1,433 @@
 import 'package:flutter/material.dart';
 import 'package:slates_app_wear/core/constants/app_constants.dart';
+import 'package:slates_app_wear/core/constants/api_constants.dart';
 import 'package:slates_app_wear/core/utils/responsive_utils.dart';
+import 'package:slates_app_wear/core/error/common_error_states.dart';
+import 'package:slates_app_wear/core/error/error_state_factory.dart' hide VoidCallback;
+import 'package:slates_app_wear/core/error/error_handler.dart';
+import 'package:slates_app_wear/core/error/exceptions.dart';
+import 'package:slates_app_wear/core/error/failures.dart';
+import 'package:slates_app_wear/core/theme/app_theme.dart';
 
-class ErrorScreen extends StatelessWidget {
-  final String title;
-  final String message;
-  final String? errorCode;
-  final IconData? icon;
+/// Production-ready error screen that integrates with the comprehensive error handling system
+/// Follows DRY principles and uses centralized error management
+class ErrorScreen extends StatefulWidget {
+  final BaseErrorState errorState;
   final VoidCallback? onRetry;
   final VoidCallback? onGoHome;
-  final String? actionButtonText;
   final VoidCallback? onCustomAction;
+  final String? customActionText;
+  final bool showAppBar;
+  final bool canPop;
+  final ErrorStateConfig? config;
 
   const ErrorScreen({
     super.key,
-    required this.title,
-    required this.message, 
-    this.errorCode,
-    this.icon,
+    required this.errorState,
     this.onRetry,
     this.onGoHome,
-    this.actionButtonText,
     this.onCustomAction,
+    this.customActionText,
+    this.showAppBar = true,
+    this.canPop = true,
+    this.config,
   });
 
-  // Predefined error screens for common cases
-  static const ErrorScreen notFound = ErrorScreen(
-    title: 'Page Not Found',
-    message: 'The page you are looking for does not exist.',
-    icon: Icons.search_off,
-  );
 
-  static const ErrorScreen unauthorized = ErrorScreen(
-    title: 'Unauthorized',
-    message: 'You are not authorized to access this page.',
-    icon: Icons.lock_outline,
-  );
+  // ====================
+  // FACTORY CONSTRUCTORS FOR COMMON ERROR SCENARIOS
+  // ====================
 
-  static const ErrorScreen serverError = ErrorScreen(
-    title: 'Server Error',
-    message: 'Something went wrong. Please try again later.',
-    icon: Icons.error_outline,
-  );
+  /// Create ErrorScreen from exception
+  static ErrorScreen fromException(
+    AppException exception, {
+    VoidCallback? onRetry,
+    VoidCallback? onGoHome,
+    VoidCallback? onCustomAction,
+    String? customActionText,
+    bool showAppBar = true,
+    bool canPop = true,
+    ErrorStateConfig? config,
+  }) {
+    final errorState = ErrorStateFactory.createFromException(exception);
+    return ErrorScreen(
+      errorState: errorState,
+      onRetry: onRetry,
+      onGoHome: onGoHome,
+      onCustomAction: onCustomAction,
+      customActionText: customActionText,
+      showAppBar: showAppBar,
+      canPop: canPop,
+      config: config,
+    );
+  }
 
-  static ErrorScreen networkError({VoidCallback? onRetry}) => ErrorScreen(
-    title: 'Network Error',
-    message: AppConstants.networkErrorMessage,
-    icon: Icons.wifi_off,
-    onRetry: onRetry,
-  );
+  /// Create ErrorScreen from failure
+  static ErrorScreen fromFailure(
+    Failure failure, {
+    VoidCallback? onRetry,
+    VoidCallback? onGoHome,
+    VoidCallback? onCustomAction,
+    String? customActionText,
+    bool showAppBar = true,
+    bool canPop = true,
+    ErrorStateConfig? config,
+  }) {
+    final errorState = ErrorStateFactory.createFromFailure(failure);
+    return ErrorScreen(
+      errorState: errorState,
+      onRetry: onRetry,
+      onGoHome: onGoHome,
+      onCustomAction: onCustomAction,
+      customActionText: customActionText,
+      showAppBar: showAppBar,
+      canPop: canPop,
+      config: config,
+    );
+  }
 
-  static ErrorScreen sessionExpired({VoidCallback? onLogin}) => ErrorScreen(
-    title: 'Session Expired',
-    message: AppConstants.sessionExpiredMessage,
-    icon: Icons.timer_off,
-    actionButtonText: 'Login Again',
-    onCustomAction: onLogin,
-  );
+  /// Create ErrorScreen from dynamic error
+  static ErrorScreen fromDynamicError(
+    dynamic error, {
+    String? context,
+    Map<String, dynamic>? additionalData,
+    VoidCallback? onRetry,
+    VoidCallback? onGoHome,
+    VoidCallback? onCustomAction,
+    String? customActionText,
+    bool showAppBar = true,
+    bool canPop = true,
+    ErrorStateConfig? config,
+  }) {
+    final errorState = ErrorStateFactory.createFromDynamicError(
+      error,
+      context: context,
+      additionalData: additionalData,
+    );
+    return ErrorScreen(
+      errorState: errorState,
+      onRetry: onRetry,
+      onGoHome: onGoHome,
+      onCustomAction: onCustomAction,
+      customActionText: customActionText,
+      showAppBar: showAppBar,
+      canPop: canPop,
+      config: config,
+    );
+  }
 
-  static ErrorScreen offlineMode({VoidCallback? onGoHome}) => ErrorScreen(
-    title: 'Offline Mode',
-    message: 'Some features are limited in offline mode.',
-    icon: Icons.cloud_off,
-    onGoHome: onGoHome,
-  );
+  // ====================
+  // PREDEFINED ERROR SCREENS
+  // ====================
+
+  static ErrorScreen notFound({
+    VoidCallback? onGoHome,
+    bool showAppBar = true,
+  }) =>
+      ErrorScreen(
+        errorState: NotFoundErrorState(
+          errorInfo: BlocErrorInfo(
+            type: ErrorType.notFound,
+            message: AppConstants.notFoundMessage,
+            statusCode: ApiConstants.notFoundCode,
+          ),
+        ),
+        onGoHome: onGoHome,
+        showAppBar: showAppBar,
+      );
+
+  static ErrorScreen unauthorized({
+    VoidCallback? onLogin,
+    bool showAppBar = true,
+  }) =>
+      ErrorScreen(
+        errorState: AuthenticationErrorState(
+          errorInfo: BlocErrorInfo(
+            type: ErrorType.authentication,
+            message: AppConstants.unauthorizedMessage,
+            statusCode: ApiConstants.unauthorizedCode,
+          ),
+        ),
+        onCustomAction: onLogin,
+        customActionText: 'Login',
+        showAppBar: showAppBar,
+      );
+
+  static ErrorScreen serverError({
+    VoidCallback? onRetry,
+    bool showAppBar = true,
+  }) =>
+      ErrorScreen(
+        errorState: ServerErrorState(
+          errorInfo: BlocErrorInfo(
+            type: ErrorType.server,
+            message: AppConstants.serverErrorMessage,
+            statusCode: ApiConstants.serverErrorCode,
+            canRetry: true,
+          ),
+        ),
+        onRetry: onRetry,
+        showAppBar: showAppBar,
+      );
+
+  static ErrorScreen networkError({
+    VoidCallback? onRetry,
+    bool showAppBar = true,
+  }) =>
+      ErrorScreen(
+        errorState: NetworkErrorState(
+          errorInfo: BlocErrorInfo(
+            type: ErrorType.network,
+            message: AppConstants.networkErrorMessage,
+            canRetry: true,
+            isNetworkError: true,
+          ),
+        ),
+        onRetry: onRetry,
+        showAppBar: showAppBar,
+        config: ErrorStateConfig.network,
+      );
+
+  static ErrorScreen sessionExpired({
+    VoidCallback? onLogin,
+    bool showAppBar = true,
+  }) =>
+      ErrorScreen(
+        errorState: SessionExpiredErrorState(
+          errorInfo: BlocErrorInfo(
+            type: ErrorType.authentication,
+            message: AppConstants.sessionExpiredMessage,
+            statusCode: ApiConstants.unauthorizedCode,
+          ),
+        ),
+        onCustomAction: onLogin,
+        customActionText: 'Login Again',
+        showAppBar: showAppBar,
+        config: ErrorStateConfig.auth,
+      );
+
+  static ErrorScreen offlineMode({
+    VoidCallback? onGoHome,
+    bool showAppBar = true,
+  }) =>
+      ErrorScreen(
+        errorState: OfflineDataErrorState(
+          errorInfo: BlocErrorInfo(
+            type: ErrorType.network,
+            message: AppConstants.noOfflineDataMessage,
+            isNetworkError: true,
+          ),
+        ),
+        onGoHome: onGoHome,
+        showAppBar: showAppBar,
+      );
+
+  static ErrorScreen forbidden({
+    VoidCallback? onGoHome,
+    bool showAppBar = true,
+  }) =>
+      ErrorScreen(
+        errorState: ForbiddenErrorState(
+          errorInfo: BlocErrorInfo(
+            type: ErrorType.authorization,
+            message: AppConstants.forbiddenMessage,
+            statusCode: ApiConstants.forbiddenCode,
+          ),
+        ),
+        onGoHome: onGoHome,
+        showAppBar: showAppBar,
+      );
+
+  static ErrorScreen rateLimited({
+    VoidCallback? onRetry,
+    bool showAppBar = true,
+  }) =>
+      ErrorScreen(
+        errorState: RateLimitErrorState(
+          errorInfo: BlocErrorInfo(
+            type: ErrorType.rateLimited,
+            message: AppConstants.tooManyRequestsMessage,
+            statusCode: ApiConstants.tooManyRequestsCode,
+            canRetry: true,
+          ),
+        ),
+        onRetry: onRetry,
+        showAppBar: showAppBar,
+      );
+
+  static ErrorScreen maintenance({
+    VoidCallback? onRetry,
+    bool showAppBar = true,
+  }) =>
+      ErrorScreen(
+        errorState: MaintenanceErrorState(
+          errorInfo: BlocErrorInfo(
+            type: ErrorType.server,
+            message: AppConstants.maintenanceModeMessage,
+            statusCode: ApiConstants.serviceUnavailableCode,
+            canRetry: true,
+          ),
+        ),
+        onRetry: onRetry,
+        showAppBar: showAppBar,
+      );
+
+  static ErrorScreen badGateway({
+    VoidCallback? onRetry,
+    bool showAppBar = true,
+  }) =>
+      ErrorScreen(
+        errorState: ServiceUnavailableErrorState(
+          errorInfo: BlocErrorInfo(
+            type: ErrorType.server,
+            message: AppConstants.badGatewayMessage,
+            statusCode: ApiConstants.badGatewayCode,
+            canRetry: true,
+          ),
+        ),
+        onRetry: onRetry,
+        showAppBar: showAppBar,
+      );
+
+  static ErrorScreen gatewayTimeout({
+    VoidCallback? onRetry,
+    bool showAppBar = true,
+  }) =>
+      ErrorScreen(
+        errorState: ServiceUnavailableErrorState(
+          errorInfo: BlocErrorInfo(
+            type: ErrorType.timeout,
+            message: AppConstants.gatewayTimeoutMessage,
+            statusCode: ApiConstants.gatewayTimeoutCode,
+            canRetry: true,
+          ),
+        ),
+        onRetry: onRetry,
+        showAppBar: showAppBar,
+      );
+
+  static ErrorScreen validation({
+    List<String>? validationErrors,
+    VoidCallback? onRetry,
+    bool showAppBar = true,
+  }) =>
+      ErrorScreen(
+        errorState: ValidationErrorState(
+          errorInfo: BlocErrorInfo(
+            type: ErrorType.validation,
+            message: AppConstants.validationErrorMessage,
+            statusCode: ApiConstants.validationErrorCode,
+            validationErrors: validationErrors,
+          ),
+        ),
+        onRetry: onRetry,
+        showAppBar: showAppBar,
+        config: ErrorStateConfig.validation,
+      );
+
+  /// Create ErrorScreen from HTTP status code using ApiConstants
+  static ErrorScreen fromStatusCode(
+    int statusCode, {
+    String? message,
+    dynamic data,
+    VoidCallback? onRetry,
+    VoidCallback? onGoHome,
+    bool showAppBar = true,
+  }) {
+    // Use ApiConstants to determine error type and get appropriate message
+    final errorMessage = message ?? AppConstants.getErrorMessageForStatusCode(statusCode);
+    
+    if (ApiConstants.isClientError(statusCode)) {
+      switch (statusCode) {
+        case ApiConstants.unauthorizedCode:
+          return ErrorScreen.unauthorized(showAppBar: showAppBar);
+        case ApiConstants.forbiddenCode:
+          return ErrorScreen.forbidden(onGoHome: onGoHome, showAppBar: showAppBar);
+        case ApiConstants.notFoundCode:
+          return ErrorScreen.notFound(onGoHome: onGoHome, showAppBar: showAppBar);
+        case ApiConstants.validationErrorCode:
+          return ErrorScreen.validation(showAppBar: showAppBar);
+        case ApiConstants.tooManyRequestsCode:
+          return ErrorScreen.rateLimited(onRetry: onRetry, showAppBar: showAppBar);
+        default:
+          return ErrorScreen(
+            errorState: ValidationErrorState(
+              errorInfo: BlocErrorInfo(
+                type: ErrorType.validation,
+                message: errorMessage,
+                statusCode: statusCode,
+                canRetry: ApiConstants.isRetryableStatusCode(statusCode),
+              ),
+            ),
+            onRetry: onRetry,
+            onGoHome: onGoHome,
+            showAppBar: showAppBar,
+          );
+      }
+    } else if (ApiConstants.isServerError(statusCode)) {
+      switch (statusCode) {
+        case ApiConstants.serviceUnavailableCode:
+          return ErrorScreen.maintenance(onRetry: onRetry, showAppBar: showAppBar);
+        case ApiConstants.badGatewayCode:
+          return ErrorScreen.badGateway(onRetry: onRetry, showAppBar: showAppBar);
+        case ApiConstants.gatewayTimeoutCode:
+          return ErrorScreen.gatewayTimeout(onRetry: onRetry, showAppBar: showAppBar);
+        default:
+          return ErrorScreen.serverError(onRetry: onRetry, showAppBar: showAppBar);
+      }
+    } else {
+      // Unknown status code - create generic error
+      return ErrorScreen(
+        errorState: GenericErrorState(
+          errorInfo: BlocErrorInfo(
+            type: ErrorType.unknown,
+            message: errorMessage,
+            statusCode: statusCode,
+            canRetry: ApiConstants.isRetryableStatusCode(statusCode),
+          ),
+        ),
+        onRetry: onRetry,
+        onGoHome: onGoHome,
+        showAppBar: showAppBar,
+      );
+    }
+  }
+
+  @override
+  State<ErrorScreen> createState() => _ErrorScreenState();
+}
+
+class _ErrorScreenState extends State<ErrorScreen> {
+  bool _isRetrying = false;
+  late final ErrorUIBehavior _uiBehavior;
+  late final List<ErrorAction> _errorActions;
+
+  @override
+  void initState() {
+    super.initState();
+    _uiBehavior = ErrorStateFactory.getErrorUIBehavior(widget.errorState.errorInfo);
+    _errorActions = ErrorStateFactory.getErrorActions(widget.errorState.errorInfo);
+    _handleSpecialBehaviors();
+  }
+
+  void _handleSpecialBehaviors() {
+    // Handle behaviors that require immediate action
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      switch (_uiBehavior) {
+        case ErrorUIBehavior.logout:
+          _handleLogout();
+          break;
+        case ErrorUIBehavior.redirectToLogin:
+          _handleRedirectToLogin();
+          break;
+        case ErrorUIBehavior.enableOfflineMode:
+          _handleEnableOfflineMode();
+          break;
+        default:
+          break;
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -71,16 +435,20 @@ class ErrorScreen extends StatelessWidget {
     final responsive = context.responsive;
     
     return Scaffold(
-      appBar: responsive.isWearable ? null : AppBar(
-        title: const Text(AppConstants.appTitle),
-        backgroundColor: theme.colorScheme.surface,
-        foregroundColor: theme.colorScheme.onSurface,
-        elevation: 0,
-        automaticallyImplyLeading: _shouldShowBackButton(context),
-      ),
+      appBar: widget.showAppBar && !responsive.isWearable ? _buildAppBar(theme) : null,
       body: SafeArea(
         child: _buildResponsiveLayout(context, theme, responsive),
       ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar(ThemeData theme) {
+    return AppBar(
+      title: Text(AppConstants.appTitle),
+      backgroundColor: theme.appBarTheme.backgroundColor,
+      foregroundColor: theme.appBarTheme.foregroundColor,
+      elevation: 0,
+      automaticallyImplyLeading: widget.canPop && Navigator.of(context).canPop(),
     );
   }
 
@@ -97,33 +465,18 @@ class ErrorScreen extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Compact error icon
           _buildErrorIcon(theme, responsive),
-          
-          responsive.largeSpacer,
-          
-          // Error title
-          _buildErrorTitle(theme, responsive),
-          
           responsive.mediumSpacer,
-          
-          // Error message
+          _buildErrorTitle(theme, responsive),
+          responsive.smallSpacer,
           _buildErrorMessage(theme, responsive),
-          
-          // Error code (if provided)
-          if (errorCode != null) ...[
+          if (widget.errorState.errorCode != null) ...[
             responsive.smallSpacer,
             _buildErrorCode(theme, responsive),
           ],
-          
           responsive.largeSpacer,
-          
-          // Action buttons
           _buildActionButtons(context, responsive),
-          
           responsive.mediumSpacer,
-          
-          // Compact support info
           _buildCompactSupportInfo(context, theme, responsive),
         ],
       ),
@@ -136,33 +489,22 @@ class ErrorScreen extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Error Icon
           _buildErrorIcon(theme, responsive),
-          
           responsive.extraLargeSpacer,
-          
-          // Error Title
           _buildErrorTitle(theme, responsive),
-          
           responsive.mediumSpacer,
-          
-          // Error Message
           _buildErrorMessage(theme, responsive),
-          
-          // Error Code (if provided)
-          if (errorCode != null) ...[
+          if (widget.errorState.errorCode != null) ...[
             responsive.smallSpacer,
             _buildErrorCode(theme, responsive),
           ],
-          
+          if (widget.errorState.validationErrors != null) ...[
+            responsive.mediumSpacer,
+            _buildValidationErrors(theme, responsive),
+          ],
           SizedBox(height: responsive.extraLargeSpacing * 1.2),
-          
-          // Action Buttons
           _buildActionButtons(context, responsive),
-          
           responsive.largeSpacer,
-          
-          // Support Information
           _buildSupportInfo(context, theme, responsive),
         ],
       ),
@@ -192,27 +534,29 @@ class ErrorScreen extends StatelessWidget {
         color: _getIconBackgroundColor(theme),
       ),
       child: Icon(
-        icon ?? Icons.error_outline,
+        _getIconData(),
         size: iconSize,
         color: _getIconColor(theme),
+        semanticLabel: widget.errorState.errorTitle,
       ),
     );
   }
 
   Widget _buildErrorTitle(ThemeData theme, ResponsiveUtils responsive) {
     return Text(
-      title,
+      widget.errorState.errorTitle,
       style: responsive.getHeadlineStyle(
         fontWeight: FontWeight.bold,
         color: theme.colorScheme.onSurface,
       ),
       textAlign: TextAlign.center,
+      semanticsLabel: 'Error: ${widget.errorState.errorTitle}',
     );
   }
 
   Widget _buildErrorMessage(ThemeData theme, ResponsiveUtils responsive) {
     return Text(
-      message,
+      widget.errorState.userMessage,
       style: responsive.getBodyStyle(
         color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
       )?.copyWith(height: 1.5),
@@ -234,115 +578,194 @@ class ErrorScreen extends StatelessWidget {
         ),
       ),
       child: Text(
-        'Error Code: $errorCode',
+        'Error Code: ${widget.errorState.errorCode}',
         style: responsive.getCaptionStyle(
           color: theme.colorScheme.error,
         )?.copyWith(fontFamily: 'monospace'),
+        semanticsLabel: 'Error code ${widget.errorState.errorCode}',
+      ),
+    );
+  }
+
+  Widget _buildValidationErrors(ThemeData theme, ResponsiveUtils responsive) {
+    final validationErrors = widget.errorState.validationErrors;
+    if (validationErrors == null || validationErrors.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      padding: responsive.formPadding,
+      decoration: BoxDecoration(
+        color: theme.colorScheme.errorContainer.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(responsive.borderRadius),
+        border: Border.all(
+          color: theme.colorScheme.error.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Validation Errors:',
+            style: responsive.getTitleStyle(
+              color: theme.colorScheme.error,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          responsive.smallSpacer,
+          ...validationErrors.map((error) => Padding(
+                padding: EdgeInsets.only(bottom: responsive.smallSpacing * 0.5),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.error_outline,
+                      size: responsive.iconSize,
+                      color: theme.colorScheme.error,
+                    ),
+                    SizedBox(width: responsive.smallSpacing),
+                    Expanded(
+                      child: Text(
+                        error,
+                        style: responsive.getCaptionStyle(
+                          color: theme.colorScheme.error,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )),
+        ],
       ),
     );
   }
 
   Widget _buildActionButtons(BuildContext context, ResponsiveUtils responsive) {
+    final allowedActions = widget.config?.allowedActions ?? _errorActions;
+    final buttons = <Widget>[];
+
+    // Primary action button
+    if (_shouldShowPrimaryAction(allowedActions)) {
+      buttons.add(_buildPrimaryActionButton(context, responsive));
+    }
+
+    // Secondary action buttons
+    for (final action in allowedActions) {
+      if (_shouldShowSecondaryAction(action)) {
+        buttons.add(_buildSecondaryActionButton(context, responsive, action));
+      }
+    }
+
+    // Default back button if no actions available
+    if (buttons.isEmpty && _shouldShowBackButton(context)) {
+      buttons.add(_buildBackButton(context, responsive));
+    }
+
     return Column(
-      children: [
-        // Primary Action Button
-        if (onRetry != null || onCustomAction != null)
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: onCustomAction ?? onRetry,
-              icon: Icon(
-                _getPrimaryActionIcon(),
+      children: buttons
+          .map((button) => [
+                button,
+                if (button != buttons.last) responsive.smallSpacer,
+              ])
+          .expand((e) => e)
+          .toList(),
+    );
+  }
+
+  Widget _buildPrimaryActionButton(BuildContext context, ResponsiveUtils responsive) {
+    final action = _getPrimaryAction();
+    
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: _isRetrying ? null : () => _handleAction(action),
+        icon: _isRetrying
+            ? SizedBox(
+                width: responsive.iconSize,
+                height: responsive.iconSize,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppTheme.getResponsiveLoadingSpinnerColor(
+                    context,
+                    isDisabled: true,
+                  ),
+                ),
+              )
+            : Icon(
+                _getActionIcon(action),
                 size: responsive.iconSize,
               ),
-              label: Text(
-                actionButtonText ?? 
-                (onRetry != null ? 'Try Again' : 'Continue'),
-                style: responsive.getBodyStyle(),
-              ),
-              style: ElevatedButton.styleFrom(
-                padding: EdgeInsets.symmetric(
-                  vertical: responsive.isWearable ? 12 : 16,
-                  horizontal: responsive.padding,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(responsive.borderRadius),
-                ),
-              ),
-            ),
+        label: Text(
+          _isRetrying ? 'Retrying...' : _getActionLabel(action),
+          style: responsive.getBodyStyle(),
+        ),
+        style: AppTheme.responsivePrimaryButtonStyle(context),
+      ),
+    );
+  }
+
+  Widget _buildSecondaryActionButton(
+    BuildContext context,
+    ResponsiveUtils responsive,
+    ErrorAction action,
+  ) {
+    return SizedBox(
+      width: double.infinity,
+      child: TextButton.icon(
+        onPressed: () => _handleAction(action),
+        icon: Icon(
+          _getActionIcon(action),
+          size: responsive.iconSize,
+        ),
+        label: Text(
+          _getActionLabel(action),
+          style: responsive.getBodyStyle(),
+        ),
+        style: TextButton.styleFrom(
+          padding: EdgeInsets.symmetric(
+            vertical: responsive.isWearable ? 12 : 16,
+            horizontal: responsive.padding,
           ),
-        
-        // Secondary Action Button
-        if (onGoHome != null || _shouldShowGoHomeButton(context)) ...[
-          responsive.smallSpacer,
-          SizedBox(
-            width: double.infinity,
-            child: TextButton.icon(
-              onPressed: onGoHome ?? () => _goToHome(context),
-              icon: Icon(
-                Icons.home_outlined,
-                size: responsive.iconSize,
-              ),
-              label: Text(
-                'Go to Home',
-                style: responsive.getBodyStyle(),
-              ),
-              style: TextButton.styleFrom(
-                padding: EdgeInsets.symmetric(
-                  vertical: responsive.isWearable ? 12 : 16,
-                  horizontal: responsive.padding,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(responsive.borderRadius),
-                ),
-              ),
-            ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(responsive.borderRadius),
           ),
-        ],
-        
-        // Back Button (if no custom actions)
-        if (onRetry == null && 
-            onCustomAction == null && 
-            onGoHome == null &&
-            _shouldShowBackButton(context)) ...[
-          responsive.smallSpacer,
-          SizedBox(
-            width: double.infinity,
-            child: TextButton.icon(
-              onPressed: () => Navigator.of(context).pop(),
-              icon: Icon(
-                Icons.arrow_back,
-                size: responsive.iconSize,
-              ),
-              label: Text(
-                'Go Back',
-                style: responsive.getBodyStyle(),
-              ),
-              style: TextButton.styleFrom(
-                padding: EdgeInsets.symmetric(
-                  vertical: responsive.isWearable ? 12 : 16,
-                  horizontal: responsive.padding,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(responsive.borderRadius),
-                ),
-              ),
-            ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBackButton(BuildContext context, ResponsiveUtils responsive) {
+    return SizedBox(
+      width: double.infinity,
+      child: TextButton.icon(
+        onPressed: () => Navigator.of(context).pop(),
+        icon: Icon(
+          Icons.arrow_back,
+          size: responsive.iconSize,
+        ),
+        label: Text(
+          'Go Back',
+          style: responsive.getBodyStyle(),
+        ),
+        style: TextButton.styleFrom(
+          padding: EdgeInsets.symmetric(
+            vertical: responsive.isWearable ? 12 : 16,
+            horizontal: responsive.padding,
           ),
-        ],
-      ],
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(responsive.borderRadius),
+          ),
+        ),
+      ),
     );
   }
 
   Widget _buildSupportInfo(BuildContext context, ThemeData theme, ResponsiveUtils responsive) {
     return Container(
       padding: responsive.formPadding,
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(responsive.borderRadius),
-        border: Border.all(
-          color: theme.colorScheme.outline.withValues(alpha: 0.2),
-        ),
+      decoration: AppTheme.getResponsiveCardDecoration(
+        context,
+        backgroundColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
       ),
       child: Column(
         children: [
@@ -350,6 +773,7 @@ class ErrorScreen extends StatelessWidget {
             Icons.support_agent,
             size: responsive.largeIconSize,
             color: theme.colorScheme.onSurfaceVariant,
+            semanticLabel: 'Support',
           ),
           responsive.smallSpacer,
           Text(
@@ -366,6 +790,16 @@ class ErrorScreen extends StatelessWidget {
             ),
             textAlign: TextAlign.center,
           ),
+          if (widget.errorState.errorCode != null) ...[
+            SizedBox(height: responsive.smallSpacing * 0.5),
+            Text(
+              'Please include error code: ${widget.errorState.errorCode}',
+              style: responsive.getCaptionStyle(
+                color: theme.colorScheme.onSurfaceVariant,
+              )?.copyWith(fontStyle: FontStyle.italic),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ],
       ),
     );
@@ -374,12 +808,9 @@ class ErrorScreen extends StatelessWidget {
   Widget _buildCompactSupportInfo(BuildContext context, ThemeData theme, ResponsiveUtils responsive) {
     return Container(
       padding: EdgeInsets.all(responsive.padding * 0.75),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(responsive.borderRadius),
-        border: Border.all(
-          color: theme.colorScheme.outline.withValues(alpha: 0.2),
-        ),
+      decoration: AppTheme.getResponsiveCardDecoration(
+        context,
+        backgroundColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
       ),
       child: Column(
         children: [
@@ -387,6 +818,7 @@ class ErrorScreen extends StatelessWidget {
             Icons.support_agent,
             size: responsive.iconSize,
             color: theme.colorScheme.onSurfaceVariant,
+            semanticLabel: 'Support',
           ),
           SizedBox(height: responsive.smallSpacing * 0.5),
           Text(
@@ -408,124 +840,298 @@ class ErrorScreen extends StatelessWidget {
     );
   }
 
+  // ====================
+  // HELPER METHODS
+  // ====================
+
+  IconData _getIconData() {
+    switch (widget.errorState.errorType) {
+      case ErrorType.network:
+      case ErrorType.timeout:
+        return Icons.wifi_off;
+      case ErrorType.server:
+        return Icons.error_outline;
+      case ErrorType.authentication:
+      case ErrorType.authorization:
+        return Icons.lock_outline;
+      case ErrorType.validation:
+        return Icons.warning_outlined;
+      case ErrorType.notFound:
+        return Icons.search_off;
+      case ErrorType.rateLimited:
+        return Icons.hourglass_empty;
+      case ErrorType.parsing:
+        return Icons.data_usage;
+      case ErrorType.unknown:
+      default:
+        return Icons.error;
+    }
+  }
+
   Color _getIconBackgroundColor(ThemeData theme) {
-    switch (title.toLowerCase()) {
-      case 'unauthorized':
+    switch (widget.errorState.errorType) {
+      case ErrorType.authentication:
+      case ErrorType.authorization:
         return theme.colorScheme.errorContainer.withValues(alpha: 0.1);
-      case 'network error':
+      case ErrorType.network:
+      case ErrorType.timeout:
         return theme.colorScheme.primaryContainer.withValues(alpha: 0.1);
-      case 'offline mode':
-        return theme.colorScheme.secondaryContainer.withValues(alpha: 0.1);
+      case ErrorType.server:
+        return theme.colorScheme.errorContainer.withValues(alpha: 0.1);
       default:
         return theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3);
     }
   }
 
   Color _getIconColor(ThemeData theme) {
-    switch (title.toLowerCase()) {
-      case 'unauthorized':
-      case 'server error':
+    switch (widget.errorState.errorType) {
+      case ErrorType.authentication:
+      case ErrorType.authorization:
+      case ErrorType.server:
         return theme.colorScheme.error;
-      case 'network error':
+      case ErrorType.network:
+      case ErrorType.timeout:
         return theme.colorScheme.primary;
-      case 'offline mode':
-        return theme.colorScheme.secondary;
+      case ErrorType.validation:
+        return theme.colorScheme.tertiary;
       default:
         return theme.colorScheme.onSurfaceVariant;
     }
   }
 
-  IconData _getPrimaryActionIcon() {
-    if (onRetry != null) return Icons.refresh;
-    if (actionButtonText?.toLowerCase().contains('login') == true) {
-      return Icons.login;
+  ErrorAction _getPrimaryAction() {
+    if (widget.onCustomAction != null) {
+      return ErrorAction.login; // Default for custom actions
     }
-    return Icons.arrow_forward;
+    if (widget.onRetry != null || widget.errorState.canRetry) {
+      return ErrorAction.retry;
+    }
+    return ErrorAction.dismiss;
+  }
+
+  bool _shouldShowPrimaryAction(List<ErrorAction> allowedActions) {
+    final primaryAction = _getPrimaryAction();
+    return allowedActions.contains(primaryAction) ||
+           widget.onCustomAction != null ||
+           (widget.onRetry != null && widget.errorState.canRetry);
+  }
+
+  bool _shouldShowSecondaryAction(ErrorAction action) {
+    final primaryAction = _getPrimaryAction();
+    if (action == primaryAction) return false;
+    
+    switch (action) {
+      case ErrorAction.checkConnection:
+        return widget.errorState.isNetworkError;
+      case ErrorAction.tryOfflineMode:
+        return widget.errorState.isOfflineError;
+      case ErrorAction.contactSupport:
+        return true;
+      case ErrorAction.dismiss:
+        return widget.onGoHome != null;
+      default:
+        return false;
+    }
   }
 
   bool _shouldShowBackButton(BuildContext context) {
-    return Navigator.of(context).canPop();
+    return widget.canPop && Navigator.of(context).canPop();
   }
 
-  bool _shouldShowGoHomeButton(BuildContext context) {
-    // Show go home button for error screens that don't have custom actions
-    return onRetry == null && onCustomAction == null;
+  String _getActionLabel(ErrorAction action) {
+    if (action == ErrorAction.login && widget.customActionText != null) {
+      return widget.customActionText!;
+    }
+    return action.label;
   }
 
-  void _goToHome(BuildContext context) {
+  IconData _getActionIcon(ErrorAction action) {
+    switch (action) {
+      case ErrorAction.retry:
+        return Icons.refresh;
+      case ErrorAction.login:
+        return Icons.login;
+      case ErrorAction.logout:
+        return Icons.logout;
+      case ErrorAction.checkConnection:
+        return Icons.wifi;
+      case ErrorAction.tryOfflineMode:
+        return Icons.cloud_off;
+      case ErrorAction.correctInput:
+        return Icons.edit;
+      case ErrorAction.contactSupport:
+        return Icons.support_agent;
+      case ErrorAction.waitAndRetry:
+        return Icons.schedule;
+      case ErrorAction.dismiss:
+        return Icons.home;
+    }
+  }
+
+  Future<void> _handleAction(ErrorAction action) async {
+    switch (action) {
+      case ErrorAction.retry:
+        await _handleRetry();
+        break;
+      case ErrorAction.login:
+        _handleLogin();
+        break;
+      case ErrorAction.logout:
+        _handleLogout();
+        break;
+      case ErrorAction.checkConnection:
+        _handleCheckConnection();
+        break;
+      case ErrorAction.tryOfflineMode:
+        _handleTryOfflineMode();
+        break;
+      case ErrorAction.correctInput:
+        _handleCorrectInput();
+        break;
+      case ErrorAction.contactSupport:
+        _handleContactSupport();
+        break;
+      case ErrorAction.waitAndRetry:
+        await _handleWaitAndRetry();
+        break;
+      case ErrorAction.dismiss:
+        _handleDismiss();
+        break;
+    }
+  }
+
+  Future<void> _handleRetry() async {
+    if (_isRetrying) return;
+    
+    setState(() {
+      _isRetrying = true;
+    });
+
+    try {
+      if (widget.onRetry != null) {
+        widget.onRetry!();
+      }
+      
+      // Simulate retry delay for better UX
+      await Future.delayed(const Duration(milliseconds: 500));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRetrying = false;
+        });
+      }
+    }
+  }
+
+  void _handleLogin() {
+    if (widget.onCustomAction != null) {
+      widget.onCustomAction!();
+    } else {
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        '/login',
+        (Route<dynamic> route) => false,
+      );
+    }
+  }
+
+  void _handleLogout() {
+    // Implement logout logic
     Navigator.of(context).pushNamedAndRemoveUntil(
-      '/home',
+      '/login',
       (Route<dynamic> route) => false,
     );
   }
 
-  // Factory methods for common error scenarios
-  factory ErrorScreen.custom({
-    required String title,
-    required String message,
-    IconData? icon,
-    String? errorCode,
-    VoidCallback? onRetry,
-    VoidCallback? onGoHome,
-    String? actionButtonText,
-    VoidCallback? onCustomAction,
-  }) {
-    return ErrorScreen(
-      title: title,
-      message: message,
-      icon: icon,
-      errorCode: errorCode,
-      onRetry: onRetry,
-      onGoHome: onGoHome,
-      actionButtonText: actionButtonText,
-      onCustomAction: onCustomAction,
+  void _handleRedirectToLogin() {
+    Navigator.of(context).pushNamedAndRemoveUntil(
+      '/login',
+      (Route<dynamic> route) => false,
     );
   }
 
-  factory ErrorScreen.fromApiError(
-    String apiErrorMessage, {
-    String? errorCode,
-    VoidCallback? onRetry,
-  }) {
-    String title = 'Error';
-    String message = apiErrorMessage;
-    IconData icon = Icons.error_outline;
+  void _handleEnableOfflineMode() {
+    // Implement offline mode logic
+    // This would typically update app state to enable offline mode
+  }
 
-    // Determine error type from message
-    if (apiErrorMessage.toLowerCase().contains('network') ||
-        apiErrorMessage.toLowerCase().contains('connection')) {
-      title = 'Network Error';
-      icon = Icons.wifi_off;
-    } else if (apiErrorMessage.toLowerCase().contains('unauthorized')) {
-      title = 'Unauthorized';
-      icon = Icons.lock_outline;
-    } else if (apiErrorMessage.toLowerCase().contains('server')) {
-      title = 'Server Error';
-      icon = Icons.error_outline;
-    } else if (apiErrorMessage.toLowerCase().contains('validation')) {
-      title = 'Validation Error';
-      icon = Icons.warning_outlined;
+  void _handleCheckConnection() {
+    ErrorScreen.showErrorSnackBar(
+      context,
+      message: 'Please check your internet connection and try again',
+      onRetry: widget.onRetry,
+    );
+  }
+
+  void _handleTryOfflineMode() {
+    ErrorScreen.showErrorSnackBar(
+      context,
+      message: 'Switching to offline mode with cached data',
+    );
+  }
+
+  void _handleCorrectInput() {
+    Navigator.of(context).pop();
+  }
+
+  void _handleContactSupport() {
+    // Implement support contact logic (email, in-app chat, etc.)
+    ErrorScreen.showErrorSnackBar(
+      context,
+      message: 'Please contact ${AppConstants.supportEmail} for assistance',
+    );
+  }
+
+  Future<void> _handleWaitAndRetry() async {
+    await Future.delayed(const Duration(seconds: 3));
+    await _handleRetry();
+  }
+
+  void _handleDismiss() {
+    if (widget.onGoHome != null) {
+      widget.onGoHome!();
+    } else {
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        '/home',
+        (Route<dynamic> route) => false,
+      );
     }
-
-    return ErrorScreen(
-      title: title,
-      message: message,
-      icon: icon,
-      errorCode: errorCode,
-      onRetry: onRetry,
-    );
   }
 
-  // Static method to show error dialog
+  // ====================
+  // STATIC UTILITY METHODS
+  // ====================
+
+  /// Show error dialog using the error handling system
   static Future<void> showErrorDialog(
     BuildContext context, {
-    required String title,
-    required String message,
-    String? errorCode,
+    BaseErrorState? errorState,
+    AppException? exception,
+    Failure? failure,
+    dynamic error,
     VoidCallback? onRetry,
+    VoidCallback? onDismiss,
   }) {
     final responsive = context.responsive;
     final theme = Theme.of(context);
+
+    // Determine error state
+    BaseErrorState finalErrorState;
+    if (errorState != null) {
+      finalErrorState = errorState;
+    } else if (exception != null) {
+      finalErrorState = ErrorStateFactory.createFromException(exception);
+    } else if (failure != null) {
+      finalErrorState = ErrorStateFactory.createFromFailure(failure);
+    } else if (error != null) {
+      finalErrorState = ErrorStateFactory.createFromDynamicError(error);
+    } else {
+      finalErrorState = GenericErrorState(
+        errorInfo: BlocErrorInfo(
+          type: ErrorType.unknown,
+          message: AppConstants.unknownErrorMessage,
+        ),
+      );
+    }
     
     return showDialog(
       context: context,
@@ -545,7 +1151,7 @@ class ErrorScreen extends StatelessWidget {
             responsive.smallHorizontalSpacer,
             Expanded(
               child: Text(
-                title,
+                finalErrorState.errorTitle,
                 style: responsive.getTitleStyle(),
               ),
             ),
@@ -556,10 +1162,10 @@ class ErrorScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              message,
+              finalErrorState.userMessage,
               style: responsive.getBodyStyle(),
             ),
-            if (errorCode != null) ...[
+            if (finalErrorState.errorCode != null) ...[
               responsive.smallSpacer,
               Container(
                 padding: EdgeInsets.all(responsive.padding * 0.5),
@@ -568,7 +1174,7 @@ class ErrorScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(responsive.borderRadius),
                 ),
                 child: Text(
-                  'Error Code: $errorCode',
+                  'Error Code: ${finalErrorState.errorCode}',
                   style: responsive.getCaptionStyle()?.copyWith(
                     fontFamily: 'monospace',
                   ),
@@ -578,7 +1184,7 @@ class ErrorScreen extends StatelessWidget {
           ],
         ),
         actions: [
-          if (onRetry != null)
+          if (onRetry != null && finalErrorState.canRetry)
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
@@ -590,7 +1196,11 @@ class ErrorScreen extends StatelessWidget {
               ),
             ),
           ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () {
+              Navigator.of(context).pop();
+              onDismiss?.call();
+            },
+            style: AppTheme.responsivePrimaryButtonStyle(context),
             child: Text(
               'OK',
               style: responsive.getBodyStyle(color: Colors.white),
@@ -601,15 +1211,20 @@ class ErrorScreen extends StatelessWidget {
     );
   }
 
-  // Static method to show error snackbar
+  /// Show error snackbar using the error handling system
   static void showErrorSnackBar(
     BuildContext context, {
-    required String message,
+    BaseErrorState? errorState,
+    String? message,
     VoidCallback? onRetry,
     Duration duration = const Duration(seconds: 4),
   }) {
     final theme = Theme.of(context);
     final responsive = context.responsive;
+    
+    final finalMessage = message ?? 
+        errorState?.userMessage ?? 
+        AppConstants.unknownErrorMessage;
     
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -623,7 +1238,7 @@ class ErrorScreen extends StatelessWidget {
             responsive.smallHorizontalSpacer,
             Expanded(
               child: Text(
-                message,
+                finalMessage,
                 style: responsive.getCaptionStyle(
                   color: theme.colorScheme.onError,
                 ),

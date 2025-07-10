@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:slates_app_wear/blocs/auth_bloc/auth_bloc.dart';
 import 'package:slates_app_wear/core/constants/route_constants.dart';
+import 'package:slates_app_wear/core/constants/app_constants.dart';
+import 'package:slates_app_wear/core/constants/api_constants.dart';
+import 'package:slates_app_wear/core/error/common_error_states.dart';
+import 'package:slates_app_wear/core/error/error_handler.dart';
 import 'package:slates_app_wear/data/presentation/screens/auth/login_screen.dart';
 import 'package:slates_app_wear/data/presentation/screens/error_screen.dart';
 import 'package:slates_app_wear/data/presentation/screens/home_screen.dart';
@@ -36,6 +40,7 @@ class AppRoutes {
           ),
           settings: settings,
         );
+
       case RouteConstants.notifications:
         return MaterialPageRoute(
           builder: (_) => const NotificationCenterPage(),
@@ -50,18 +55,40 @@ class AppRoutes {
 
       case RouteConstants.unauthorized:
         return MaterialPageRoute(
-          builder: (_) => const ErrorScreen(
-            title: 'Unauthorized',
-            message: 'You are not authorized to access this page.',
+          builder: (context) => ErrorScreen(
+            errorState: AuthenticationErrorState(
+              errorInfo: BlocErrorInfo(
+                type: ErrorType.authentication,
+                message: AppConstants.unauthorizedMessage,
+                statusCode: ApiConstants.unauthorizedCode,
+              ),
+            ),
+            onCustomAction: () {
+              Navigator.of(context).pushNamedAndRemoveUntil(
+                RouteConstants.login,
+                (Route<dynamic> route) => false,
+              );
+            },
+            customActionText: 'Login',
           ),
           settings: settings,
         );
 
       case RouteConstants.serverError:
         return MaterialPageRoute(
-          builder: (_) => const ErrorScreen(
-            title: 'Server Error',
-            message: 'Something went wrong. Please try again later.',
+          builder: (context) => ErrorScreen(
+            errorState: ServerErrorState(
+              errorInfo: BlocErrorInfo(
+                type: ErrorType.server,
+                message: AppConstants.serverErrorMessage,
+                statusCode: ApiConstants.serverErrorCode,
+                canRetry: ApiConstants.isRetryableStatusCode(ApiConstants.serverErrorCode),
+              ),
+            ),
+            onRetry: () {
+              // Refresh the current route or navigate back
+              Navigator.of(context).pop();
+            },
           ),
           settings: settings,
         );
@@ -69,9 +96,20 @@ class AppRoutes {
       case RouteConstants.notFound:
       default:
         return MaterialPageRoute(
-          builder: (_) => const ErrorScreen(
-            title: 'Page Not Found',
-            message: 'The page you are looking for does not exist.',
+          builder: (context) => ErrorScreen(
+            errorState: NotFoundErrorState(
+              errorInfo: BlocErrorInfo(
+                type: ErrorType.notFound,
+                message: AppConstants.notFoundMessage,
+                statusCode: ApiConstants.notFoundCode,
+              ),
+            ),
+            onGoHome: () {
+              Navigator.of(context).pushNamedAndRemoveUntil(
+                RouteConstants.home,
+                (Route<dynamic> route) => false,
+              );
+            },
           ),
           settings: settings,
         );
