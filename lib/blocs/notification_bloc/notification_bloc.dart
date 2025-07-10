@@ -24,7 +24,7 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState>
   NotificationBloc({
     NotificationService? notificationService,
   })  : _notificationService = notificationService ?? NotificationService(),
-        super(NotificationInitial()) {
+        super(const NotificationInitial()) {
     
     on<InitializeNotifications>(_onInitializeNotifications);
     on<ScheduleDutyNotifications>(_onScheduleDutyNotifications);
@@ -92,7 +92,7 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState>
     Emitter<NotificationState> emit,
   ) async {
     try {
-      emit(NotificationLoading());
+      emit(const NotificationLoading());
       
       final scheduledIds = await _notificationService.scheduleDutyNotifications(
         rosterUser: event.rosterUser,
@@ -707,7 +707,7 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState>
     Emitter<NotificationState> emit,
   ) async {
     if (_isErrorState(state)) {
-      emit(NotificationInitial());
+      emit(const NotificationInitial());
     }
   }
 

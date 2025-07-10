@@ -35,7 +35,7 @@ class LocationBloc extends Bloc<LocationEvent, LocationState>
 
   LocationBloc({OfflineStorageService? offlineStorage})
       : _offlineStorage = offlineStorage ?? OfflineStorageService(),
-        super(LocationInitial()) {
+        super(const LocationInitial()) {
     
     on<InitializeLocationTracking>(_onInitializeLocationTracking);
     on<StartLocationTracking>(_onStartLocationTracking);
@@ -485,7 +485,7 @@ class LocationBloc extends Bloc<LocationEvent, LocationState>
     Emitter<LocationState> emit,
   ) async {
     if (_isErrorState(state)) {
-      emit(LocationInitial());
+      emit(const LocationInitial());
     }
   }
 

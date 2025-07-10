@@ -243,8 +243,6 @@ class NotificationUtils {
         return Icons.info;
       case NotificationType.positionAlert:
         return Icons.location_on;
-      default:
-        return Icons.notifications;
     }
   }
 
@@ -269,8 +267,6 @@ class NotificationUtils {
         return Colors.grey;
       case NotificationType.positionAlert:
         return Colors.purple;
-      default:
-        return Colors.blue;
     }
   }
 

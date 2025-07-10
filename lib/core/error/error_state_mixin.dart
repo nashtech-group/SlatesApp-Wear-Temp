@@ -1,10 +1,7 @@
-// lib/core/error/error_state_mixin.dart
 import 'package:slates_app_wear/core/error/error_handler.dart';
 import 'package:slates_app_wear/core/constants/api_constants.dart';
 import 'package:slates_app_wear/core/error/error_state_factory.dart';
 
-/// Mixin to provide common error state functionality
-/// Enforces DRY principles across all error states in different BLoCs
 mixin ErrorStateMixin {
   /// The error info that all error states should have
   BlocErrorInfo get errorInfo;
@@ -130,7 +127,10 @@ mixin ErrorStateMixin {
       case ErrorType.validation:
       case ErrorType.notFound:
         return ErrorPriority.low;
-      default:
+      case ErrorType.timeout:
+      case ErrorType.rateLimited:
+      case ErrorType.parsing:
+      case ErrorType.unknown:
         return ErrorPriority.medium;
     }
   }
@@ -157,7 +157,6 @@ mixin ErrorStateMixin {
       case ErrorType.parsing:
         return ErrorSeverity.error;
       case ErrorType.unknown:
-      default:
         return ErrorSeverity.error;
     }
   }
@@ -188,7 +187,6 @@ mixin ErrorStateMixin {
       case ErrorType.parsing:
         return 'Data Error';
       case ErrorType.unknown:
-      default:
         return 'Error Occurred';
     }
   }
@@ -213,7 +211,6 @@ mixin ErrorStateMixin {
       case ErrorType.parsing:
         return 'data_usage';
       case ErrorType.unknown:
-      default:
         return 'error';
     }
   }
@@ -251,8 +248,13 @@ mixin ErrorStateMixin {
           actions.add(ErrorAction.waitAndRetry);
         }
         break;
-      default:
+      case ErrorType.authorization:
+      case ErrorType.notFound:
+      case ErrorType.rateLimited:
+      case ErrorType.parsing:
+      case ErrorType.unknown:
         actions.add(ErrorAction.contactSupport);
+        break;
     }
 
     // Always add dismiss option

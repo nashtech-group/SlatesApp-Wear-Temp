@@ -3,7 +3,8 @@ import 'package:slates_app_wear/core/constants/app_constants.dart';
 import 'package:slates_app_wear/core/constants/api_constants.dart';
 import 'package:slates_app_wear/core/utils/responsive_utils.dart';
 import 'package:slates_app_wear/core/error/common_error_states.dart';
-import 'package:slates_app_wear/core/error/error_state_factory.dart' hide VoidCallback;
+import 'package:slates_app_wear/core/error/error_state_factory.dart'
+    hide VoidCallback;
 import 'package:slates_app_wear/core/error/error_handler.dart';
 import 'package:slates_app_wear/core/error/exceptions.dart';
 import 'package:slates_app_wear/core/error/failures.dart';
@@ -11,8 +12,6 @@ import 'package:slates_app_wear/core/theme/app_theme.dart';
 import 'package:slates_app_wear/core/auth_manager.dart';
 import 'package:slates_app_wear/services/connectivity_service.dart';
 
-/// Production-ready error screen that integrates with the comprehensive error handling system
-/// Follows DRY principles and uses centralized error management
 class ErrorScreen extends StatefulWidget {
   final BaseErrorState errorState;
   final VoidCallback? onRetry;
@@ -336,20 +335,24 @@ class ErrorScreen extends StatefulWidget {
     bool showAppBar = true,
   }) {
     // Use ApiConstants to determine error type and get appropriate message
-    final errorMessage = message ?? AppConstants.getErrorMessageForStatusCode(statusCode);
-    
+    final errorMessage =
+        message ?? AppConstants.getErrorMessageForStatusCode(statusCode);
+
     if (ApiConstants.isClientError(statusCode)) {
       switch (statusCode) {
         case ApiConstants.unauthorizedCode:
           return ErrorScreen.unauthorized(showAppBar: showAppBar);
         case ApiConstants.forbiddenCode:
-          return ErrorScreen.forbidden(onGoHome: onGoHome, showAppBar: showAppBar);
+          return ErrorScreen.forbidden(
+              onGoHome: onGoHome, showAppBar: showAppBar);
         case ApiConstants.notFoundCode:
-          return ErrorScreen.notFound(onGoHome: onGoHome, showAppBar: showAppBar);
+          return ErrorScreen.notFound(
+              onGoHome: onGoHome, showAppBar: showAppBar);
         case ApiConstants.validationErrorCode:
           return ErrorScreen.validation(showAppBar: showAppBar);
         case ApiConstants.tooManyRequestsCode:
-          return ErrorScreen.rateLimited(onRetry: onRetry, showAppBar: showAppBar);
+          return ErrorScreen.rateLimited(
+              onRetry: onRetry, showAppBar: showAppBar);
         default:
           return ErrorScreen(
             errorState: ValidationErrorState(
@@ -368,13 +371,17 @@ class ErrorScreen extends StatefulWidget {
     } else if (ApiConstants.isServerError(statusCode)) {
       switch (statusCode) {
         case ApiConstants.serviceUnavailableCode:
-          return ErrorScreen.maintenance(onRetry: onRetry, showAppBar: showAppBar);
+          return ErrorScreen.maintenance(
+              onRetry: onRetry, showAppBar: showAppBar);
         case ApiConstants.badGatewayCode:
-          return ErrorScreen.badGateway(onRetry: onRetry, showAppBar: showAppBar);
+          return ErrorScreen.badGateway(
+              onRetry: onRetry, showAppBar: showAppBar);
         case ApiConstants.gatewayTimeoutCode:
-          return ErrorScreen.gatewayTimeout(onRetry: onRetry, showAppBar: showAppBar);
+          return ErrorScreen.gatewayTimeout(
+              onRetry: onRetry, showAppBar: showAppBar);
         default:
-          return ErrorScreen.serverError(onRetry: onRetry, showAppBar: showAppBar);
+          return ErrorScreen.serverError(
+              onRetry: onRetry, showAppBar: showAppBar);
       }
     } else {
       // Unknown status code - create generic error
@@ -429,7 +436,7 @@ class ErrorScreen extends StatefulWidget {
         ),
       );
     }
-    
+
     return showDialog(
       context: context,
       barrierDismissible: false,
@@ -467,14 +474,15 @@ class ErrorScreen extends StatefulWidget {
               Container(
                 padding: EdgeInsets.all(responsive.padding * 0.5),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.errorContainer.withValues(alpha: 0.1),
+                  color:
+                      theme.colorScheme.errorContainer.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(responsive.borderRadius),
                 ),
                 child: Text(
                   'Error Code: ${finalErrorState.errorCode}',
                   style: responsive.getCaptionStyle()?.copyWith(
-                    fontFamily: 'monospace',
-                  ),
+                        fontFamily: 'monospace',
+                      ),
                 ),
               ),
             ],
@@ -518,11 +526,10 @@ class ErrorScreen extends StatefulWidget {
   }) {
     final theme = Theme.of(context);
     final responsive = context.responsive;
-    
-    final finalMessage = message ?? 
-        errorState?.userMessage ?? 
-        AppConstants.unknownErrorMessage;
-    
+
+    final finalMessage =
+        message ?? errorState?.userMessage ?? AppConstants.unknownErrorMessage;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
@@ -573,8 +580,10 @@ class _ErrorScreenState extends State<ErrorScreen> {
   @override
   void initState() {
     super.initState();
-    _uiBehavior = ErrorStateFactory.getErrorUIBehavior(widget.errorState.errorInfo);
-    _errorActions = ErrorStateFactory.getErrorActions(widget.errorState.errorInfo);
+    _uiBehavior =
+        ErrorStateFactory.getErrorUIBehavior(widget.errorState.errorInfo);
+    _errorActions =
+        ErrorStateFactory.getErrorActions(widget.errorState.errorInfo);
     _handleSpecialBehaviors();
   }
 
@@ -601,9 +610,11 @@ class _ErrorScreenState extends State<ErrorScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final responsive = context.responsive;
-    
+
     return Scaffold(
-      appBar: widget.showAppBar && !responsive.isWearable ? _buildAppBar(theme) : null,
+      appBar: widget.showAppBar && !responsive.isWearable
+          ? _buildAppBar(theme)
+          : null,
       body: SafeArea(
         child: _buildResponsiveLayout(context, theme, responsive),
       ),
@@ -612,22 +623,25 @@ class _ErrorScreenState extends State<ErrorScreen> {
 
   PreferredSizeWidget _buildAppBar(ThemeData theme) {
     return AppBar(
-      title: Text(AppConstants.appTitle),
+      title: const Text(AppConstants.appTitle),
       backgroundColor: theme.appBarTheme.backgroundColor,
       foregroundColor: theme.appBarTheme.foregroundColor,
       elevation: 0,
-      automaticallyImplyLeading: widget.canPop && Navigator.of(context).canPop(),
+      automaticallyImplyLeading:
+          widget.canPop && Navigator.of(context).canPop(),
     );
   }
 
-  Widget _buildResponsiveLayout(BuildContext context, ThemeData theme, ResponsiveUtils responsive) {
+  Widget _buildResponsiveLayout(
+      BuildContext context, ThemeData theme, ResponsiveUtils responsive) {
     if (responsive.isWearable) {
       return _buildWearableLayout(context, theme, responsive);
     }
     return _buildMobileLayout(context, theme, responsive);
   }
 
-  Widget _buildWearableLayout(BuildContext context, ThemeData theme, ResponsiveUtils responsive) {
+  Widget _buildWearableLayout(
+      BuildContext context, ThemeData theme, ResponsiveUtils responsive) {
     return SingleChildScrollView(
       padding: responsive.containerPadding,
       child: Column(
@@ -651,7 +665,8 @@ class _ErrorScreenState extends State<ErrorScreen> {
     );
   }
 
-  Widget _buildMobileLayout(BuildContext context, ThemeData theme, ResponsiveUtils responsive) {
+  Widget _buildMobileLayout(
+      BuildContext context, ThemeData theme, ResponsiveUtils responsive) {
     return Padding(
       padding: responsive.containerPadding,
       child: Column(
@@ -725,9 +740,11 @@ class _ErrorScreenState extends State<ErrorScreen> {
   Widget _buildErrorMessage(ThemeData theme, ResponsiveUtils responsive) {
     return Text(
       widget.errorState.userMessage,
-      style: responsive.getBodyStyle(
-        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-      )?.copyWith(height: 1.5),
+      style: responsive
+          .getBodyStyle(
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+          )
+          ?.copyWith(height: 1.5),
       textAlign: TextAlign.center,
     );
   }
@@ -747,9 +764,11 @@ class _ErrorScreenState extends State<ErrorScreen> {
       ),
       child: Text(
         'Error Code: ${widget.errorState.errorCode}',
-        style: responsive.getCaptionStyle(
-          color: theme.colorScheme.error,
-        )?.copyWith(fontFamily: 'monospace'),
+        style: responsive
+            .getCaptionStyle(
+              color: theme.colorScheme.error,
+            )
+            ?.copyWith(fontFamily: 'monospace'),
         semanticsLabel: 'Error code ${widget.errorState.errorCode}',
       ),
     );
@@ -840,9 +859,10 @@ class _ErrorScreenState extends State<ErrorScreen> {
     );
   }
 
-  Widget _buildPrimaryActionButton(BuildContext context, ResponsiveUtils responsive) {
+  Widget _buildPrimaryActionButton(
+      BuildContext context, ResponsiveUtils responsive) {
     final action = _getPrimaryAction();
-    
+
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton.icon(
@@ -928,12 +948,14 @@ class _ErrorScreenState extends State<ErrorScreen> {
     );
   }
 
-  Widget _buildSupportInfo(BuildContext context, ThemeData theme, ResponsiveUtils responsive) {
+  Widget _buildSupportInfo(
+      BuildContext context, ThemeData theme, ResponsiveUtils responsive) {
     return Container(
       padding: responsive.formPadding,
       decoration: AppTheme.getResponsiveCardDecoration(
         context,
-        backgroundColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        backgroundColor:
+            theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
       ),
       child: Column(
         children: [
@@ -962,9 +984,11 @@ class _ErrorScreenState extends State<ErrorScreen> {
             SizedBox(height: responsive.smallSpacing * 0.5),
             Text(
               'Please include error code: ${widget.errorState.errorCode}',
-              style: responsive.getCaptionStyle(
-                color: theme.colorScheme.onSurfaceVariant,
-              )?.copyWith(fontStyle: FontStyle.italic),
+              style: responsive
+                  .getCaptionStyle(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  )
+                  ?.copyWith(fontStyle: FontStyle.italic),
               textAlign: TextAlign.center,
             ),
           ],
@@ -973,12 +997,14 @@ class _ErrorScreenState extends State<ErrorScreen> {
     );
   }
 
-  Widget _buildCompactSupportInfo(BuildContext context, ThemeData theme, ResponsiveUtils responsive) {
+  Widget _buildCompactSupportInfo(
+      BuildContext context, ThemeData theme, ResponsiveUtils responsive) {
     return Container(
       padding: EdgeInsets.all(responsive.padding * 0.75),
       decoration: AppTheme.getResponsiveCardDecoration(
         context,
-        backgroundColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        backgroundColor:
+            theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
       ),
       child: Column(
         children: [
@@ -998,9 +1024,11 @@ class _ErrorScreenState extends State<ErrorScreen> {
           SizedBox(height: responsive.smallSpacing * 0.25),
           Text(
             AppConstants.supportEmail,
-            style: responsive.getCaptionStyle(
-              color: theme.colorScheme.onSurfaceVariant,
-            )?.copyWith(fontSize: responsive.isWearable ? 8 : 10),
+            style: responsive
+                .getCaptionStyle(
+                  color: theme.colorScheme.onSurfaceVariant,
+                )
+                ?.copyWith(fontSize: responsive.isWearable ? 8 : 10),
             textAlign: TextAlign.center,
           ),
         ],
@@ -1031,7 +1059,6 @@ class _ErrorScreenState extends State<ErrorScreen> {
       case ErrorType.parsing:
         return Icons.data_usage;
       case ErrorType.unknown:
-      default:
         return Icons.error;
     }
   }
@@ -1046,7 +1073,11 @@ class _ErrorScreenState extends State<ErrorScreen> {
         return theme.colorScheme.primaryContainer.withValues(alpha: 0.1);
       case ErrorType.server:
         return theme.colorScheme.errorContainer.withValues(alpha: 0.1);
-      default:
+      case ErrorType.validation:
+      case ErrorType.notFound:
+      case ErrorType.rateLimited:
+      case ErrorType.parsing:
+      case ErrorType.unknown:
         return theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3);
     }
   }
@@ -1062,7 +1093,10 @@ class _ErrorScreenState extends State<ErrorScreen> {
         return theme.colorScheme.primary;
       case ErrorType.validation:
         return theme.colorScheme.tertiary;
-      default:
+      case ErrorType.notFound:
+      case ErrorType.rateLimited:
+      case ErrorType.parsing:
+      case ErrorType.unknown:
         return theme.colorScheme.onSurfaceVariant;
     }
   }
@@ -1080,14 +1114,14 @@ class _ErrorScreenState extends State<ErrorScreen> {
   bool _shouldShowPrimaryAction(List<ErrorAction> allowedActions) {
     final primaryAction = _getPrimaryAction();
     return allowedActions.contains(primaryAction) ||
-           widget.onCustomAction != null ||
-           (widget.onRetry != null && widget.errorState.canRetry);
+        widget.onCustomAction != null ||
+        (widget.onRetry != null && widget.errorState.canRetry);
   }
 
   bool _shouldShowSecondaryAction(ErrorAction action) {
     final primaryAction = _getPrimaryAction();
     if (action == primaryAction) return false;
-    
+
     switch (action) {
       case ErrorAction.checkConnection:
         return widget.errorState.isNetworkError;
@@ -1170,7 +1204,7 @@ class _ErrorScreenState extends State<ErrorScreen> {
 
   Future<void> _handleRetry() async {
     if (_isRetrying) return;
-    
+
     setState(() {
       _isRetrying = true;
     });
@@ -1179,7 +1213,7 @@ class _ErrorScreenState extends State<ErrorScreen> {
       if (widget.onRetry != null) {
         widget.onRetry!();
       }
-      
+
       // Simulate retry delay for better UX
       await Future.delayed(const Duration(milliseconds: 500));
     } finally {
@@ -1218,89 +1252,90 @@ class _ErrorScreenState extends State<ErrorScreen> {
   }
 
   void _handleEnableOfflineMode() {
-    // Use AuthManager and ConnectivityService for proper offline mode handling
     _showOfflineModeDialog();
   }
 
   void _showOfflineModeDialog() async {
     final context = this.context;
     final authManager = AuthManager();
-    final connectivityService = ConnectivityService();
-    
+
     // Check if offline data is available
     final lastEmployeeId = await authManager.getLastEmployeeId();
-    final hasOfflineData = lastEmployeeId != null 
+    final hasOfflineData = lastEmployeeId != null
         ? await authManager.hasBasicOfflineLoginData(lastEmployeeId)
         : false;
 
     if (!mounted) return;
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(context.responsive.borderRadius),
-        ),
-        title: Row(
-          children: [
-            Icon(
-              Icons.cloud_off,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            const SizedBox(width: 12),
-            const Text('Offline Mode'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'You appear to be offline. Choose how to proceed:',
-            ),
-            const SizedBox(height: 16),
-            if (hasOfflineData) ...[
+    if (mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius:
+                BorderRadius.circular(context.responsive.borderRadius),
+          ),
+          title: Row(
+            children: [
+              Icon(
+                Icons.cloud_off,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              const SizedBox(width: 12),
+              const Text('Offline Mode'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'You appear to be offline. Choose how to proceed:',
+              ),
+              const SizedBox(height: 16),
+              if (hasOfflineData) ...[
+                ListTile(
+                  leading: const Icon(Icons.offline_pin),
+                  title: const Text('Use Offline Login'),
+                  subtitle: Text('Login with saved data for $lastEmployeeId'),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _navigateToOfflineLogin(lastEmployeeId);
+                  },
+                ),
+                const Divider(),
+              ],
               ListTile(
-                leading: const Icon(Icons.offline_pin),
-                title: const Text('Use Offline Login'),
-                subtitle: Text('Login with saved data for $lastEmployeeId'),
+                leading: const Icon(Icons.refresh),
+                title: const Text('Check Connection'),
+                subtitle: const Text('Try to reconnect to the internet'),
                 onTap: () {
                   Navigator.of(context).pop();
-                  _navigateToOfflineLogin(lastEmployeeId!);
+                  _checkConnectivity();
                 },
               ),
               const Divider(),
+              ListTile(
+                leading: const Icon(Icons.home),
+                title: const Text('Go to Home'),
+                subtitle: const Text('Return to home screen'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _handleDismiss();
+                },
+              ),
             ],
-            ListTile(
-              leading: const Icon(Icons.refresh),
-              title: const Text('Check Connection'),
-              subtitle: const Text('Try to reconnect to the internet'),
-              onTap: () {
-                Navigator.of(context).pop();
-                _checkConnectivity();
-              },
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.home),
-              title: const Text('Go to Home'),
-              subtitle: const Text('Return to home screen'),
-              onTap: () {
-                Navigator.of(context).pop();
-                _handleDismiss();
-              },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-        ],
-      ),
-    );
+      );
+    }
   }
 
   void _navigateToOfflineLogin(String employeeId) {
@@ -1314,7 +1349,7 @@ class _ErrorScreenState extends State<ErrorScreen> {
 
   Future<void> _checkConnectivity() async {
     final connectivityService = ConnectivityService();
-    
+
     // Show loading indicator
     showDialog(
       context: context,
@@ -1327,7 +1362,7 @@ class _ErrorScreenState extends State<ErrorScreen> {
     try {
       // Check connectivity using the service
       final isConnected = await connectivityService.checkConnectivity();
-      
+
       if (!mounted) return;
       Navigator.of(context).pop(); // Close loading dialog
 
@@ -1349,7 +1384,7 @@ class _ErrorScreenState extends State<ErrorScreen> {
     } catch (e) {
       if (!mounted) return;
       Navigator.of(context).pop(); // Close loading dialog
-      
+
       ErrorScreen.showErrorSnackBar(
         context,
         message: 'Failed to check connectivity. Please try again.',

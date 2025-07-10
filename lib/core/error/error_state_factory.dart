@@ -1,4 +1,3 @@
-// lib/core/error/error_state_factory.dart
 import 'dart:developer';
 import 'error_handler.dart';
 import 'common_error_states.dart';
@@ -7,7 +6,7 @@ import 'failures.dart';
 import '../constants/app_constants.dart';
 import '../constants/api_constants.dart';
 
-/// Comprehensive factory for creating appropriate error states for presentation layer
+
 class ErrorStateFactory {
   static const String _logTag = 'ErrorStateFactory';
 
@@ -35,7 +34,6 @@ class ErrorStateFactory {
       case ErrorType.parsing:
         return _createParsingErrorState(errorInfo);
       case ErrorType.unknown:
-      default:
         return _createGenericErrorState(errorInfo);
     }
   }
@@ -176,7 +174,13 @@ class ErrorStateFactory {
           maxRetries: maxRetries ?? AppConstants.maxRetryAttempts,
           currentAttempt: currentAttempt ?? 0,
         );
-      default:
+      case ErrorType.authentication:
+      case ErrorType.authorization:
+      case ErrorType.validation:
+      case ErrorType.notFound:
+      case ErrorType.rateLimited:
+      case ErrorType.parsing:
+      case ErrorType.unknown:
         return RetryableGenericErrorState(
           errorInfo: errorInfo,
           onRetry: onRetry,
@@ -210,7 +214,12 @@ class ErrorStateFactory {
         return errorInfo.canRetry 
             ? ErrorUIBehavior.showRetryableError 
             : ErrorUIBehavior.showGenericError;
-      default:
+      case ErrorType.authorization:
+      case ErrorType.notFound:
+      case ErrorType.timeout:
+      case ErrorType.rateLimited:
+      case ErrorType.parsing:
+      case ErrorType.unknown:
         return ErrorUIBehavior.showGenericError;
     }
   }
@@ -242,10 +251,17 @@ class ErrorStateFactory {
       case ErrorType.server:
         if (errorInfo.statusCode == ApiConstants.serviceUnavailableCode) {
           actions.add(ErrorAction.waitAndRetry);
+        } else {
+          actions.add(ErrorAction.contactSupport);
         }
         break;
-      default:
+      case ErrorType.authorization:
+      case ErrorType.notFound:
+      case ErrorType.rateLimited:
+      case ErrorType.parsing:
+      case ErrorType.unknown:
         actions.add(ErrorAction.contactSupport);
+        break;
     }
 
     // Always add dismiss option

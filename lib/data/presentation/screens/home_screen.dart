@@ -1,15 +1,12 @@
-// lib/data/presentation/pages/home_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:slates_app_wear/blocs/auth_bloc/auth_bloc.dart';
 import 'package:slates_app_wear/core/constants/app_constants.dart';
-import 'package:slates_app_wear/core/constants/api_constants.dart';
 import 'package:slates_app_wear/core/constants/route_constants.dart';
 import 'package:slates_app_wear/core/theme/app_theme.dart';
 import 'package:slates_app_wear/core/theme/theme_provider.dart';
 import 'package:slates_app_wear/core/error/common_error_states.dart';
-import 'package:slates_app_wear/core/error/error_handler.dart';
 import 'package:slates_app_wear/core/error/error_state_factory.dart' hide VoidCallback;
 import 'package:slates_app_wear/core/auth_manager.dart';
 import 'package:slates_app_wear/data/models/user/user_model.dart';

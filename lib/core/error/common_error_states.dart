@@ -1,10 +1,8 @@
-// lib/core/error/common_error_states.dart
 import 'package:equatable/equatable.dart';
 import 'error_handler.dart';
 import '../constants/app_constants.dart';
 
-/// Base error state that can be extended by specific BLoCs
-/// Provides common properties and methods for all error states
+
 abstract class BaseErrorState extends Equatable {
   final BlocErrorInfo errorInfo;
   final DateTime timestamp;
@@ -64,7 +62,6 @@ abstract class BaseErrorState extends Equatable {
       case ErrorType.parsing:
         return 'Data Error';
       case ErrorType.unknown:
-      default:
         return 'Error Occurred';
     }
   }
@@ -89,7 +86,6 @@ abstract class BaseErrorState extends Equatable {
       case ErrorType.parsing:
         return 'data_usage';
       case ErrorType.unknown:
-      default:
         return 'error';
     }
   }
@@ -713,7 +709,10 @@ extension BaseErrorStateExtension on BaseErrorState {
       case ErrorType.validation:
       case ErrorType.notFound:
         return ErrorPriority.low;
-      default:
+      case ErrorType.timeout:
+      case ErrorType.rateLimited:
+      case ErrorType.parsing:
+      case ErrorType.unknown:
         return ErrorPriority.medium;
     }
   }
@@ -762,7 +761,6 @@ extension ErrorSeverityExtension on BaseErrorState {
       case ErrorType.parsing:
         return ErrorSeverity.error;
       case ErrorType.unknown:
-      default:
         return ErrorSeverity.error;
     }
   }
