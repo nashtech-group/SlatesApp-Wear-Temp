@@ -4,6 +4,8 @@ import 'package:slates_app_wear/blocs/notification_bloc/notification_bloc.dart';
 import 'package:slates_app_wear/data/models/roster/roster_user_model.dart';
 import 'package:slates_app_wear/core/utils/responsive_utils.dart';
 import 'package:slates_app_wear/core/constants/route_constants.dart';
+import 'package:slates_app_wear/core/theme/app_theme.dart';
+import 'package:slates_app_wear/services/date_service.dart';
 
 class DutyActionsWidget extends StatelessWidget {
   final RosterUserModel duty;
@@ -19,24 +21,16 @@ class DutyActionsWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final responsive = context.responsive;
     final theme = Theme.of(context);
+    final dateService = DateService();
 
     return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(responsive.borderRadius),
-      ),
       child: Padding(
         padding: responsive.containerPadding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Duty Actions',
-              style: (theme.textTheme.titleMedium ?? const TextStyle()).copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: responsive.mediumSpacing),
+            _buildHeader(context, responsive, theme),
+            responsive.mediumSpacer,
             
             if (isCompact) 
               _buildCompactActions(context, responsive, theme)
@@ -45,6 +39,25 @@ class DutyActionsWidget extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context, ResponsiveUtils responsive, ThemeData theme) {
+    return Row(
+      children: [
+        Icon(
+          Icons.dashboard,
+          color: theme.colorScheme.primary,
+          size: responsive.iconSize,
+        ),
+        responsive.smallHorizontalSpacer,
+        Text(
+          'Duty Actions',
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
     );
   }
 
@@ -62,7 +75,7 @@ class DutyActionsWidget extends StatelessWidget {
             isPrimary: true,
           ),
         ),
-        SizedBox(width: responsive.smallSpacing),
+        responsive.smallHorizontalSpacer,
         Expanded(
           child: _buildActionButton(
             context,
@@ -73,7 +86,7 @@ class DutyActionsWidget extends StatelessWidget {
             onPressed: () => _navigateToMapView(context),
           ),
         ),
-        SizedBox(width: responsive.smallSpacing),
+        responsive.smallHorizontalSpacer,
         _buildEmergencyButton(context, responsive, theme, isCompact: true),
       ],
     );
@@ -97,7 +110,7 @@ class DutyActionsWidget extends StatelessWidget {
                 isPrimary: true,
               ),
             ),
-            SizedBox(width: responsive.smallSpacing),
+            responsive.smallHorizontalSpacer,
             Expanded(
               child: _buildActionButton(
                 context,
@@ -112,7 +125,7 @@ class DutyActionsWidget extends StatelessWidget {
           ],
         ),
 
-        SizedBox(height: responsive.smallSpacing),
+        responsive.smallSpacer,
 
         // Secondary Actions Row
         Row(
@@ -128,7 +141,7 @@ class DutyActionsWidget extends StatelessWidget {
                 onPressed: () => _navigateToGuardCalendar(context),
               ),
             ),
-            SizedBox(width: responsive.smallSpacing),
+            responsive.smallHorizontalSpacer,
             Expanded(
               child: _buildEmergencyButton(context, responsive, theme),
             ),
@@ -136,7 +149,7 @@ class DutyActionsWidget extends StatelessWidget {
         ),
 
         if (duty.isCurrentlyOnDuty) ...[
-          SizedBox(height: responsive.mediumSpacing),
+          responsive.mediumSpacer,
           _buildDutyStatusActions(context, responsive, theme),
         ],
       ],
@@ -153,17 +166,20 @@ class DutyActionsWidget extends StatelessWidget {
     required VoidCallback onPressed,
     bool isPrimary = false,
   }) {
+    final backgroundColor = isPrimary 
+        ? theme.colorScheme.primary 
+        : theme.colorScheme.surface;
+    final foregroundColor = isPrimary 
+        ? theme.colorScheme.onPrimary 
+        : theme.colorScheme.onSurface;
+
     return SizedBox(
       height: isCompact ? 60 : (subtitle != null ? 80 : 60),
       child: ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor: isPrimary 
-              ? theme.colorScheme.primary 
-              : theme.colorScheme.surface,
-          foregroundColor: isPrimary 
-              ? theme.colorScheme.onPrimary 
-              : theme.colorScheme.onSurface,
+          backgroundColor: backgroundColor,
+          foregroundColor: foregroundColor,
           elevation: isPrimary ? 2 : 1,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(responsive.borderRadius),
@@ -181,10 +197,10 @@ class DutyActionsWidget extends StatelessWidget {
               size: isCompact ? responsive.iconSize * 0.8 : responsive.iconSize,
             ),
             if (!isCompact) ...[
-              SizedBox(height: responsive.smallSpacing * 0.5),
+              responsive.smallSpacer,
               Text(
                 label,
-                style: (theme.textTheme.labelMedium ?? const TextStyle()).copyWith(
+                style: theme.textTheme.labelMedium?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
                 textAlign: TextAlign.center,
@@ -194,7 +210,7 @@ class DutyActionsWidget extends StatelessWidget {
               if (subtitle != null)
                 Text(
                   subtitle,
-                  style: theme.textTheme.labelSmall ?? const TextStyle(),
+                  style: theme.textTheme.labelSmall,
                   textAlign: TextAlign.center,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -202,7 +218,7 @@ class DutyActionsWidget extends StatelessWidget {
             ] else
               Text(
                 label,
-                style: (theme.textTheme.labelSmall ?? const TextStyle()).copyWith(
+                style: theme.textTheme.labelSmall?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
                 textAlign: TextAlign.center,
@@ -226,14 +242,9 @@ class DutyActionsWidget extends StatelessWidget {
       width: isCompact ? 60 : double.infinity,
       child: ElevatedButton(
         onPressed: () => _showEmergencyAlert(context),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: theme.colorScheme.error,
-          foregroundColor: theme.colorScheme.onError,
-          elevation: 3,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(responsive.borderRadius),
-          ),
-          padding: EdgeInsets.all(responsive.smallSpacing),
+        style: AppTheme.responsiveDestructiveButtonStyle(context).copyWith(
+          elevation: WidgetStateProperty.all(3),
+          padding: WidgetStateProperty.all(EdgeInsets.all(responsive.smallSpacing)),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -243,17 +254,20 @@ class DutyActionsWidget extends StatelessWidget {
               size: isCompact ? responsive.iconSize * 0.8 : responsive.iconSize,
             ),
             if (!isCompact) ...[
-              SizedBox(height: responsive.smallSpacing * 0.5),
+              responsive.smallSpacer,
               Text(
                 'Emergency',
-                style: (theme.textTheme.labelMedium ?? const TextStyle()).copyWith(
+                style: theme.textTheme.labelMedium?.copyWith(
                   fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onError,
                 ),
                 textAlign: TextAlign.center,
               ),
               Text(
                 'Alert',
-                style: theme.textTheme.labelSmall ?? const TextStyle(),
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onError,
+                ),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -276,14 +290,24 @@ class DutyActionsWidget extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'On Duty Actions',
-            style: (theme.textTheme.titleSmall ?? const TextStyle()).copyWith(
-              color: theme.colorScheme.primary,
-              fontWeight: FontWeight.bold,
-            ),
+          Row(
+            children: [
+              Icon(
+                Icons.security,
+                color: theme.colorScheme.primary,
+                size: responsive.iconSize,
+              ),
+              responsive.smallHorizontalSpacer,
+              Text(
+                'On Duty Actions',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
-          SizedBox(height: responsive.smallSpacing),
+          responsive.smallSpacer,
           
           Row(
             children: [
@@ -298,7 +322,7 @@ class DutyActionsWidget extends StatelessWidget {
                   ),
                 ),
               ),
-              SizedBox(width: responsive.smallSpacing),
+              responsive.smallHorizontalSpacer,
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () => _recordMovement(context),
@@ -341,10 +365,22 @@ class DutyActionsWidget extends StatelessWidget {
 
   // Action methods
   void _showEmergencyAlert(BuildContext context) {
+    final theme = Theme.of(context);
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Emergency Alert'),
+        title: Row(
+          children: [
+            Icon(
+              Icons.warning,
+              color: theme.colorScheme.error,
+              size: 28,
+            ),
+            const SizedBox(width: 8),
+            const Text('Emergency Alert'),
+          ],
+        ),
         content: const Text(
           'Are you sure you want to send an emergency alert? This will notify all supervisors and emergency contacts.',
         ),
@@ -358,10 +394,7 @@ class DutyActionsWidget extends StatelessWidget {
               Navigator.of(context).pop();
               _sendEmergencyAlert(context);
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-              foregroundColor: Theme.of(context).colorScheme.onError,
-            ),
+            style: AppTheme.responsiveDestructiveButtonStyle(context),
             child: const Text('Send Alert'),
           ),
         ],
@@ -370,6 +403,8 @@ class DutyActionsWidget extends StatelessWidget {
   }
 
   void _sendEmergencyAlert(BuildContext context) {
+    final dateService = DateService();
+    
     context.read<NotificationBloc>().add(
       ShowEmergencyAlert(
         title: 'Emergency Alert',
@@ -378,21 +413,24 @@ class DutyActionsWidget extends StatelessWidget {
           'dutyId': duty.id,
           'siteId': duty.site.id,
           'guardId': duty.guardId,
-          'timestamp': DateTime.now().toIso8601String(),
+          'timestamp': dateService.getCurrentApiTimestamp(),
         },
       ),
     );
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
+      SnackBar(
         content: Row(
           children: [
-            Icon(Icons.check_circle, color: Colors.white),
-            SizedBox(width: 8),
-            Text('Emergency alert sent successfully'),
+            Icon(
+              Icons.check_circle,
+              color: AppTheme.successGreen,
+            ),
+            const SizedBox(width: 8),
+            const Text('Emergency alert sent successfully'),
           ],
         ),
-        backgroundColor: Colors.green,
+        backgroundColor: AppTheme.successGreen,
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -411,15 +449,18 @@ class DutyActionsWidget extends StatelessWidget {
   void _recordMovement(BuildContext context) {
     // Record current movement
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
+      SnackBar(
         content: Row(
           children: [
-            Icon(Icons.my_location, color: Colors.white),
-            SizedBox(width: 8),
-            Text('Movement recorded'),
+            Icon(
+              Icons.my_location,
+              color: AppTheme.successGreen,
+            ),
+            const SizedBox(width: 8),
+            const Text('Movement recorded'),
           ],
         ),
-        backgroundColor: Colors.green,
+        backgroundColor: AppTheme.successGreen,
         behavior: SnackBarBehavior.floating,
       ),
     );

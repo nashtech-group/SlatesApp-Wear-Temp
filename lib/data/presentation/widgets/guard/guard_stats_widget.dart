@@ -3,7 +3,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:slates_app_wear/blocs/roster_bloc/roster_bloc.dart';
 import 'package:slates_app_wear/data/models/roster/roster_user_model.dart';
 import 'package:slates_app_wear/core/utils/responsive_utils.dart';
+import 'package:slates_app_wear/core/utils/status_colors.dart';
 import 'package:slates_app_wear/core/theme/app_theme.dart';
+import 'package:slates_app_wear/core/constants/app_constants.dart';
+import 'package:slates_app_wear/services/date_service.dart';
 
 class GuardStatsWidget extends StatelessWidget {
   final int guardId;
@@ -23,17 +26,13 @@ class GuardStatsWidget extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(responsive.borderRadius),
-      ),
       child: Padding(
         padding: responsive.containerPadding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(context, responsive, theme),
-            SizedBox(height: responsive.mediumSpacing),
+            responsive.mediumSpacer,
             _buildStatsContent(context, responsive, theme),
           ],
         ),
@@ -50,11 +49,11 @@ class GuardStatsWidget extends StatelessWidget {
           color: theme.colorScheme.primary,
           size: responsive.iconSize,
         ),
-        SizedBox(width: responsive.smallSpacing),
+        responsive.smallHorizontalSpacer,
         Expanded(
           child: Text(
             isCompact ? 'Stats' : 'Guard Statistics',
-            style: (theme.textTheme.titleMedium ?? const TextStyle()).copyWith(
+            style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -90,10 +89,10 @@ class GuardStatsWidget extends StatelessWidget {
                 ? AppTheme.warningOrange
                 : theme.colorScheme.primary,
           ),
-          SizedBox(width: responsive.smallSpacing * 0.5),
+          responsive.smallHorizontalSpacer,
           Text(
             loadedState.formattedLastUpdated,
-            style: (theme.textTheme.labelSmall ?? const TextStyle()).copyWith(
+            style: theme.textTheme.labelSmall?.copyWith(
               color: loadedState.isFromCache
                   ? AppTheme.warningOrange
                   : theme.colorScheme.primary,
@@ -146,23 +145,20 @@ class GuardStatsWidget extends StatelessWidget {
             color: theme.colorScheme.error,
             size: responsive.iconSize,
           ),
-          SizedBox(height: responsive.smallSpacing),
+          responsive.smallSpacer,
           Text(
             'Unable to load statistics',
-            style: (theme.textTheme.bodyMedium ?? const TextStyle()).copyWith(
+            style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.error,
             ),
             textAlign: TextAlign.center,
           ),
-          SizedBox(height: responsive.smallSpacing),
+          responsive.smallSpacer,
           ElevatedButton.icon(
             onPressed: () => _refreshStats(context),
             icon: const Icon(Icons.refresh),
             label: const Text('Retry'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: theme.colorScheme.error,
-              foregroundColor: theme.colorScheme.onError,
-            ),
+            style: AppTheme.responsiveDestructiveButtonStyle(context),
           ),
         ],
       ),
@@ -180,10 +176,10 @@ class GuardStatsWidget extends StatelessWidget {
             color: theme.colorScheme.outline,
             size: responsive.iconSize,
           ),
-          SizedBox(height: responsive.smallSpacing),
+          responsive.smallSpacer,
           Text(
             'No statistics available',
-            style: (theme.textTheme.bodyMedium ?? const TextStyle()).copyWith(
+            style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.outline,
             ),
             textAlign: TextAlign.center,
@@ -221,7 +217,7 @@ class GuardStatsWidget extends StatelessWidget {
                 theme.colorScheme.primary,
               ),
             ),
-            SizedBox(width: responsive.smallSpacing),
+            responsive.smallHorizontalSpacer,
             Expanded(
               child: _buildStatCard(
                 context,
@@ -230,13 +226,13 @@ class GuardStatsWidget extends StatelessWidget {
                 'Completed',
                 stats.completedDuties.toString(),
                 Icons.check_circle,
-                Colors.green,
+                StatusColors.getGuardDutyStatusColor(AppConstants.presentStatus),
               ),
             ),
           ],
         ),
 
-        SizedBox(height: responsive.smallSpacing),
+        responsive.smallSpacer,
 
         // Secondary stats row
         Row(
@@ -249,10 +245,10 @@ class GuardStatsWidget extends StatelessWidget {
                 'Pending',
                 stats.pendingDuties.toString(),
                 Icons.pending,
-                Colors.orange,
+                StatusColors.getGuardDutyStatusColor(AppConstants.pendingStatus),
               ),
             ),
-            SizedBox(width: responsive.smallSpacing),
+            responsive.smallHorizontalSpacer,
             Expanded(
               child: _buildStatCard(
                 context,
@@ -261,13 +257,13 @@ class GuardStatsWidget extends StatelessWidget {
                 'Missed',
                 stats.missedDuties.toString(),
                 Icons.cancel,
-                Colors.red,
+                StatusColors.getGuardDutyStatusColor(AppConstants.absentStatus),
               ),
             ),
           ],
         ),
 
-        SizedBox(height: responsive.mediumSpacing),
+        responsive.mediumSpacer,
 
         // Additional insights
         _buildAdditionalInsights(context, responsive, theme, stats, rosterData),
@@ -300,7 +296,7 @@ class GuardStatsWidget extends StatelessWidget {
             theme,
             stats.completedDuties.toString(),
             'Done',
-            Colors.green,
+            StatusColors.getGuardDutyStatusColor(AppConstants.presentStatus),
           ),
         ),
         Expanded(
@@ -310,7 +306,7 @@ class GuardStatsWidget extends StatelessWidget {
             theme,
             stats.pendingDuties.toString(),
             'Pending',
-            Colors.orange,
+            StatusColors.getGuardDutyStatusColor(AppConstants.pendingStatus),
           ),
         ),
         Expanded(
@@ -320,7 +316,7 @@ class GuardStatsWidget extends StatelessWidget {
             theme,
             '${stats.completionRate}%',
             'Rate',
-            theme.colorScheme.secondary,
+            StatusColors.getCompletionRateColor(stats.completionRate.toDouble()),
           ),
         ),
       ],
@@ -338,10 +334,9 @@ class GuardStatsWidget extends StatelessWidget {
   ) {
     return Container(
       padding: responsive.containerPadding,
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+      decoration: StatusColors.getStatusIndicatorDecoration(
+        color: color,
         borderRadius: BorderRadius.circular(responsive.borderRadius),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Column(
         children: [
@@ -350,18 +345,17 @@ class GuardStatsWidget extends StatelessWidget {
             color: color,
             size: responsive.iconSize,
           ),
-          SizedBox(height: responsive.smallSpacing),
+          responsive.smallSpacer,
           Text(
             value,
-            style:
-                (theme.textTheme.headlineSmall ?? const TextStyle()).copyWith(
+            style: theme.textTheme.headlineSmall?.copyWith(
               color: color,
               fontWeight: FontWeight.bold,
             ),
           ),
           Text(
             label,
-            style: (theme.textTheme.labelMedium ?? const TextStyle()).copyWith(
+            style: theme.textTheme.labelMedium?.copyWith(
               color: color,
               fontWeight: FontWeight.w600,
             ),
@@ -384,14 +378,14 @@ class GuardStatsWidget extends StatelessWidget {
       children: [
         Text(
           value,
-          style: (theme.textTheme.titleMedium ?? const TextStyle()).copyWith(
+          style: theme.textTheme.titleMedium?.copyWith(
             color: color,
             fontWeight: FontWeight.bold,
           ),
         ),
         Text(
           label,
-          style: (theme.textTheme.labelSmall ?? const TextStyle()).copyWith(
+          style: theme.textTheme.labelSmall?.copyWith(
             color: color,
           ),
         ),
@@ -415,20 +409,30 @@ class GuardStatsWidget extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Insights',
-            style: (theme.textTheme.titleSmall ?? const TextStyle()).copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+          Row(
+            children: [
+              Icon(
+                Icons.insights,
+                color: theme.colorScheme.primary,
+                size: responsive.iconSize * 0.8,
+              ),
+              responsive.smallHorizontalSpacer,
+              Text(
+                'Insights',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
-          SizedBox(height: responsive.smallSpacing),
+          responsive.smallSpacer,
           _buildInsightRow(
             context,
             responsive,
             theme,
             'Completion Rate',
             '${stats.completionRate}%',
-            _getCompletionRateColor(stats.completionRate),
+            StatusColors.getCompletionRateColor(stats.completionRate.toDouble()),
           ),
           _buildInsightRow(
             context,
@@ -475,11 +479,11 @@ class GuardStatsWidget extends StatelessWidget {
         children: [
           Text(
             label,
-            style: theme.textTheme.bodySmall ?? const TextStyle(),
+            style: theme.textTheme.bodySmall,
           ),
           Text(
             value,
-            style: (theme.textTheme.bodySmall ?? const TextStyle()).copyWith(
+            style: theme.textTheme.bodySmall?.copyWith(
               color: color,
               fontWeight: FontWeight.w600,
             ),
@@ -487,12 +491,6 @@ class GuardStatsWidget extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  Color _getCompletionRateColor(int rate) {
-    if (rate >= 90) return Colors.green;
-    if (rate >= 70) return Colors.orange;
-    return Colors.red;
   }
 
   GuardStats _calculateStats(List<RosterUserModel> rosterData) {
@@ -510,9 +508,9 @@ class GuardStatsWidget extends StatelessWidget {
     }
 
     final total = rosterData.length;
-    final completed = rosterData.where((duty) => duty.status == 1).length;
-    final pending = rosterData.where((duty) => duty.status == -1).length;
-    final missed = rosterData.where((duty) => duty.status == 0).length;
+    final completed = rosterData.where((duty) => duty.status == AppConstants.presentStatus).length;
+    final pending = rosterData.where((duty) => duty.status == AppConstants.pendingStatus).length;
+    final missed = rosterData.where((duty) => duty.status == AppConstants.absentStatus).length;
 
     final completionRate = total > 0 ? ((completed / total) * 100).round() : 0;
 
@@ -530,7 +528,7 @@ class GuardStatsWidget extends StatelessWidget {
     // Calculate total hours
     var totalHours = 0;
     for (final duty in rosterData) {
-      if (duty.statusLabel == 'Present') {
+      if (duty.status == AppConstants.presentStatus) {
         final duration = duty.endsAt.difference(duty.startsAt);
         totalHours += duration.inHours;
       }

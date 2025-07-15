@@ -3,6 +3,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:vibration/vibration.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:slates_app_wear/core/constants/app_constants.dart';
 
 class AudioService {
   static final AudioService _instance = AudioService._internal();
@@ -334,13 +335,13 @@ class AudioService {
       
       switch (pattern) {
         case VibrationPattern.checkpoint:
-          await Vibration.vibrate(duration: 200);
+          await Vibration.vibrate(duration: AppConstants.mediumHapticDuration);
           break;
         case VibrationPattern.alert:
           await Vibration.vibrate(pattern: [0, 200, 100, 200, 100, 200]);
           break;
         case VibrationPattern.success:
-          await Vibration.vibrate(duration: 100);
+          await Vibration.vibrate(duration: AppConstants.lightHapticDuration);
           break;
         case VibrationPattern.emergency:
           await Vibration.vibrate(pattern: [0, 500, 200, 500, 200, 500, 200, 500]);

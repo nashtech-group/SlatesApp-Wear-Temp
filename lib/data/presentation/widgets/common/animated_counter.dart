@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:slates_app_wear/core/utils/responsive_utils.dart';
+import 'package:slates_app_wear/core/theme/app_theme.dart';
 
 class AnimatedCounter extends StatefulWidget {
   final double value;

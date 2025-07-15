@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:slates_app_wear/core/utils/responsive_utils.dart';
+import 'package:slates_app_wear/core/theme/app_theme.dart';
 
 class LoadingOverlay extends StatefulWidget {
   final String? message;
@@ -111,16 +112,9 @@ class _LoadingOverlayState extends State<LoadingOverlay>
         padding: responsive.containerPadding,
         decoration: widget.isTransparent
             ? null
-            : BoxDecoration(
-                color: theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(responsive.borderRadius),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 10,
-                    spreadRadius: 2,
-                  ),
-                ],
+            : AppTheme.getResponsiveCardDecoration(
+                context,
+                backgroundColor: theme.colorScheme.surface,
               ),
         child: IntrinsicWidth(
           child: Column(
@@ -150,7 +144,8 @@ class _LoadingOverlayState extends State<LoadingOverlay>
       tablet: 36.0,
     );
 
-    final spinnerColor = widget.spinnerColor ?? theme.colorScheme.primary;
+    final spinnerColor = widget.spinnerColor ?? 
+        AppTheme.getResponsiveLoadingSpinnerColor(context);
 
     if (widget.animated) {
       return AnimatedBuilder(
@@ -231,7 +226,7 @@ class _LoadingOverlayState extends State<LoadingOverlay>
       return Colors.transparent;
     }
 
-    return Colors.black.withValues(alpha: 0.5);
+    return theme.colorScheme.scrim.withValues(alpha: 0.5);
   }
 }
 
@@ -347,13 +342,12 @@ class _SkeletonLoadingOverlayState extends State<SkeletonLoadingOverlay>
   }
 
   Widget _buildSkeletonItem(ResponsiveUtils responsive) {
+    final theme = Theme.of(context);
+    
     return Container(
       height: widget.itemHeight,
       padding: responsive.formPadding,
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(responsive.borderRadius),
-      ),
+      decoration: AppTheme.getResponsiveCardDecoration(context),
       child: Row(
         children: [
           if (widget.showAvatar)
@@ -416,6 +410,7 @@ class _SkeletonLoadingOverlayState extends State<SkeletonLoadingOverlay>
     bool isCircle = false,
   }) {
     final responsive = context.responsive;
+    final theme = Theme.of(context);
 
     return AnimatedBuilder(
       animation: _shimmerAnimation,
@@ -435,11 +430,17 @@ class _SkeletonLoadingOverlayState extends State<SkeletonLoadingOverlay>
                 _shimmerAnimation.value,
                 _shimmerAnimation.value + 0.3,
               ].map((stop) => stop.clamp(0.0, 1.0)).toList(),
-              colors: [
-                Colors.grey[300]!,
-                Colors.grey[100]!,
-                Colors.grey[300]!,
-              ],
+              colors: theme.brightness == Brightness.dark
+                  ? [
+                      const Color(0xFF2C2C2C),
+                      const Color(0xFF404040),
+                      const Color(0xFF2C2C2C),
+                    ]
+                  : [
+                      Colors.grey[300]!,
+                      Colors.grey[100]!,
+                      Colors.grey[300]!,
+                    ],
             ),
           ),
         );

@@ -1,7 +1,9 @@
+// lib/core/theme/app_theme.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:slates_app_wear/core/utils/responsive_utils.dart';
+import 'package:slates_app_wear/core/constants/app_constants.dart';
 
 class AppTheme {
   // ====================
@@ -22,10 +24,56 @@ class AppTheme {
   static const Color mediumGrey = Color(0xFF666666);
   static const Color lightGrey = Color(0xFFE0E0E0);
 
+  // ====================
+  // SEMANTIC COLORS
+  // ====================
+
   // Success, warning, error colors
   static const Color successGreen = Color(0xFF4CAF50);
+  static const Color successGreenLight = Color(0xFF81C784);
+  static const Color successGreenDark = Color(0xFF388E3C);
+
   static const Color warningOrange = Color(0xFFFF9800);
+  static const Color warningOrangeLight = Color(0xFFFFB74D);
+  static const Color warningOrangeDark = Color(0xFFF57C00);
+
   static const Color errorRed = Color(0xFFF44336);
+  static const Color errorRedLight = Color(0xFFEF5350);
+  static const Color errorRedDark = Color(0xFFD32F2F);
+
+  static const Color infoBlue = Color(0xFF2196F3);
+  static const Color infoBlueDark = Color(0xFF1976D2);
+
+  // ====================
+  // STATUS COLORS
+  // ====================
+
+  // Guard/Duty Status Colors
+  static const Color statusPresent = successGreen;
+  static const Color statusAbsent = errorRed;
+  static const Color statusPending = warningOrange;
+  static const Color statusLate = infoBlue;
+  static const Color statusLeftEarly = Color(0xFFFFEB3B); // Yellow
+  static const Color statusExpired = mediumGrey;
+  static const Color statusLateAndLeftEarly = Color(0xFF9C27B0); // Purple
+
+  // Connection Status Colors
+  static const Color statusOnline = successGreen;
+  static const Color statusOffline = errorRed;
+  static const Color statusConnecting = warningOrange;
+
+  // Battery Status Colors
+  static const Color batteryHigh = successGreen;
+  static const Color batteryMedium = warningOrange;
+  static const Color batteryLow = errorRed;
+  static const Color batteryCritical = Color(0xFF8B0000); // Dark red
+
+  // Location/Signal Status Colors  
+  static const Color signalExcellent = successGreen;
+  static const Color signalGood = Color(0xFF8BC34A); // Light green
+  static const Color signalFair = warningOrange;
+  static const Color signalPoor = errorRed;
+  static const Color signalNone = mediumGrey;
 
   // ====================
   // RESPONSIVE THEME BUILDERS
@@ -54,11 +102,6 @@ class AppTheme {
       // Color scheme
       colorScheme: isDark ? _darkColorScheme : _lightColorScheme,
 
-      // Google Fonts Integration
-      textTheme: GoogleFonts.interTextTheme(
-        _buildResponsiveTextTheme(responsive, isDark),
-      ),
-
       // App bar theme with responsive sizing
       appBarTheme: AppBarTheme(
         backgroundColor: isDark ? const Color(0xFF1E1E1E) : primaryTeal,
@@ -66,12 +109,10 @@ class AppTheme {
         elevation: 0,
         centerTitle: true,
         systemOverlayStyle: SystemUiOverlayStyle.light,
-        titleTextStyle: GoogleFonts.inter(
-          textStyle: responsive.getTitleStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        titleTextStyle: responsive.getTitleStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w600,
+        )?.copyWith(fontFamily: 'Inter'),
       ),
 
       // Responsive elevated button theme
@@ -84,11 +125,9 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(responsive.borderRadius),
           ),
-          textStyle: GoogleFonts.inter(
-            textStyle: responsive.getBodyStyle(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+          textStyle: responsive.getBodyStyle(
+            fontWeight: FontWeight.w600,
+          )?.copyWith(fontFamily: 'Inter'),
           padding: responsive.buttonPadding,
         ),
       ),
@@ -97,11 +136,9 @@ class AppTheme {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: isDark ? primaryTealLight : primaryTeal,
-          textStyle: GoogleFonts.inter(
-            textStyle: responsive.getCaptionStyle(
-              fontWeight: FontWeight.w500,
-            ),
-          ),
+          textStyle: responsive.getCaptionStyle(
+            fontWeight: FontWeight.w500,
+          )?.copyWith(fontFamily: 'Inter'),
           padding: responsive.buttonPadding * 0.75,
         ),
       ),
@@ -114,11 +151,9 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(responsive.borderRadius),
           ),
-          textStyle: GoogleFonts.inter(
-            textStyle: responsive.getBodyStyle(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+          textStyle: responsive.getBodyStyle(
+            fontWeight: FontWeight.w600,
+          )?.copyWith(fontFamily: 'Inter'),
           padding: responsive.buttonPadding,
         ),
       ),
@@ -175,6 +210,9 @@ class AppTheme {
         ),
         color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
       ),
+
+      // Responsive text theme
+      textTheme: _buildResponsiveTextTheme(responsive, isDark),
 
       // Responsive checkbox theme
       checkboxTheme: CheckboxThemeData(
@@ -354,6 +392,85 @@ class AppTheme {
   );
 
   // ====================
+  // STATUS COLOR UTILITIES
+  // ====================
+
+  /// Get guard duty status color based on status code
+  static Color getGuardStatusColor(int status, {bool isDark = false}) {
+    switch (status) {
+      case AppConstants.presentStatus:
+        return statusPresent;
+      case AppConstants.absentStatus:
+        return statusAbsent;
+      case AppConstants.pendingStatus:
+        return statusPending;
+      case AppConstants.presentButLeftEarlyStatus:
+        return statusLeftEarly;
+      case AppConstants.absentWithoutPermissionStatus:
+        return statusExpired;
+      case AppConstants.presentButLateStatus:
+        return statusLate;
+      case AppConstants.presentButLateAndLeftEarlyStatus:
+        return statusLateAndLeftEarly;
+      default:
+        return isDark ? mediumGrey : lightGrey;
+    }
+  }
+
+  /// Get connection status color
+  static Color getConnectionStatusColor(bool isOnline, {bool isConnecting = false}) {
+    if (isConnecting) return statusConnecting;
+    return isOnline ? statusOnline : statusOffline;
+  }
+
+  /// Get battery status color based on percentage
+  static Color getBatteryStatusColor(int batteryLevel) {
+    if (batteryLevel <= AppConstants.criticalBatteryThreshold) {
+      return batteryCritical;
+    } else if (batteryLevel <= AppConstants.lowBatteryThreshold) {
+      return batteryLow;
+    } else if (batteryLevel <= 50) {
+      return batteryMedium;
+    } else {
+      return batteryHigh;
+    }
+  }
+
+  /// Get signal strength color (0-4 scale)
+  static Color getSignalStrengthColor(int signalStrength) {
+    switch (signalStrength) {
+      case 0:
+        return signalNone;
+      case 1:
+        return signalPoor;
+      case 2:
+        return signalFair;
+      case 3:
+        return signalGood;
+      case 4:
+        return signalExcellent;
+      default:
+        return signalNone;
+    }
+  }
+
+  /// Get priority color (high, medium, low)
+  static Color getPriorityColor(String priority) {
+    switch (priority.toLowerCase()) {
+      case 'high':
+      case 'urgent':
+      case 'critical':
+        return errorRed;
+      case 'medium':
+      case 'normal':
+        return warningOrange;
+      case 'low':
+      default:
+        return successGreen;
+    }
+  }
+
+  // ====================
   // HELPER METHODS
   // ====================
 
@@ -371,6 +488,12 @@ class AppTheme {
   static Color getLogoTextColor(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return isDark ? Colors.white : darkGrey;
+  }
+
+  /// Get text color based on background color
+  static Color getTextColorForBackground(Color backgroundColor) {
+    final luminance = backgroundColor.computeLuminance();
+    return luminance > 0.5 ? darkGrey : Colors.white;
   }
 
   /// Get responsive brand gradient decoration
@@ -508,6 +631,24 @@ class AppTheme {
       context,
       backgroundColor: theme.colorScheme.error,
       textColor: theme.colorScheme.onError,
+    );
+  }
+
+  /// Responsive success button style
+  static ButtonStyle responsiveSuccessButtonStyle(BuildContext context) {
+    return getResponsiveButtonStyle(
+      context,
+      backgroundColor: successGreen,
+      textColor: Colors.white,
+    );
+  }
+
+  /// Responsive warning button style
+  static ButtonStyle responsiveWarningButtonStyle(BuildContext context) {
+    return getResponsiveButtonStyle(
+      context,
+      backgroundColor: warningOrange,
+      textColor: Colors.white,
     );
   }
 

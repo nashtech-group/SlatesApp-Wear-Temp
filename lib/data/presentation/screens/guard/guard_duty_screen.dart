@@ -8,8 +8,11 @@ import 'package:slates_app_wear/data/presentation/widgets/guard/guard_status_wid
 import 'package:slates_app_wear/data/presentation/widgets/guard/duty_actions_widget.dart';
 import 'package:slates_app_wear/data/presentation/widgets/guard/guard_stats_widget.dart';
 import 'package:slates_app_wear/core/utils/responsive_utils.dart';
+import 'package:slates_app_wear/core/utils/status_colors.dart';
 import 'package:slates_app_wear/core/constants/route_constants.dart';
+import 'package:slates_app_wear/core/theme/app_theme.dart';
 import 'package:slates_app_wear/data/presentation/widgets/wearable/wearable_scaffold.dart';
+import 'package:slates_app_wear/services/date_service.dart';
 
 class GuardDutyScreen extends StatefulWidget {
   final int guardId;
@@ -27,6 +30,8 @@ class _GuardDutyScreenState extends State<GuardDutyScreen>
     with TickerProviderStateMixin {
   late TabController _tabController;
   RosterUserModel? _currentDuty;
+
+  final DateService _dateService = DateService();
 
   @override
   void initState() {
@@ -62,6 +67,7 @@ class _GuardDutyScreenState extends State<GuardDutyScreen>
   @override
   Widget build(BuildContext context) {
     final responsive = context.responsive;
+    final theme = Theme.of(context);
 
     return WearableScaffold(
       body: BlocConsumer<RosterBloc, RosterState>(
@@ -70,7 +76,8 @@ class _GuardDutyScreenState extends State<GuardDutyScreen>
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(state.errorInfo.message),
-                backgroundColor: Theme.of(context).colorScheme.error,
+                backgroundColor: theme.colorScheme.error,
+                behavior: SnackBarBehavior.floating,
               ),
             );
           }
@@ -85,7 +92,7 @@ class _GuardDutyScreenState extends State<GuardDutyScreen>
               animated: true,
             );
           }
-          return _buildDutyContent(context, state, responsive);
+          return _buildDutyContent(context, state, responsive, theme);
         },
       ),
     );
@@ -104,11 +111,16 @@ class _GuardDutyScreenState extends State<GuardDutyScreen>
     }
   }
 
-  Widget _buildDutyContent(BuildContext context, RosterState state, ResponsiveUtils responsive) {
+  Widget _buildDutyContent(
+    BuildContext context, 
+    RosterState state, 
+    ResponsiveUtils responsive, 
+    ThemeData theme
+  ) {
     return Column(
       children: [
-        _buildHeader(context, responsive),
-        _buildTabBar(context, responsive),
+        _buildHeader(context, responsive, theme),
+        _buildTabBar(context, responsive, theme),
         Expanded(
           child: TabBarView(
             controller: _tabController,
@@ -133,11 +145,11 @@ class _GuardDutyScreenState extends State<GuardDutyScreen>
     );
   }
 
-  Widget _buildHeader(BuildContext context, ResponsiveUtils responsive) {
+  Widget _buildHeader(BuildContext context, ResponsiveUtils responsive, ThemeData theme) {
     return Container(
       padding: responsive.containerPadding,
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primary,
+        color: theme.colorScheme.primary,
         borderRadius: BorderRadius.only(
           bottomLeft: Radius.circular(responsive.borderRadius),
           bottomRight: Radius.circular(responsive.borderRadius),
@@ -150,7 +162,7 @@ class _GuardDutyScreenState extends State<GuardDutyScreen>
             IconButton(
               onPressed: () => Navigator.of(context).pop(),
               icon: const Icon(Icons.arrow_back),
-              color: Colors.white,
+              color: theme.colorScheme.onPrimary,
             ),
             Expanded(
               child: Column(
@@ -158,16 +170,16 @@ class _GuardDutyScreenState extends State<GuardDutyScreen>
                 children: [
                   Text(
                     'Guard Duty',
-                    style: (Theme.of(context).textTheme.titleLarge ?? const TextStyle()).copyWith(
-                      color: Colors.white,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      color: theme.colorScheme.onPrimary,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   if (_currentDuty != null)
                     Text(
                       _currentDuty!.site.name,
-                      style: (Theme.of(context).textTheme.bodyMedium ?? const TextStyle()).copyWith(
-                        color: Colors.white70,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onPrimary.withValues(alpha: 0.8),
                       ),
                     ),
                 ],
@@ -178,7 +190,8 @@ class _GuardDutyScreenState extends State<GuardDutyScreen>
                 RouteConstants.notificationCenter,
               ),
               icon: const Icon(Icons.notifications),
-              color: Colors.white,
+              color: theme.colorScheme.onPrimary,
+              tooltip: 'Notifications',
             ),
           ],
         ),
@@ -186,13 +199,13 @@ class _GuardDutyScreenState extends State<GuardDutyScreen>
     );
   }
 
-  Widget _buildTabBar(BuildContext context, ResponsiveUtils responsive) {
+  Widget _buildTabBar(BuildContext context, ResponsiveUtils responsive, ThemeData theme) {
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color: theme.colorScheme.surface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
+            color: theme.shadowColor.withValues(alpha: 0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -214,9 +227,9 @@ class _GuardDutyScreenState extends State<GuardDutyScreen>
             text: 'Stats',
           ),
         ],
-        labelColor: Theme.of(context).colorScheme.primary,
-        unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-        indicatorColor: Theme.of(context).colorScheme.primary,
+        labelColor: theme.colorScheme.primary,
+        unselectedLabelColor: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+        indicatorColor: theme.colorScheme.primary,
         labelStyle: responsive.getCaptionStyle(fontWeight: FontWeight.w600),
         unselectedLabelStyle: responsive.getCaptionStyle(),
       ),
@@ -256,7 +269,7 @@ class _GuardDutyTab extends StatelessWidget {
             currentDuty: currentDuty,
           ),
 
-          SizedBox(height: responsive.mediumSpacing),
+          responsive.mediumSpacer,
 
           // Duty Actions
           if (currentDuty != null)
@@ -264,7 +277,7 @@ class _GuardDutyTab extends StatelessWidget {
               duty: currentDuty!,
             ),
 
-          SizedBox(height: responsive.mediumSpacing),
+          responsive.mediumSpacer,
 
           // Quick Stats
           if (rosterState is RosterLoaded)
@@ -291,6 +304,8 @@ class _GuardCalendarTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final responsive = context.responsive;
+    final theme = Theme.of(context);
+    final dateService = DateService();
 
     return SingleChildScrollView(
       padding: responsive.containerPadding,
@@ -303,20 +318,30 @@ class _GuardCalendarTab extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'This Week\'s Duties',
-                    style: (Theme.of(context).textTheme.titleMedium ?? const TextStyle()).copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.calendar_today,
+                        color: theme.colorScheme.primary,
+                        size: responsive.iconSize,
+                      ),
+                      responsive.smallHorizontalSpacer,
+                      Text(
+                        'This Week\'s Duties',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
-                  SizedBox(height: responsive.smallSpacing),
-                  _buildWeeklyDuties(context, responsive),
+                  responsive.smallSpacer,
+                  _buildWeeklyDuties(context, responsive, theme, dateService),
                 ],
               ),
             ),
           ),
 
-          SizedBox(height: responsive.mediumSpacing),
+          responsive.mediumSpacer,
 
           // Full calendar button
           SizedBox(
@@ -328,6 +353,7 @@ class _GuardCalendarTab extends StatelessWidget {
                 );
                 Navigator.of(context).pushNamed(RouteConstants.guardCalendar);
               },
+              style: AppTheme.responsivePrimaryButtonStyle(context),
               icon: const Icon(Icons.calendar_month),
               label: const Text('View Full Calendar'),
             ),
@@ -337,10 +363,26 @@ class _GuardCalendarTab extends StatelessWidget {
     );
   }
 
-  Widget _buildWeeklyDuties(BuildContext context, ResponsiveUtils responsive) {
+  Widget _buildWeeklyDuties(BuildContext context, ResponsiveUtils responsive, ThemeData theme, DateService dateService) {
     if (rosterState is! RosterLoaded) {
-      return const Center(
-        child: Text('No duty data available'),
+      return Container(
+        padding: responsive.containerPadding,
+        child: Row(
+          children: [
+            Icon(
+              Icons.info_outline,
+              color: theme.colorScheme.onSurfaceVariant,
+              size: responsive.iconSize,
+            ),
+            responsive.smallHorizontalSpacer,
+            Text(
+              'No duty data available',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
       );
     }
 
@@ -355,7 +397,25 @@ class _GuardCalendarTab extends StatelessWidget {
     }).toList();
 
     if (weekDuties.isEmpty) {
-      return const Text('No duties scheduled this week');
+      return Container(
+        padding: responsive.containerPadding,
+        child: Row(
+          children: [
+            Icon(
+              Icons.event_busy,
+              color: theme.colorScheme.onSurfaceVariant,
+              size: responsive.iconSize,
+            ),
+            responsive.smallHorizontalSpacer,
+            Text(
+              'No duties scheduled this week',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      );
     }
 
     return Column(
@@ -363,44 +423,48 @@ class _GuardCalendarTab extends StatelessWidget {
         return Padding(
           padding: EdgeInsets.only(bottom: responsive.smallSpacing),
           child: ListTile(
+            contentPadding: EdgeInsets.zero,
             leading: CircleAvatar(
-              backgroundColor: _getDutyStatusColor(context, duty),
+              backgroundColor: StatusColors.getGuardDutyStatusColor(duty.status),
+              radius: responsive.iconSize * 0.6,
               child: Text(
                 '${duty.initialShiftDate.day}',
-                style: const TextStyle(
-                  color: Colors.white,
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: StatusColors.getTextColorForBackground(
+                    StatusColors.getGuardDutyStatusColor(duty.status)
+                  ),
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ),
-            title: Text(duty.site.name),
-            subtitle: Text(
-              '${_formatTime(duty.startsAt)} - ${_formatTime(duty.endsAt)}',
-            ),
-            trailing: Text(
-              duty.statusLabel,
-              style: TextStyle(
-                color: _getDutyStatusColor(context, duty),
+            title: Text(
+              duty.site.name,
+              style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w600,
+              ),
+            ),
+            subtitle: Text(
+              '${dateService.formatTimeForDisplay(duty.startsAt)} - ${dateService.formatTimeForDisplay(duty.endsAt)}',
+              style: theme.textTheme.bodySmall,
+            ),
+            trailing: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: StatusColors.getStatusIndicatorDecoration(
+                color: StatusColors.getGuardDutyStatusColor(duty.status),
+                borderRadius: BorderRadius.circular(responsive.borderRadius / 2),
+              ),
+              child: Text(
+                StatusColors.getGuardDutyStatusLabel(duty.status),
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: StatusColors.getGuardDutyStatusColor(duty.status),
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
         );
       }).toList(),
     );
-  }
-
-  Color _getDutyStatusColor(BuildContext context, RosterUserModel duty) {
-    switch (duty.status) {
-      case 1: return Colors.green;
-      case 0: return Colors.red;
-      case -1: return Colors.orange;
-      default: return Theme.of(context).colorScheme.primary;
-    }
-  }
-
-  String _formatTime(DateTime dateTime) {
-    return '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 }
 

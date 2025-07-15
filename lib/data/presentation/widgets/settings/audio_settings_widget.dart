@@ -96,20 +96,7 @@ class _AudioSettingsWidgetState extends State<AudioSettingsWidget>
 
     return Container(
       margin: EdgeInsets.symmetric(horizontal: responsive.padding),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(responsive.borderRadius),
-        border: Border.all(
-          color: theme.colorScheme.outline.withValues(alpha: 0.2),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+      decoration: AppTheme.getResponsiveCardDecoration(context),
       child: Column(
         children: [
           _buildHeader(context, responsive, theme),
@@ -258,14 +245,16 @@ class _AudioSettingsWidgetState extends State<AudioSettingsWidget>
                 tablet: 14.0,
               ),
             ),
+            activeTrackColor: theme.colorScheme.primary,
+            inactiveTrackColor: theme.colorScheme.surfaceContainerHighest,
+            thumbColor: theme.colorScheme.primary,
+            overlayColor: theme.colorScheme.primary.withValues(alpha: 0.1),
           ),
           child: Slider(
             value: _volume,
             min: 0.0,
             max: 1.0,
             divisions: 20,
-            activeColor: theme.colorScheme.primary,
-            inactiveColor: theme.colorScheme.surfaceContainerHighest,
             onChanged: _soundEnabled ? (value) {
               HapticFeedback.lightImpact();
               setState(() {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:slates_app_wear/core/utils/responsive_utils.dart';
+import 'package:slates_app_wear/core/theme/app_theme.dart';
 import 'package:slates_app_wear/data/presentation/widgets/wearable/wearable_scaffold.dart';
 
 class AudioSettingsScreen extends StatefulWidget {
@@ -19,22 +20,23 @@ class _AudioSettingsScreenState extends State<AudioSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final responsive = context.responsive;
+    final theme = Theme.of(context);
 
     return WearableScaffold(
       body: Column(
         children: [
-          _buildHeader(context, responsive),
+          _buildHeader(context, responsive, theme),
           Expanded(
             child: SingleChildScrollView(
               padding: responsive.containerPadding,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildVolumeControls(context, responsive),
-                  SizedBox(height: responsive.mediumSpacing),
-                  _buildToggleSettings(context, responsive),
-                  SizedBox(height: responsive.mediumSpacing),
-                  _buildPresetButtons(context, responsive),
+                  _buildVolumeControls(context, responsive, theme),
+                  responsive.mediumSpacer,
+                  _buildToggleSettings(context, responsive, theme),
+                  responsive.mediumSpacer,
+                  _buildPresetButtons(context, responsive, theme),
                 ],
               ),
             ),
@@ -44,11 +46,11 @@ class _AudioSettingsScreenState extends State<AudioSettingsScreen> {
     );
   }
 
-  Widget _buildHeader(BuildContext context, ResponsiveUtils responsive) {
+  Widget _buildHeader(BuildContext context, ResponsiveUtils responsive, ThemeData theme) {
     return Container(
       padding: responsive.containerPadding,
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primary,
+        color: theme.colorScheme.primary,
         borderRadius: BorderRadius.only(
           bottomLeft: Radius.circular(responsive.borderRadius),
           bottomRight: Radius.circular(responsive.borderRadius),
@@ -61,13 +63,13 @@ class _AudioSettingsScreenState extends State<AudioSettingsScreen> {
             IconButton(
               onPressed: () => Navigator.of(context).pop(),
               icon: const Icon(Icons.arrow_back),
-              color: Colors.white,
+              color: theme.colorScheme.onPrimary,
             ),
             Expanded(
               child: Text(
                 'Audio Settings',
-                style: (Theme.of(context).textTheme.titleLarge ?? const TextStyle()).copyWith(
-                  color: Colors.white,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  color: theme.colorScheme.onPrimary,
                   fontWeight: FontWeight.bold,
                 ),
                 textAlign: TextAlign.center,
@@ -80,49 +82,62 @@ class _AudioSettingsScreenState extends State<AudioSettingsScreen> {
     );
   }
 
-  Widget _buildVolumeControls(BuildContext context, ResponsiveUtils responsive) {
+  Widget _buildVolumeControls(BuildContext context, ResponsiveUtils responsive, ThemeData theme) {
     return Card(
       child: Padding(
         padding: responsive.containerPadding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Volume Controls',
-              style: (Theme.of(context).textTheme.titleMedium ?? const TextStyle()).copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+            Row(
+              children: [
+                Icon(
+                  Icons.volume_up,
+                  color: theme.colorScheme.primary,
+                  size: responsive.iconSize,
+                ),
+                responsive.smallHorizontalSpacer,
+                Text(
+                  'Volume Controls',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
-            SizedBox(height: responsive.mediumSpacing),
+            responsive.mediumSpacer,
             
             // Master Volume
             _buildVolumeSlider(
               context,
               responsive,
+              theme,
               'Master Volume',
               _masterVolume,
               Icons.volume_up,
               (value) => setState(() => _masterVolume = value),
             ),
             
-            SizedBox(height: responsive.smallSpacing),
+            responsive.smallSpacer,
             
             // Notification Volume
             _buildVolumeSlider(
               context,
               responsive,
+              theme,
               'Notifications',
               _notificationVolume,
               Icons.notifications,
               (value) => setState(() => _notificationVolume = value),
             ),
             
-            SizedBox(height: responsive.smallSpacing),
+            responsive.smallSpacer,
             
             // Alert Volume
             _buildVolumeSlider(
               context,
               responsive,
+              theme,
               'Alerts',
               _alertVolume,
               Icons.warning,
@@ -137,6 +152,7 @@ class _AudioSettingsScreenState extends State<AudioSettingsScreen> {
   Widget _buildVolumeSlider(
     BuildContext context,
     ResponsiveUtils responsive,
+    ThemeData theme,
     String label,
     double value,
     IconData icon,
@@ -147,65 +163,102 @@ class _AudioSettingsScreenState extends State<AudioSettingsScreen> {
       children: [
         Row(
           children: [
-            Icon(icon, size: 20),
-            SizedBox(width: responsive.smallSpacing),
+            Icon(
+              icon, 
+              size: responsive.iconSize * 0.8,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+            responsive.smallHorizontalSpacer,
             Text(
               label,
-              style: Theme.of(context).textTheme.bodyMedium ?? const TextStyle(),
+              style: theme.textTheme.bodyMedium,
             ),
             const Spacer(),
-            Text(
-              '${(value * 100).round()}%',
-              style: (Theme.of(context).textTheme.bodySmall ?? const TextStyle()).copyWith(
-                fontWeight: FontWeight.w600,
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(responsive.borderRadius / 2),
+              ),
+              child: Text(
+                '${(value * 100).round()}%',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],
         ),
-        SizedBox(height: responsive.smallSpacing * 0.5),
-        Slider(
-          value: value,
-          onChanged: onChanged,
-          min: 0.0,
-          max: 1.0,
-          divisions: 10,
-          activeColor: Theme.of(context).colorScheme.primary,
+        responsive.smallSpacer,
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            activeTrackColor: theme.colorScheme.primary,
+            inactiveTrackColor: theme.colorScheme.surfaceContainerHighest,
+            thumbColor: theme.colorScheme.primary,
+            overlayColor: theme.colorScheme.primary.withValues(alpha: 0.1),
+          ),
+          child: Slider(
+            value: value,
+            onChanged: onChanged,
+            min: 0.0,
+            max: 1.0,
+            divisions: 10,
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildToggleSettings(BuildContext context, ResponsiveUtils responsive) {
+  Widget _buildToggleSettings(BuildContext context, ResponsiveUtils responsive, ThemeData theme) {
     return Card(
       child: Padding(
         padding: responsive.containerPadding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Audio Options',
-              style: (Theme.of(context).textTheme.titleMedium ?? const TextStyle()).copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+            Row(
+              children: [
+                Icon(
+                  Icons.settings,
+                  color: theme.colorScheme.primary,
+                  size: responsive.iconSize,
+                ),
+                responsive.smallHorizontalSpacer,
+                Text(
+                  'Audio Options',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
-            SizedBox(height: responsive.mediumSpacing),
+            responsive.mediumSpacer,
             
             // Vibration Toggle
-            SwitchListTile(
-              title: const Text('Vibration'),
-              subtitle: const Text('Enable haptic feedback'),
-              value: _isVibrationEnabled,
-              onChanged: (value) => setState(() => _isVibrationEnabled = value),
-              secondary: const Icon(Icons.vibration),
+            _buildToggleTile(
+              context,
+              responsive,
+              theme,
+              'Vibration',
+              'Enable haptic feedback',
+              Icons.vibration,
+              _isVibrationEnabled,
+              (value) => setState(() => _isVibrationEnabled = value),
             ),
             
+            responsive.smallSpacer,
+            
             // Silent Mode Toggle
-            SwitchListTile(
-              title: const Text('Silent Mode'),
-              subtitle: const Text('Mute all sounds'),
-              value: _isSilentModeEnabled,
-              onChanged: (value) => setState(() => _isSilentModeEnabled = value),
-              secondary: const Icon(Icons.volume_off),
+            _buildToggleTile(
+              context,
+              responsive,
+              theme,
+              'Silent Mode',
+              'Mute all sounds',
+              Icons.volume_off,
+              _isSilentModeEnabled,
+              (value) => setState(() => _isSilentModeEnabled = value),
             ),
           ],
         ),
@@ -213,50 +266,164 @@ class _AudioSettingsScreenState extends State<AudioSettingsScreen> {
     );
   }
 
-  Widget _buildPresetButtons(BuildContext context, ResponsiveUtils responsive) {
+  Widget _buildToggleTile(
+    BuildContext context,
+    ResponsiveUtils responsive,
+    ThemeData theme,
+    String title,
+    String subtitle,
+    IconData icon,
+    bool value,
+    ValueChanged<bool> onChanged,
+  ) {
+    return Container(
+      padding: responsive.getResponsiveValue(
+        wearable: const EdgeInsets.all(8),
+        smallMobile: const EdgeInsets.all(10),
+        mobile: const EdgeInsets.all(12),
+        tablet: const EdgeInsets.all(14),
+      ),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(responsive.borderRadius / 2),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            color: value ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+            size: responsive.iconSize,
+          ),
+          responsive.mediumHorizontalSpacer,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: value ? theme.colorScheme.onSurface : theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                if (!responsive.isWearable)
+                  Text(
+                    subtitle,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Switch(
+            value: value,
+            onChanged: onChanged,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPresetButtons(BuildContext context, ResponsiveUtils responsive, ThemeData theme) {
     return Card(
       child: Padding(
         padding: responsive.containerPadding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Quick Presets',
-              style: (Theme.of(context).textTheme.titleMedium ?? const TextStyle()).copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+            Row(
+              children: [
+                Icon(
+                  Icons.equalizer,
+                  color: theme.colorScheme.primary,
+                  size: responsive.iconSize,
+                ),
+                responsive.smallHorizontalSpacer,
+                Text(
+                  'Quick Presets',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
-            SizedBox(height: responsive.mediumSpacing),
+            responsive.mediumSpacer,
             
-            // Fixed: Removed the double value from Widget list
             Row(
               children: [
                 Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _setLowVolumePreset,
-                    icon: const Icon(Icons.volume_down),
-                    label: const Text('Low'),
+                  child: _buildPresetButton(
+                    context,
+                    responsive,
+                    theme,
+                    'Low',
+                    Icons.volume_down,
+                    _setLowVolumePreset,
                   ),
                 ),
-                SizedBox(width: responsive.smallSpacing),
+                responsive.smallHorizontalSpacer,
                 Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _setMediumVolumePreset,
-                    icon: const Icon(Icons.volume_up),
-                    label: const Text('Medium'),
+                  child: _buildPresetButton(
+                    context,
+                    responsive,
+                    theme,
+                    'Medium',
+                    Icons.volume_up,
+                    _setMediumVolumePreset,
                   ),
                 ),
-                SizedBox(width: responsive.smallSpacing),
+                responsive.smallHorizontalSpacer,
                 Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _setHighVolumePreset,
-                    icon: const Icon(Icons.volume_up),
-                    label: const Text('High'),
+                  child: _buildPresetButton(
+                    context,
+                    responsive,
+                    theme,
+                    'High',
+                    Icons.volume_up,
+                    _setHighVolumePreset,
                   ),
                 ),
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPresetButton(
+    BuildContext context,
+    ResponsiveUtils responsive,
+    ThemeData theme,
+    String label,
+    IconData icon,
+    VoidCallback onPressed,
+  ) {
+    return ElevatedButton.icon(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: theme.colorScheme.surfaceContainerHighest,
+        foregroundColor: theme.colorScheme.onSurface,
+        elevation: 1,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(responsive.borderRadius),
+        ),
+        padding: responsive.getResponsiveValue(
+          wearable: const EdgeInsets.symmetric(vertical: 8),
+          smallMobile: const EdgeInsets.symmetric(vertical: 10),
+          mobile: const EdgeInsets.symmetric(vertical: 12),
+          tablet: const EdgeInsets.symmetric(vertical: 14),
+        ),
+      ),
+      icon: Icon(
+        icon,
+        size: responsive.iconSize * 0.8,
+      ),
+      label: Text(
+        label,
+        style: theme.textTheme.labelMedium?.copyWith(
+          fontWeight: FontWeight.w600,
         ),
       ),
     );
@@ -268,6 +435,7 @@ class _AudioSettingsScreenState extends State<AudioSettingsScreen> {
       _notificationVolume = 0.4;
       _alertVolume = 0.5;
     });
+    _showPresetAppliedSnackBar('Low volume preset applied');
   }
 
   void _setMediumVolumePreset() {
@@ -276,6 +444,7 @@ class _AudioSettingsScreenState extends State<AudioSettingsScreen> {
       _notificationVolume = 0.7;
       _alertVolume = 0.8;
     });
+    _showPresetAppliedSnackBar('Medium volume preset applied');
   }
 
   void _setHighVolumePreset() {
@@ -284,5 +453,27 @@ class _AudioSettingsScreenState extends State<AudioSettingsScreen> {
       _notificationVolume = 1.0;
       _alertVolume = 1.0;
     });
+    _showPresetAppliedSnackBar('High volume preset applied');
+  }
+
+  void _showPresetAppliedSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(
+              Icons.check_circle,
+              color: AppTheme.successGreen,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Text(message),
+          ],
+        ),
+        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 }
