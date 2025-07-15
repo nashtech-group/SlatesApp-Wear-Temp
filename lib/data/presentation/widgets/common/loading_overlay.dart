@@ -206,7 +206,7 @@ class _LoadingOverlayState extends State<LoadingOverlay>
       children: [
         LinearProgressIndicator(
           value: widget.progress,
-          backgroundColor: theme.colorScheme.surfaceVariant,
+          backgroundColor: theme.colorScheme.surfaceContainerHighest,
           valueColor: AlwaysStoppedAnimation<Color>(
             widget.spinnerColor ?? theme.colorScheme.primary,
           ),

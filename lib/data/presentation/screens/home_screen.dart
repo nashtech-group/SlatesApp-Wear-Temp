@@ -11,9 +11,9 @@ import 'package:slates_app_wear/core/error/error_state_factory.dart' hide VoidCa
 import 'package:slates_app_wear/core/auth_manager.dart';
 import 'package:slates_app_wear/data/models/user/user_model.dart';
 import 'package:slates_app_wear/data/presentation/screens/error_screen.dart';
-import 'package:slates_app_wear/data/presentation/screens/widgets/common/app_logo.dart';
-import 'package:slates_app_wear/data/presentation/screens/widgets/common/role_badge.dart';
-import 'package:slates_app_wear/data/presentation/screens/widgets/wearable/large_button.dart';
+import 'package:slates_app_wear/data/presentation/widgets/common/app_logo.dart';
+import 'package:slates_app_wear/data/presentation/widgets/common/role_badge.dart';
+import 'package:slates_app_wear/data/presentation/widgets/wearable/large_button.dart';
 import 'package:slates_app_wear/services/connectivity_service.dart';
 
 class HomeScreen extends StatefulWidget {

@@ -1,27 +1,22 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:slates_app_wear/blocs/roster_bloc/roster_bloc.dart';
-import 'package:slates_app_wear/blocs/checkpoint_bloc/checkpoint_bloc.dart';
 import 'package:slates_app_wear/blocs/location_bloc/location_bloc.dart';
-import 'package:slates_app_wear/core/theme/app_theme.dart';
+import 'package:slates_app_wear/data/models/roster/roster_user_model.dart';
+import 'package:slates_app_wear/data/presentation/widgets/common/loading_overlay.dart';
+import 'package:slates_app_wear/data/presentation/widgets/guard/guard_status_widget.dart';
+import 'package:slates_app_wear/data/presentation/widgets/guard/duty_actions_widget.dart';
+import 'package:slates_app_wear/data/presentation/widgets/guard/guard_stats_widget.dart';
 import 'package:slates_app_wear/core/utils/responsive_utils.dart';
 import 'package:slates_app_wear/core/constants/route_constants.dart';
-import 'package:slates_app_wear/data/models/user/user_model.dart';
-import 'package:slates_app_wear/data/presentation/screens/widgets/wearable/wearable_scaffold.dart';
-import 'package:slates_app_wear/data/presentation/screens/widgets/guard/guard_status_widget.dart';
-import 'package:slates_app_wear/data/presentation/screens/widgets/guard/duty_actions_widget.dart';
-import 'package:slates_app_wear/data/presentation/screens/widgets/guard/guard_stats_widget.dart';
-import 'package:slates_app_wear/data/presentation/screens/widgets/common/loading_overlay.dart';
+import 'package:slates_app_wear/data/presentation/widgets/wearable/wearable_scaffold.dart';
 
 class GuardDutyScreen extends StatefulWidget {
-  final UserModel user;
-  final bool isOffline;
+  final int guardId;
 
   const GuardDutyScreen({
     super.key,
-    required this.user,
-    required this.isOffline,
+    required this.guardId,
   });
 
   @override
@@ -29,66 +24,39 @@ class GuardDutyScreen extends StatefulWidget {
 }
 
 class _GuardDutyScreenState extends State<GuardDutyScreen>
-    with TickerProviderStateMixin, WidgetsBindingObserver {
+    with TickerProviderStateMixin {
   late TabController _tabController;
-  late AnimationController _statusController;
-  late Animation<double> _statusAnimation;
+  RosterUserModel? _currentDuty;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    _setupControllers();
-    _initializeBlocs();
+    _tabController = TabController(length: 3, vsync: this);
+    _loadInitialData();
   }
 
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _tabController.dispose();
-    _statusController.dispose();
-    super.dispose();
-  }
-
-  void _setupControllers() {
-    _tabController = TabController(length: 4, vsync: this);
-    _statusController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
-      vsync: this,
+  void _loadInitialData() {
+    // Load roster data
+    context.read<RosterBloc>().add(
+      LoadRosterData(
+        guardId: widget.guardId,
+        forceRefresh: true,
+      ),
     );
-    _statusAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _statusController,
-      curve: Curves.easeInOut,
-    ));
-    _statusController.forward();
-  }
-
-  void _initializeBlocs() {
-    // Load roster data for current user
-    context.read<RosterBloc>().add(LoadRosterDataEvent(
-      guardId: widget.user.id,
-      fromDate: DateTime.now().subtract(const Duration(days: 7)),
-      toDate: DateTime.now().add(const Duration(days: 30)),
-    ));
 
     // Initialize location tracking
-    context.read<LocationBloc>().add(const InitializeLocationEvent());
+    context.read<LocationBloc>().add(
+      const InitializeLocationTracking(),
+    );
+
+    // Refresh roster data periodically
+    _setupPeriodicRefresh();
   }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    super.didChangeAppLifecycleState(state);
-    if (state == AppLifecycleState.resumed) {
-      // Refresh data when app comes back to foreground
-      context.read<RosterBloc>().add(LoadRosterDataEvent(
-        guardId: widget.user.id,
-        fromDate: DateTime.now().subtract(const Duration(days: 7)),
-        toDate: DateTime.now().add(const Duration(days: 30)),
-      ));
-    }
+  void _setupPeriodicRefresh() {
+    context.read<RosterBloc>().add(
+      RefreshRosterData(guardId: widget.guardId),
+    );
   }
 
   @override
@@ -96,463 +64,366 @@ class _GuardDutyScreenState extends State<GuardDutyScreen>
     final responsive = context.responsive;
 
     return WearableScaffold(
-      isRoundScreen: responsive.isRoundScreen,
-      child: Scaffold(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        body: SafeArea(
-          child: Column(
+      body: BlocConsumer<RosterBloc, RosterState>(
+        listener: (context, state) {
+          if (state is RosterError) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.errorInfo.message),
+                backgroundColor: Theme.of(context).colorScheme.error,
+              ),
+            );
+          }
+          if (state is RosterLoaded) {
+            _updateCurrentDuty(state);
+          }
+        },
+        builder: (context, state) {
+          if (state is RosterLoading) {
+            return const LoadingOverlay(
+              message: 'Loading duty information...',
+              animated: true,
+            );
+          }
+          return _buildDutyContent(context, state, responsive);
+        },
+      ),
+    );
+  }
+
+  void _updateCurrentDuty(RosterLoaded state) {
+    final now = DateTime.now();
+    final currentDuty = state.rosterResponse.data.where((duty) {
+      return now.isAfter(duty.startsAt) && now.isBefore(duty.endsAt);
+    }).firstOrNull;
+
+    if (currentDuty != _currentDuty) {
+      setState(() {
+        _currentDuty = currentDuty;
+      });
+    }
+  }
+
+  Widget _buildDutyContent(BuildContext context, RosterState state, ResponsiveUtils responsive) {
+    return Column(
+      children: [
+        _buildHeader(context, responsive),
+        _buildTabBar(context, responsive),
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
             children: [
-              _buildHeader(context, responsive),
-              if (widget.isOffline) _buildOfflineBanner(context, responsive),
-              _buildTabBar(context, responsive),
-              Expanded(
-                child: _buildTabContent(context, responsive),
+              _GuardDutyTab(
+                guardId: widget.guardId,
+                currentDuty: _currentDuty,
+                rosterState: state,
+              ),
+              _GuardCalendarTab(
+                guardId: widget.guardId,
+                rosterState: state,
+              ),
+              _GuardStatsTab(
+                guardId: widget.guardId,
+                rosterState: state,
               ),
             ],
           ),
         ),
-      ),
+      ],
     );
   }
 
   Widget _buildHeader(BuildContext context, ResponsiveUtils responsive) {
-    final theme = Theme.of(context);
-
     return Container(
       padding: responsive.containerPadding,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            theme.colorScheme.primary,
-            theme.colorScheme.primary.withValues(alpha: 0.8),
-          ],
+        color: Theme.of(context).colorScheme.primary,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(responsive.borderRadius),
+          bottomRight: Radius.circular(responsive.borderRadius),
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              if (!responsive.isWearable)
-                IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.arrow_back),
-                  color: Colors.white,
-                ),
-              Expanded(
-                child: Text(
-                  'Guard Duty',
-                  style: responsive.getTitleStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
+      child: SafeArea(
+        bottom: false,
+        child: Row(
+          children: [
+            IconButton(
+              onPressed: () => Navigator.of(context).pop(),
+              icon: const Icon(Icons.arrow_back),
+              color: Colors.white,
+            ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    'Guard Duty',
+                    style: (Theme.of(context).textTheme.titleLarge ?? const TextStyle()).copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-              ),
-              IconButton(
-                onPressed: () => _showNotifications(context),
-                icon: const Icon(Icons.notifications),
-                color: Colors.white,
-              ),
-              if (!responsive.isWearable)
-                IconButton(
-                  onPressed: () => _showSettings(context),
-                  icon: const Icon(Icons.settings),
-                  color: Colors.white,
-                ),
-            ],
-          ),
-          responsive.smallSpacer,
-          FadeTransition(
-            opacity: _statusAnimation,
-            child: Text(
-              'Hello, ${widget.user.firstName}',
-              style: responsive.getBodyStyle(
-                color: Colors.white.withValues(alpha: 0.9),
+                  if (_currentDuty != null)
+                    Text(
+                      _currentDuty!.site.name,
+                      style: (Theme.of(context).textTheme.bodyMedium ?? const TextStyle()).copyWith(
+                        color: Colors.white70,
+                      ),
+                    ),
+                ],
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOfflineBanner(BuildContext context, ResponsiveUtils responsive) {
-    final theme = Theme.of(context);
-
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.symmetric(
-        horizontal: responsive.padding,
-        vertical: responsive.smallSpacing,
-      ),
-      color: theme.colorScheme.errorContainer,
-      child: Row(
-        children: [
-          Icon(
-            Icons.cloud_off,
-            color: theme.colorScheme.onErrorContainer,
-            size: responsive.iconSize,
-          ),
-          responsive.smallHorizontalSpacer,
-          Expanded(
-            child: Text(
-              'Offline Mode - Data will sync when connected',
-              style: responsive.getCaptionStyle(
-                color: theme.colorScheme.onErrorContainer,
+            IconButton(
+              onPressed: () => Navigator.of(context).pushNamed(
+                RouteConstants.notificationCenter,
               ),
+              icon: const Icon(Icons.notifications),
+              color: Colors.white,
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildTabBar(BuildContext context, ResponsiveUtils responsive) {
-    final theme = Theme.of(context);
-
-    if (responsive.isWearable) {
-      // For wearables, use simplified navigation
-      return Container(
-        height: 40,
-        margin: EdgeInsets.symmetric(horizontal: responsive.padding),
-        child: Row(
-          children: [
-            Expanded(
-              child: GestureDetector(
-                onTap: () => _tabController.animateTo(0),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: _tabController.index == 0
-                        ? theme.colorScheme.primary
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(responsive.borderRadius),
-                  ),
-                  child: Center(
-                    child: Icon(
-                      Icons.dashboard,
-                      color: _tabController.index == 0
-                          ? Colors.white
-                          : theme.colorScheme.primary,
-                      size: responsive.iconSize,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            responsive.smallHorizontalSpacer,
-            Expanded(
-              child: GestureDetector(
-                onTap: () => _tabController.animateTo(1),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: _tabController.index == 1
-                        ? theme.colorScheme.primary
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(responsive.borderRadius),
-                  ),
-                  child: Center(
-                    child: Icon(
-                      Icons.calendar_today,
-                      color: _tabController.index == 1
-                          ? Colors.white
-                          : theme.colorScheme.primary,
-                      size: responsive.iconSize,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            responsive.smallHorizontalSpacer,
-            Expanded(
-              child: GestureDetector(
-                onTap: () => _tabController.animateTo(2),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: _tabController.index == 2
-                        ? theme.colorScheme.primary
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(responsive.borderRadius),
-                  ),
-                  child: Center(
-                    child: Icon(
-                      Icons.map,
-                      color: _tabController.index == 2
-                          ? Colors.white
-                          : theme.colorScheme.primary,
-                      size: responsive.iconSize,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            responsive.smallHorizontalSpacer,
-            Expanded(
-              child: GestureDetector(
-                onTap: () => _tabController.animateTo(3),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: _tabController.index == 3
-                        ? theme.colorScheme.primary
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(responsive.borderRadius),
-                  ),
-                  child: Center(
-                    child: Icon(
-                      Icons.history,
-                      color: _tabController.index == 3
-                          ? Colors.white
-                          : theme.colorScheme.primary,
-                      size: responsive.iconSize,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return TabBar(
-      controller: _tabController,
-      indicatorColor: theme.colorScheme.primary,
-      labelColor: theme.colorScheme.primary,
-      unselectedLabelColor: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-      labelStyle: responsive.getCaptionStyle(fontWeight: FontWeight.w600),
-      unselectedLabelStyle: responsive.getCaptionStyle(),
-      tabs: const [
-        Tab(icon: Icon(Icons.dashboard), text: 'Status'),
-        Tab(icon: Icon(Icons.calendar_today), text: 'Calendar'),
-        Tab(icon: Icon(Icons.map), text: 'Map'),
-        Tab(icon: Icon(Icons.history), text: 'History'),
-      ],
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TabBar(
+        controller: _tabController,
+        tabs: const [
+          Tab(
+            icon: Icon(Icons.security),
+            text: 'Duty',
+          ),
+          Tab(
+            icon: Icon(Icons.calendar_today),
+            text: 'Calendar',
+          ),
+          Tab(
+            icon: Icon(Icons.analytics),
+            text: 'Stats',
+          ),
+        ],
+        labelColor: Theme.of(context).colorScheme.primary,
+        unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+        indicatorColor: Theme.of(context).colorScheme.primary,
+        labelStyle: responsive.getCaptionStyle(fontWeight: FontWeight.w600),
+        unselectedLabelStyle: responsive.getCaptionStyle(),
+      ),
     );
   }
 
-  Widget _buildTabContent(BuildContext context, ResponsiveUtils responsive) {
-    return TabBarView(
-      controller: _tabController,
-      children: [
-        // Status Tab
-        _GuardStatusTab(
-          user: widget.user,
-          isOffline: widget.isOffline,
-          responsive: responsive,
-        ),
-        
-        // Calendar Tab
-        _GuardCalendarTab(
-          user: widget.user,
-          isOffline: widget.isOffline,
-          responsive: responsive,
-        ),
-        
-        // Map Tab
-        _GuardMapTab(
-          user: widget.user,
-          isOffline: widget.isOffline,
-          responsive: responsive,
-        ),
-        
-        // History Tab
-        _GuardHistoryTab(
-          user: widget.user,
-          isOffline: widget.isOffline,
-          responsive: responsive,
-        ),
-      ],
-    );
-  }
-
-  void _showNotifications(BuildContext context) {
-    Navigator.of(context).pushNamed(RouteConstants.notificationCenter);
-  }
-
-  void _showSettings(BuildContext context) {
-    Navigator.of(context).pushNamed(RouteConstants.settings);
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 }
 
-// Status Tab Widget
-class _GuardStatusTab extends StatelessWidget {
-  final UserModel user;
-  final bool isOffline;
-  final ResponsiveUtils responsive;
+class _GuardDutyTab extends StatelessWidget {
+  final int guardId;
+  final RosterUserModel? currentDuty;
+  final RosterState rosterState;
 
-  const _GuardStatusTab({
-    required this.user,
-    required this.isOffline,
-    required this.responsive,
+  const _GuardDutyTab({
+    required this.guardId,
+    required this.currentDuty,
+    required this.rosterState,
   });
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<RosterBloc, RosterState>(
-      builder: (context, rosterState) {
-        return BlocBuilder<LocationBloc, LocationState>(
-          builder: (context, locationState) {
-            return SingleChildScrollView(
+    final responsive = context.responsive;
+
+    return SingleChildScrollView(
+      padding: responsive.containerPadding,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Guard Status
+          GuardStatusWidget(
+            guardId: guardId,
+            currentDuty: currentDuty,
+          ),
+
+          SizedBox(height: responsive.mediumSpacing),
+
+          // Duty Actions
+          if (currentDuty != null)
+            DutyActionsWidget(
+              duty: currentDuty!,
+            ),
+
+          SizedBox(height: responsive.mediumSpacing),
+
+          // Quick Stats
+          if (rosterState is RosterLoaded)
+            GuardStatsWidget(
+              guardId: guardId,
+              rosterState: rosterState,
+              isCompact: true,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GuardCalendarTab extends StatelessWidget {
+  final int guardId;
+  final RosterState rosterState;
+
+  const _GuardCalendarTab({
+    required this.guardId,
+    required this.rosterState,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final responsive = context.responsive;
+
+    return SingleChildScrollView(
+      padding: responsive.containerPadding,
+      child: Column(
+        children: [
+          // Quick calendar view
+          Card(
+            child: Padding(
               padding: responsive.containerPadding,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Current Status Widget
-                  GuardStatusWidget(
-                    user: user,
-                    isOffline: isOffline,
-                    rosterState: rosterState,
-                    locationState: locationState,
-                    responsive: responsive,
+                  Text(
+                    'This Week\'s Duties',
+                    style: (Theme.of(context).textTheme.titleMedium ?? const TextStyle()).copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                  
-                  responsive.mediumSpacer,
-                  
-                  // Quick Actions
-                  DutyActionsWidget(
-                    user: user,
-                    isOffline: isOffline,
-                    rosterState: rosterState,
-                    locationState: locationState,
-                    responsive: responsive,
-                  ),
-                  
-                  responsive.mediumSpacer,
-                  
-                  // Stats Widget
-                  GuardStatsWidget(
-                    user: user,
-                    isOffline: isOffline,
-                    rosterState: rosterState,
-                    responsive: responsive,
-                  ),
+                  SizedBox(height: responsive.smallSpacing),
+                  _buildWeeklyDuties(context, responsive),
                 ],
               ),
-            );
-          },
-        );
-      },
-    );
-  }
-}
-
-// Calendar Tab Widget
-class _GuardCalendarTab extends StatelessWidget {
-  final UserModel user;
-  final bool isOffline;
-  final ResponsiveUtils responsive;
-
-  const _GuardCalendarTab({
-    required this.user,
-    required this.isOffline,
-    required this.responsive,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<RosterBloc, RosterState>(
-      builder: (context, state) {
-        if (state is RosterLoading) {
-          return const LoadingOverlay(message: 'Loading calendar...');
-        }
-
-        if (state is RosterError) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.error_outline,
-                  size: responsive.largeIconSize * 2,
-                  color: Theme.of(context).colorScheme.error,
-                ),
-                responsive.mediumSpacer,
-                Text(
-                  'Failed to load calendar',
-                  style: responsive.getBodyStyle(
-                    color: Theme.of(context).colorScheme.error,
-                  ),
-                ),
-                responsive.mediumSpacer,
-                ElevatedButton(
-                  onPressed: () {
-                    context.read<RosterBloc>().add(LoadRosterDataEvent(
-                      guardId: user.id,
-                      fromDate: DateTime.now().subtract(const Duration(days: 7)),
-                      toDate: DateTime.now().add(const Duration(days: 30)),
-                    ));
-                  },
-                  child: const Text('Retry'),
-                ),
-              ],
             ),
-          );
-        }
+          ),
 
-        // Load calendar component
-        return const Center(
-          child: Text('Calendar View - Implementation in next artifact'),
-        );
-      },
+          SizedBox(height: responsive.mediumSpacing),
+
+          // Full calendar button
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                context.read<RosterBloc>().add(
+                  LoadRosterData(guardId: guardId),
+                );
+                Navigator.of(context).pushNamed(RouteConstants.guardCalendar);
+              },
+              icon: const Icon(Icons.calendar_month),
+              label: const Text('View Full Calendar'),
+            ),
+          ),
+        ],
+      ),
     );
+  }
+
+  Widget _buildWeeklyDuties(BuildContext context, ResponsiveUtils responsive) {
+    if (rosterState is! RosterLoaded) {
+      return const Center(
+        child: Text('No duty data available'),
+      );
+    }
+
+    final rosterData = (rosterState as RosterLoaded).rosterResponse.data;
+    final now = DateTime.now();
+    final weekStart = now.subtract(Duration(days: now.weekday - 1));
+    final weekEnd = weekStart.add(const Duration(days: 6));
+
+    final weekDuties = rosterData.where((duty) {
+      return duty.initialShiftDate.isAfter(weekStart.subtract(const Duration(days: 1))) &&
+             duty.initialShiftDate.isBefore(weekEnd.add(const Duration(days: 1)));
+    }).toList();
+
+    if (weekDuties.isEmpty) {
+      return const Text('No duties scheduled this week');
+    }
+
+    return Column(
+      children: weekDuties.map((duty) {
+        return Padding(
+          padding: EdgeInsets.only(bottom: responsive.smallSpacing),
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: _getDutyStatusColor(context, duty),
+              child: Text(
+                '${duty.initialShiftDate.day}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            title: Text(duty.site.name),
+            subtitle: Text(
+              '${_formatTime(duty.startsAt)} - ${_formatTime(duty.endsAt)}',
+            ),
+            trailing: Text(
+              duty.statusLabel,
+              style: TextStyle(
+                color: _getDutyStatusColor(context, duty),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Color _getDutyStatusColor(BuildContext context, RosterUserModel duty) {
+    switch (duty.status) {
+      case 1: return Colors.green;
+      case 0: return Colors.red;
+      case -1: return Colors.orange;
+      default: return Theme.of(context).colorScheme.primary;
+    }
+  }
+
+  String _formatTime(DateTime dateTime) {
+    return '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 }
 
-// Map Tab Widget
-class _GuardMapTab extends StatelessWidget {
-  final UserModel user;
-  final bool isOffline;
-  final ResponsiveUtils responsive;
+class _GuardStatsTab extends StatelessWidget {
+  final int guardId;
+  final RosterState rosterState;
 
-  const _GuardMapTab({
-    required this.user,
-    required this.isOffline,
-    required this.responsive,
+  const _GuardStatsTab({
+    required this.guardId,
+    required this.rosterState,
   });
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<LocationBloc, LocationState>(
-      builder: (context, state) {
-        if (state is LocationLoading) {
-          return const LoadingOverlay(message: 'Loading map...');
-        }
+    final responsive = context.responsive;
 
-        // Load map component
-        return const Center(
-          child: Text('Map View - Implementation in next artifact'),
-        );
-      },
-    );
-  }
-}
-
-// History Tab Widget
-class _GuardHistoryTab extends StatelessWidget {
-  final UserModel user;
-  final bool isOffline;
-  final ResponsiveUtils responsive;
-
-  const _GuardHistoryTab({
-    required this.user,
-    required this.isOffline,
-    required this.responsive,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<RosterBloc, RosterState>(
-      builder: (context, state) {
-        if (state is RosterLoading) {
-          return const LoadingOverlay(message: 'Loading history...');
-        }
-
-        // Load history component
-        return const Center(
-          child: Text('History View - Implementation in next artifact'),
-        );
-      },
+    return SingleChildScrollView(
+      padding: responsive.containerPadding,
+      child: GuardStatsWidget(
+        guardId: guardId,
+        rosterState: rosterState,
+        isCompact: false,
+      ),
     );
   }
 }

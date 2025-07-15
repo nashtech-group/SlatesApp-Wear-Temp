@@ -7,10 +7,10 @@ import 'package:slates_app_wear/core/constants/route_constants.dart';
 import 'package:slates_app_wear/core/theme/app_theme.dart';
 import 'package:slates_app_wear/core/utils/validators.dart';
 import 'package:slates_app_wear/core/utils/responsive_utils.dart';
-import 'package:slates_app_wear/data/presentation/screens/widgets/common/app_logo.dart';
-import 'package:slates_app_wear/data/presentation/screens/widgets/wearable/large_button.dart';
-import 'package:slates_app_wear/data/presentation/screens/widgets/wearable/pin_input.dart';
-import 'package:slates_app_wear/data/presentation/screens/widgets/wearable/wearable_scaffold.dart';
+import 'package:slates_app_wear/data/presentation/widgets/common/app_logo.dart';
+import 'package:slates_app_wear/data/presentation/widgets/wearable/large_button.dart';
+import 'package:slates_app_wear/data/presentation/widgets/wearable/pin_input.dart';
+import 'package:slates_app_wear/data/presentation/widgets/wearable/wearable_scaffold.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});

@@ -1,31 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:slates_app_wear/blocs/roster_bloc/roster_bloc.dart';
 import 'package:slates_app_wear/blocs/location_bloc/location_bloc.dart';
-import 'package:slates_app_wear/blocs/checkpoint_bloc/checkpoint_bloc.dart';
-import 'package:slates_app_wear/core/theme/app_theme.dart';
+import 'package:slates_app_wear/blocs/roster_bloc/roster_bloc.dart';
+import 'package:slates_app_wear/data/models/roster/roster_user_model.dart';
+import 'package:slates_app_wear/data/presentation/widgets/common/status_indicator.dart';
 import 'package:slates_app_wear/core/utils/responsive_utils.dart';
-import 'package:slates_app_wear/data/models/user/user_model.dart';
-import 'package:slates_app_wear/data/models/roster/comprehensive_guard_duty_response_model.dart';
-import 'package:slates_app_wear/data/presentation/screens/widgets/wearable/large_button.dart';
-import 'package:slates_app_wear/data/presentation/screens/widgets/common/status_indicator.dart';
-import 'package:slates_app_wear/data/presentation/screens/widgets/common/animated_counter.dart';
 
 class GuardStatusWidget extends StatefulWidget {
-  final UserModel user;
-  final bool isOffline;
-  final RosterState rosterState;
-  final LocationState locationState;
-  final ResponsiveUtils responsive;
+  final int guardId;
+  final RosterUserModel? currentDuty;
+  final bool showActions;
 
   const GuardStatusWidget({
     super.key,
-    required this.user,
-    required this.isOffline,
-    required this.rosterState,
-    required this.locationState,
-    required this.responsive,
+    required this.guardId,
+    this.currentDuty,
+    this.showActions = true,
   });
 
   @override
@@ -34,9 +24,7 @@ class GuardStatusWidget extends StatefulWidget {
 
 class _GuardStatusWidgetState extends State<GuardStatusWidget>
     with TickerProviderStateMixin {
-  late AnimationController _statusController;
-  late AnimationController _pulseController;
-  late Animation<double> _statusAnimation;
+  late AnimationController _pulseAnimationController;
   late Animation<double> _pulseAnimation;
 
   @override
@@ -45,317 +33,340 @@ class _GuardStatusWidgetState extends State<GuardStatusWidget>
     _setupAnimations();
   }
 
-  @override
-  void dispose() {
-    _statusController.dispose();
-    _pulseController.dispose();
-    super.dispose();
-  }
-
   void _setupAnimations() {
-    _statusController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
-    
-    _pulseController = AnimationController(
+    _pulseAnimationController = AnimationController(
       duration: const Duration(seconds: 2),
       vsync: this,
     );
 
-    _statusAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _statusController,
-      curve: Curves.easeOutBack,
-    ));
-
     _pulseAnimation = Tween<double>(
       begin: 1.0,
       end: 1.1,
-    ).animate(CurvedAnimation(
-      parent: _pulseController,
-      curve: Curves.easeInOut,
-    ));
+    ).animate(
+      CurvedAnimation(
+        parent: _pulseAnimationController,
+        curve: Curves.easeInOut,
+      ),
+    );
 
-    _statusController.forward();
-    _pulseController.repeat(reverse: true);
+    if (widget.currentDuty?.isCurrentlyOnDuty == true) {
+      _pulseAnimationController.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void didUpdateWidget(GuardStatusWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    
+    // Update animations based on duty status
+    if (widget.currentDuty?.isCurrentlyOnDuty == true) {
+      if (!_pulseAnimationController.isAnimating) {
+        _pulseAnimationController.repeat(reverse: true);
+      }
+    } else {
+      _pulseAnimationController.stop();
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulseAnimationController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final responsive = context.responsive;
     final theme = Theme.of(context);
-    final currentDuty = _getCurrentDuty();
-    final isOnDuty = currentDuty != null && _isCurrentlyOnDuty(currentDuty);
 
-    return FadeTransition(
-      opacity: _statusAnimation,
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(responsive.borderRadius),
+      ),
       child: Container(
-        padding: widget.responsive.containerPadding,
         decoration: BoxDecoration(
-          gradient: _getStatusGradient(context, isOnDuty),
-          borderRadius: BorderRadius.circular(widget.responsive.borderRadius),
-          boxShadow: [
-            BoxShadow(
-              color: (isOnDuty ? AppTheme.successGreen : theme.colorScheme.primary)
-                  .withValues(alpha: 0.3),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          borderRadius: BorderRadius.circular(responsive.borderRadius),
+          gradient: _getStatusGradient(theme),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildStatusHeader(context, isOnDuty, currentDuty),
-            widget.responsive.mediumSpacer,
-            _buildStatusDetails(context, isOnDuty, currentDuty),
-            if (isOnDuty) ...[
-              widget.responsive.mediumSpacer,
-              _buildDutyProgress(context, currentDuty!),
+        child: Padding(
+          padding: responsive.containerPadding,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildStatusHeader(context, responsive, theme),
+              SizedBox(height: responsive.mediumSpacing),
+              _buildStatusContent(context, responsive, theme),
+              if (widget.showActions && widget.currentDuty != null) ...[
+                SizedBox(height: responsive.mediumSpacing),
+                _buildStatusActions(context, responsive, theme),
+              ],
             ],
-            widget.responsive.mediumSpacer,
-            _buildActionButtons(context, isOnDuty, currentDuty),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildStatusHeader(BuildContext context, bool isOnDuty, 
-      ComprehensiveGuardDutyResponseModel? currentDuty) {
+  Widget _buildStatusHeader(BuildContext context, ResponsiveUtils responsive, ThemeData theme) {
     return Row(
       children: [
         AnimatedBuilder(
           animation: _pulseAnimation,
           builder: (context, child) {
             return Transform.scale(
-              scale: isOnDuty ? _pulseAnimation.value : 1.0,
-              child: Container(
-                width: widget.responsive.getResponsiveValue(
-                  wearable: 20.0,
-                  smallMobile: 24.0,
-                  mobile: 28.0,
-                  tablet: 32.0,
-                ),
-                height: widget.responsive.getResponsiveValue(
-                  wearable: 20.0,
-                  smallMobile: 24.0,
-                  mobile: 28.0,
-                  tablet: 32.0,
-                ),
-                decoration: BoxDecoration(
-                  color: isOnDuty ? AppTheme.successGreen : AppTheme.warningOrange,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: (isOnDuty ? AppTheme.successGreen : AppTheme.warningOrange)
-                          .withValues(alpha: 0.5),
-                      blurRadius: 8,
-                      spreadRadius: 2,
-                    ),
-                  ],
-                ),
+              scale: widget.currentDuty?.isCurrentlyOnDuty == true 
+                  ? _pulseAnimation.value 
+                  : 1.0,
+              child: StatusIndicator(
+                status: _getStatusType(),
+                showAnimation: widget.currentDuty?.isCurrentlyOnDuty == true,
+                size: responsive.iconSize,
               ),
             );
           },
         ),
-        widget.responsive.smallHorizontalSpacer,
+        SizedBox(width: responsive.smallSpacing),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                isOnDuty ? 'ON DUTY' : 'OFF DUTY',
-                style: widget.responsive.getTitleStyle(
-                  color: Colors.white,
+                _getStatusTitle(),
+                style: (theme.textTheme.titleMedium ?? const TextStyle()).copyWith(
                   fontWeight: FontWeight.bold,
+                  color: Colors.white,
                 ),
               ),
-              if (currentDuty != null)
+              if (widget.currentDuty != null)
                 Text(
-                  currentDuty.site?.name ?? 'Unknown Site',
-                  style: widget.responsive.getBodyStyle(
-                    color: Colors.white.withValues(alpha: 0.9),
+                  widget.currentDuty!.site.name,
+                  style: (theme.textTheme.bodyMedium ?? const TextStyle()).copyWith(
+                    color: Colors.white70,
                   ),
                 ),
             ],
           ),
         ),
-        StatusIndicator(
-          isOnline: !widget.isOffline,
-          size: widget.responsive.iconSize,
-        ),
+        _buildConnectionStatus(context, responsive, theme),
       ],
     );
   }
 
-  Widget _buildStatusDetails(BuildContext context, bool isOnDuty,
-      ComprehensiveGuardDutyResponseModel? currentDuty) {
-    if (!isOnDuty || currentDuty == null) {
-      return _buildOffDutyDetails(context);
-    }
-
-    return _buildOnDutyDetails(context, currentDuty);
+  Widget _buildConnectionStatus(BuildContext context, ResponsiveUtils responsive, ThemeData theme) {
+    return BlocBuilder<LocationBloc, LocationState>(
+      builder: (context, locationState) {
+        final isConnected = locationState is LocationTrackingActive;
+        
+        return Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: responsive.smallSpacing,
+            vertical: responsive.smallSpacing * 0.5,
+          ),
+          decoration: BoxDecoration(
+            color: isConnected 
+                ? Colors.green.withValues(alpha: 0.2)
+                : Colors.red.withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(responsive.borderRadius * 0.5),
+            border: Border.all(
+              color: isConnected ? Colors.green : Colors.red,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isConnected ? Icons.cloud_done : Icons.cloud_off,
+                size: responsive.iconSize * 0.6,
+                color: isConnected ? Colors.green : Colors.red,
+              ),
+              SizedBox(width: responsive.smallSpacing * 0.5),
+              Text(
+                isConnected ? 'Online' : 'Offline',
+                style: (theme.textTheme.labelSmall ?? const TextStyle()).copyWith(
+                  color: isConnected ? Colors.green : Colors.red,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
-  Widget _buildOffDutyDetails(BuildContext context) {
-    final nextDuty = _getNextDuty();
-    
+  Widget _buildStatusContent(BuildContext context, ResponsiveUtils responsive, ThemeData theme) {
+    if (widget.currentDuty == null) {
+      return _buildNoDutyContent(context, responsive, theme);
+    }
+
+    return Column(
+      children: [
+        _buildDutyTimeInfo(context, responsive, theme),
+        SizedBox(height: responsive.smallSpacing),
+        _buildDutyProgress(context, responsive, theme),
+      ],
+    );
+  }
+
+  Widget _buildNoDutyContent(BuildContext context, ResponsiveUtils responsive, ThemeData theme) {
     return Container(
-      padding: widget.responsive.formPadding,
+      padding: responsive.containerPadding,
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(widget.responsive.borderRadius),
+        borderRadius: BorderRadius.circular(responsive.borderRadius),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.free_breakfast,
+            size: responsive.iconSize * 1.5,
+            color: Colors.white70,
+          ),
+          SizedBox(height: responsive.smallSpacing),
+          Text(
+            'No Active Duty',
+            style: (theme.textTheme.titleSmall ?? const TextStyle()).copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          Text(
+            'You are currently off duty',
+            style: (theme.textTheme.bodySmall ?? const TextStyle()).copyWith(
+              color: Colors.white70,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDutyTimeInfo(BuildContext context, ResponsiveUtils responsive, ThemeData theme) {
+    final duty = widget.currentDuty!;
+    
+    return Container(
+      padding: responsive.containerPadding,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(responsive.borderRadius),
+      ),
+      child: Column(
         children: [
           Row(
             children: [
               Icon(
                 Icons.schedule,
                 color: Colors.white,
-                size: widget.responsive.iconSize,
+                size: responsive.iconSize * 0.8,
               ),
-              widget.responsive.smallHorizontalSpacer,
-              Text(
-                'Next Duty',
-                style: widget.responsive.getBodyStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
+              SizedBox(width: responsive.smallSpacing),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Duty Hours',
+                      style: (theme.textTheme.labelMedium ?? const TextStyle()).copyWith(
+                        color: Colors.white70,
+                      ),
+                    ),
+                    Text(
+                      '${_formatTime(duty.startsAt)} - ${_formatTime(duty.endsAt)}',
+                      style: (theme.textTheme.titleSmall ?? const TextStyle()).copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          widget.responsive.smallSpacer,
-          if (nextDuty != null) ...[
-            Text(
-              nextDuty.site?.name ?? 'Unknown Site',
-              style: widget.responsive.getBodyStyle(color: Colors.white),
-            ),
-            Text(
-              _formatDutyTime(nextDuty),
-              style: widget.responsive.getCaptionStyle(
-                color: Colors.white.withValues(alpha: 0.8),
+          
+          SizedBox(height: responsive.smallSpacing),
+          
+          Row(
+            children: [
+              Icon(
+                Icons.location_on,
+                color: Colors.white,
+                size: responsive.iconSize * 0.8,
               ),
-            ),
-          ] else
-            Text(
-              'No upcoming duties scheduled',
-              style: widget.responsive.getCaptionStyle(
-                color: Colors.white.withValues(alpha: 0.8),
+              SizedBox(width: responsive.smallSpacing),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Location',
+                      style: (theme.textTheme.labelMedium ?? const TextStyle()).copyWith(
+                        color: Colors.white70,
+                      ),
+                    ),
+                    Text(
+                      duty.site.physicalAddress,
+                      style: (theme.textTheme.bodySmall ?? const TextStyle()).copyWith(
+                        color: Colors.white,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
               ),
-            ),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildOnDutyDetails(BuildContext context, 
-      ComprehensiveGuardDutyResponseModel currentDuty) {
-    final timeRemaining = currentDuty.endsAt.difference(DateTime.now());
+  Widget _buildDutyProgress(BuildContext context, ResponsiveUtils responsive, ThemeData theme) {
+    final duty = widget.currentDuty!;
+    final now = DateTime.now();
     
-    return Container(
-      padding: widget.responsive.formPadding,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(widget.responsive.borderRadius),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: _buildDetailItem(
-                  context,
-                  'Start Time',
-                  _formatTime(currentDuty.startsAt),
-                  Icons.play_circle,
-                ),
-              ),
-              widget.responsive.smallHorizontalSpacer,
-              Expanded(
-                child: _buildDetailItem(
-                  context,
-                  'End Time',
-                  _formatTime(currentDuty.endsAt),
-                  Icons.stop_circle,
-                ),
-              ),
-            ],
-          ),
-          widget.responsive.smallSpacer,
-          Row(
-            children: [
-              Expanded(
-                child: _buildDetailItem(
-                  context,
-                  'Time Remaining',
-                  _formatDuration(timeRemaining),
-                  Icons.timer,
-                ),
-              ),
-              widget.responsive.smallHorizontalSpacer,
-              Expanded(
-                child: _buildDetailItem(
-                  context,
-                  'Guard Type',
-                  currentDuty.timeRequirement?.guardPosition?.securityGuard?.toUpperCase() ?? 'UNKNOWN',
-                  Icons.security,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDetailItem(BuildContext context, String label, String value, IconData icon) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
+    if (!duty.isCurrentlyOnDuty) {
+      return Container(
+        padding: responsive.containerPadding,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(responsive.borderRadius),
+        ),
+        child: Row(
           children: [
             Icon(
-              icon,
-              color: Colors.white.withValues(alpha: 0.8),
-              size: widget.responsive.iconSize * 0.8,
+              duty.isDutyUpcoming ? Icons.upcoming : Icons.history,
+              color: Colors.white,
+              size: responsive.iconSize * 0.8,
             ),
-            widget.responsive.smallHorizontalSpacer,
-            Text(
-              label,
-              style: widget.responsive.getCaptionStyle(
-                color: Colors.white.withValues(alpha: 0.8),
+            SizedBox(width: responsive.smallSpacing),
+            Expanded(
+              child: Text(
+                duty.isDutyUpcoming 
+                    ? 'Duty starts in ${_getTimeUntil(duty.startsAt)}'
+                    : 'Duty ended ${_getTimeSince(duty.endsAt)} ago',
+                style: (theme.textTheme.bodyMedium ?? const TextStyle()).copyWith(
+                  color: Colors.white,
+                ),
               ),
             ),
           ],
         ),
-        widget.responsive.smallSpacer,
-        Text(
-          value,
-          style: widget.responsive.getBodyStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    );
-  }
+      );
+    }
 
-  Widget _buildDutyProgress(BuildContext context, 
-      ComprehensiveGuardDutyResponseModel currentDuty) {
-    final totalDuration = currentDuty.endsAt.difference(currentDuty.startsAt);
-    final elapsed = DateTime.now().difference(currentDuty.startsAt);
-    final progress = (elapsed.inMilliseconds / totalDuration.inMilliseconds).clamp(0.0, 1.0);
-
+    // Calculate progress
+    final totalDuration = duty.endsAt.difference(duty.startsAt);
+    final elapsed = now.difference(duty.startsAt);
+    final progress = (elapsed.inMinutes / totalDuration.inMinutes).clamp(0.0, 1.0);
+    
     return Container(
-      padding: widget.responsive.formPadding,
+      padding: responsive.containerPadding,
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(widget.responsive.borderRadius),
+        borderRadius: BorderRadius.circular(responsive.borderRadius),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -365,28 +376,34 @@ class _GuardStatusWidgetState extends State<GuardStatusWidget>
             children: [
               Text(
                 'Duty Progress',
-                style: widget.responsive.getBodyStyle(
+                style: (theme.textTheme.labelMedium ?? const TextStyle()).copyWith(
+                  color: Colors.white70,
+                ),
+              ),
+              Text(
+                '${(progress * 100).round()}%',
+                style: (theme.textTheme.labelMedium ?? const TextStyle()).copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              AnimatedCounter(
-                value: progress * 100,
-                duration: const Duration(milliseconds: 500),
-                suffix: '%',
-                textStyle: widget.responsive.getBodyStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
             ],
           ),
-          widget.responsive.smallSpacer,
+          
+          SizedBox(height: responsive.smallSpacing * 0.5),
+          
           LinearProgressIndicator(
             value: progress,
-            backgroundColor: Colors.white.withValues(alpha: 0.3),
-            valueColor: AlwaysStoppedAnimation<Color>(
-              progress > 0.8 ? AppTheme.warningOrange : AppTheme.successGreen,
+            backgroundColor: Colors.white.withValues(alpha: 0.2),
+            valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+          ),
+          
+          SizedBox(height: responsive.smallSpacing * 0.5),
+          
+          Text(
+            'Time remaining: ${_getTimeRemaining(duty.endsAt)}',
+            style: (theme.textTheme.bodySmall ?? const TextStyle()).copyWith(
+              color: Colors.white70,
             ),
           ),
         ],
@@ -394,285 +411,221 @@ class _GuardStatusWidgetState extends State<GuardStatusWidget>
     );
   }
 
-  Widget _buildActionButtons(BuildContext context, bool isOnDuty,
-      ComprehensiveGuardDutyResponseModel? currentDuty) {
-    if (widget.responsive.isWearable) {
-      return _buildWearableActions(context, isOnDuty, currentDuty);
-    }
-
-    return _buildMobileActions(context, isOnDuty, currentDuty);
-  }
-
-  Widget _buildWearableActions(BuildContext context, bool isOnDuty,
-      ComprehensiveGuardDutyResponseModel? currentDuty) {
-    return Column(
-      children: [
-        LargeButton(
-          text: isOnDuty ? 'End Duty' : 'Start Duty',
-          icon: isOnDuty ? Icons.stop_circle : Icons.play_circle_filled,
-          backgroundColor: isOnDuty ? AppTheme.errorRed : AppTheme.successGreen,
-          onPressed: () => _handleDutyAction(context, isOnDuty, currentDuty),
-        ),
-        if (isOnDuty) ...[
-          widget.responsive.smallSpacer,
-          Row(
-            children: [
-              Expanded(
-                child: LargeButton(
-                  text: 'Emergency',
-                  icon: Icons.emergency,
-                  backgroundColor: AppTheme.errorRed,
-                  onPressed: () => _handleEmergency(context),
-                ),
-              ),
-              widget.responsive.smallHorizontalSpacer,
-              Expanded(
-                child: LargeButton(
-                  text: 'Map',
-                  icon: Icons.map,
-                  backgroundColor: AppTheme.primaryTeal,
-                  onPressed: () => _openMap(context),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildMobileActions(BuildContext context, bool isOnDuty,
-      ComprehensiveGuardDutyResponseModel? currentDuty) {
+  Widget _buildStatusActions(BuildContext context, ResponsiveUtils responsive, ThemeData theme) {
     return Row(
       children: [
         Expanded(
-          flex: 2,
-          child: LargeButton(
-            text: isOnDuty ? 'End Duty' : 'Start Duty',
-            icon: isOnDuty ? Icons.stop_circle : Icons.play_circle_filled,
-            backgroundColor: isOnDuty ? AppTheme.errorRed : AppTheme.successGreen,
-            onPressed: () => _handleDutyAction(context, isOnDuty, currentDuty),
+          child: BlocBuilder<LocationBloc, LocationState>(
+            builder: (context, locationState) {
+              final isTracking = locationState is LocationTrackingActive;
+              
+              return ElevatedButton.icon(
+                onPressed: () => _toggleLocationTracking(context),
+                icon: Icon(
+                  isTracking ? Icons.location_off : Icons.my_location,
+                ),
+                label: Text(
+                  isTracking ? 'Stop Tracking' : 'Start Tracking',
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isTracking 
+                      ? theme.colorScheme.error 
+                      : Colors.green,
+                  foregroundColor: Colors.white,
+                ),
+              );
+            },
           ),
         ),
-        if (isOnDuty) ...[
-          widget.responsive.smallHorizontalSpacer,
-          Expanded(
-            child: LargeButton(
-              text: 'Emergency',
-              icon: Icons.emergency,
-              backgroundColor: AppTheme.errorRed,
-              onPressed: () => _handleEmergency(context),
-            ),
+        
+        SizedBox(width: responsive.smallSpacing),
+        
+        ElevatedButton.icon(
+          onPressed: () => _checkInOut(context),
+          icon: Icon(
+            widget.currentDuty!.withinPerimeter 
+                ? Icons.check_circle 
+                : Icons.location_searching,
           ),
-        ],
+          label: Text(
+            widget.currentDuty!.withinPerimeter ? 'Checked In' : 'Check In',
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: widget.currentDuty!.withinPerimeter 
+                ? Colors.green 
+                : theme.colorScheme.secondary,
+            foregroundColor: Colors.white,
+          ),
+        ),
       ],
     );
   }
 
-  // Helper Methods
-  ComprehensiveGuardDutyResponseModel? _getCurrentDuty() {
-    if (widget.rosterState is RosterLoaded) {
-      final rosterData = (widget.rosterState as RosterLoaded).data;
-      final now = DateTime.now();
-      
-      for (final duty in rosterData) {
-        if (duty.startsAt.isBefore(now) && duty.endsAt.isAfter(now)) {
-          return duty;
-        }
-      }
+  LinearGradient _getStatusGradient(ThemeData theme) {
+    if (widget.currentDuty == null) {
+      return LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          theme.colorScheme.outline,
+          theme.colorScheme.outline.withValues(alpha: 0.8),
+        ],
+      );
     }
-    return null;
-  }
 
-  ComprehensiveGuardDutyResponseModel? _getNextDuty() {
-    if (widget.rosterState is RosterLoaded) {
-      final rosterData = (widget.rosterState as RosterLoaded).data;
-      final now = DateTime.now();
-      
-      final futureDuties = rosterData
-          .where((duty) => duty.startsAt.isAfter(now))
-          .toList()
-        ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
-      
-      return futureDuties.isNotEmpty ? futureDuties.first : null;
+    if (widget.currentDuty!.isCurrentlyOnDuty) {
+      return const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Colors.green,
+          Color(0xFF4CAF50),
+        ],
+      );
     }
-    return null;
-  }
 
-  bool _isCurrentlyOnDuty(ComprehensiveGuardDutyResponseModel duty) {
-    final now = DateTime.now();
-    return duty.startsAt.isBefore(now) && duty.endsAt.isAfter(now);
-  }
+    if (widget.currentDuty!.isDutyUpcoming) {
+      return LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Colors.orange,
+          Colors.orange.withValues(alpha: 0.8),
+        ],
+      );
+    }
 
-  LinearGradient _getStatusGradient(BuildContext context, bool isOnDuty) {
     return LinearGradient(
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
-      colors: isOnDuty
-          ? [
-              AppTheme.successGreen,
-              AppTheme.successGreen.withValues(alpha: 0.8),
-            ]
-          : [
-              Theme.of(context).colorScheme.primary,
-              Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
-            ],
+      colors: [
+        theme.colorScheme.outline,
+        theme.colorScheme.outline.withValues(alpha: 0.8),
+      ],
     );
   }
 
-  String _formatDutyTime(ComprehensiveGuardDutyResponseModel duty) {
-    final start = _formatTime(duty.startsAt);
-    final end = _formatTime(duty.endsAt);
-    final date = _formatDate(duty.startsAt);
-    return '$date • $start - $end';
+  StatusType _getStatusType() {
+    if (widget.currentDuty == null) {
+      return StatusType.offDuty;
+    }
+
+    if (widget.currentDuty!.isCurrentlyOnDuty) {
+      return StatusType.onDuty;
+    }
+
+    if (widget.currentDuty!.isDutyUpcoming) {
+      return StatusType.pending;
+    }
+
+    return StatusType.offDuty;
+  }
+
+  String _getStatusTitle() {
+    if (widget.currentDuty == null) {
+      return 'Off Duty';
+    }
+
+    if (widget.currentDuty!.isCurrentlyOnDuty) {
+      return 'On Duty';
+    }
+
+    if (widget.currentDuty!.isDutyUpcoming) {
+      return 'Upcoming Duty';
+    }
+
+    return 'Duty Completed';
   }
 
   String _formatTime(DateTime dateTime) {
     return '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 
-  String _formatDate(DateTime dateTime) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final tomorrow = today.add(const Duration(days: 1));
-    final dutyDate = DateTime(dateTime.year, dateTime.month, dateTime.day);
-
-    if (dutyDate == today) {
-      return 'Today';
-    } else if (dutyDate == tomorrow) {
-      return 'Tomorrow';
+  String _getTimeUntil(DateTime future) {
+    final difference = future.difference(DateTime.now());
+    
+    if (difference.inDays > 0) {
+      return '${difference.inDays}d ${difference.inHours % 24}h';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours}h ${difference.inMinutes % 60}m';
     } else {
-      return '${dateTime.day}/${dateTime.month}';
+      return '${difference.inMinutes}m';
     }
   }
 
-  String _formatDuration(Duration duration) {
-    if (duration.isNegative) return 'Overtime';
+  String _getTimeSince(DateTime past) {
+    final difference = DateTime.now().difference(past);
     
-    final hours = duration.inHours;
-    final minutes = duration.inMinutes % 60;
-    
-    if (hours > 0) {
-      return '${hours}h ${minutes}m';
+    if (difference.inDays > 0) {
+      return '${difference.inDays}d';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours}h';
     } else {
-      return '${minutes}m';
+      return '${difference.inMinutes}m';
     }
   }
 
-  // Action Handlers
-  void _handleDutyAction(BuildContext context, bool isOnDuty,
-      ComprehensiveGuardDutyResponseModel? currentDuty) {
-    HapticFeedback.lightImpact();
+  String _getTimeRemaining(DateTime future) {
+    final difference = future.difference(DateTime.now());
     
-    if (isOnDuty && currentDuty != null) {
-      _showEndDutyConfirmation(context, currentDuty);
+    if (difference.isNegative) {
+      return 'Duty ended';
+    }
+    
+    if (difference.inHours > 0) {
+      return '${difference.inHours}h ${difference.inMinutes % 60}m';
     } else {
-      _showStartDutyDialog(context);
+      return '${difference.inMinutes}m';
     }
   }
 
-  void _showStartDutyDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(widget.responsive.borderRadius),
+  void _toggleLocationTracking(BuildContext context) {
+    final locationBloc = context.read<LocationBloc>();
+    final locationState = locationBloc.state;
+
+    if (locationState is LocationTrackingActive) {
+      locationBloc.add(const StopLocationTracking());
+      setState(() {
+      });
+    } else if (widget.currentDuty != null) {
+      locationBloc.add(
+        StartLocationTracking(
+          guardId: widget.currentDuty!.guardId,
+          rosterUserId: widget.currentDuty!.id,
+          site: widget.currentDuty!.site,
+          isDutyActive: widget.currentDuty!.isCurrentlyOnDuty,
         ),
-        title: Row(
-          children: [
-            Icon(
-              Icons.play_circle_filled,
-              color: AppTheme.successGreen,
-              size: widget.responsive.largeIconSize,
-            ),
-            widget.responsive.smallHorizontalSpacer,
-            const Text('Start Duty'),
-          ],
-        ),
-        content: const Text(
-          'Are you ready to start your duty? This will begin location tracking '
-          'and activate perimeter monitoring.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              context.read<LocationBloc>().add(const StartLocationTrackingEvent());
-              // TODO: Start duty logic
-            },
-            style: AppTheme.responsivePrimaryButtonStyle(context),
-            child: const Text('Start Duty'),
-          ),
-        ],
-      ),
+      );
+      setState(() {
+      });
+    }
+  }
+
+  void _checkInOut(BuildContext context) {
+    if (widget.currentDuty == null) return;
+
+    // Trigger location check and update roster status
+    context.read<RosterBloc>().add(
+      RefreshRosterData(guardId: widget.guardId),
     );
-  }
 
-  void _showEndDutyConfirmation(BuildContext context,
-      ComprehensiveGuardDutyResponseModel currentDuty) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(widget.responsive.borderRadius),
-        ),
-        title: Row(
-          children: [
-            Icon(
-              Icons.stop_circle,
-              color: AppTheme.errorRed,
-              size: widget.responsive.largeIconSize,
-            ),
-            widget.responsive.smallHorizontalSpacer,
-            const Text('End Duty'),
-          ],
-        ),
-        content: const Text(
-          'Are you sure you want to end your duty? This will stop location '
-          'tracking and submit your patrol data.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              context.read<LocationBloc>().add(const StopLocationTrackingEvent());
-              // TODO: End duty logic and submit data
-            },
-            style: AppTheme.responsiveDestructiveButtonStyle(context),
-            child: const Text('End Duty'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _handleEmergency(BuildContext context) {
-    HapticFeedback.heavyImpact();
-    // TODO: Implement emergency alert
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Text('Emergency feature coming soon'),
-        backgroundColor: AppTheme.errorRed,
-      ),
-    );
-  }
-
-  void _openMap(BuildContext context) {
-    HapticFeedback.lightImpact();
-    // TODO: Navigate to map tab or screen
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Opening map...'),
+        content: Row(
+          children: [
+            const Icon(Icons.location_on, color: Colors.white),
+            const SizedBox(width: 8),
+            Text(
+              widget.currentDuty!.withinPerimeter 
+                  ? 'Location verified' 
+                  : 'Checking location...',
+            ),
+          ],
+        ),
+        backgroundColor: widget.currentDuty!.withinPerimeter 
+            ? Colors.green 
+            : Colors.orange,
+        behavior: SnackBarBehavior.floating,
       ),
     );
   }

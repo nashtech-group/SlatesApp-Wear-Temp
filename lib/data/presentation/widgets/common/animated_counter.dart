@@ -513,9 +513,9 @@ class _CircularAnimatedCounterState extends State<CircularAnimatedCounter>
               value: 1.0,
               strokeWidth: widget.strokeWidth,
               backgroundColor:
-                  widget.backgroundColor ?? theme.colorScheme.surfaceVariant,
+                  widget.backgroundColor ?? theme.colorScheme.surfaceContainerHighest,
               valueColor: AlwaysStoppedAnimation<Color>(
-                widget.backgroundColor ?? theme.colorScheme.surfaceVariant,
+                widget.backgroundColor ?? theme.colorScheme.surfaceContainerHighest,
               ),
             ),
           ),

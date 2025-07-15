@@ -9,6 +9,7 @@ class RouteConstants {
   static const String notifications = '/notifications';
   static const String notificationSettings = '/notification-settings';
   static const String notificationHistory = '/notification-history';
+  static const String notificationCenter = '/notification-center'; 
 
   // Main app routes
   static const String home = '/home';
@@ -18,9 +19,16 @@ class RouteConstants {
   
   // Guard duty routes
   static const String dutyDashboard = '/duty';
+  static const String dutyDetails = '/duty-details'; 
   static const String movements = '/movements';
   static const String perimeterChecks = '/perimeter-checks';
   static const String roster = '/roster';
+  static const String guardCalendar = '/guard-calendar'; 
+  static const String checkpoints = '/checkpoints'; 
+  static const String mapView = '/map-view'; 
+
+    //Audio routes
+    static const String audioSettings = '/audio-settings';
   
   // Management routes (admin/manager only)
   static const String userManagement = '/users';
@@ -32,7 +40,4 @@ class RouteConstants {
   static const String notFound = '/404';
   static const String unauthorized = '/unauthorized';
   static const String serverError = '/error';
-
-  //Audio routes
-    static const String audioSettings = '/audio-settings';
 }

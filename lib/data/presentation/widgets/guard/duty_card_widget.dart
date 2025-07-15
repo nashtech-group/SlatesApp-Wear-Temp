@@ -1,382 +1,234 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:slates_app_wear/core/theme/app_theme.dart';
+import 'package:slates_app_wear/data/models/roster/roster_user_model.dart';
 import 'package:slates_app_wear/core/utils/responsive_utils.dart';
-import 'package:slates_app_wear/data/models/roster/comprehensive_guard_duty_response_model.dart';
-import 'package:slates_app_wear/data/presentation/screens/widgets/common/status_indicator.dart';
 
-class DutyCardWidget extends StatefulWidget {
-  final ComprehensiveGuardDutyResponseModel duty;
-  final bool isOffline;
-  final ResponsiveUtils responsive;
+class DutyCardWidget extends StatelessWidget {
+  final RosterUserModel duty;
   final VoidCallback? onTap;
-  final bool showCheckpoints;
-  final bool showActions;
   final bool isCompact;
 
   const DutyCardWidget({
     super.key,
     required this.duty,
-    required this.isOffline,
-    required this.responsive,
     this.onTap,
-    this.showCheckpoints = true,
-    this.showActions = false,
     this.isCompact = false,
   });
 
   @override
-  State<DutyCardWidget> createState() => _DutyCardWidgetState();
-}
-
-class _DutyCardWidgetState extends State<DutyCardWidget>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _animationController;
-  late Animation<double> _scaleAnimation;
-  late Animation<double> _fadeAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _setupAnimations();
-  }
-
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
-  }
-
-  void _setupAnimations() {
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-
-    _scaleAnimation = Tween<double>(
-      begin: 1.0,
-      end: 0.95,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    ));
-
-    _fadeAnimation = Tween<double>(
-      begin: 1.0,
-      end: 0.8,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    ));
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final responsive = context.responsive;
     final theme = Theme.of(context);
-    final isCurrentDuty = _isCurrentDuty();
-    final isUpcoming = _isUpcomingDuty();
-    final isPast = _isPastDuty();
 
-    return AnimatedBuilder(
-      animation: _animationController,
-      builder: (context, child) {
-        return Transform.scale(
-          scale: _scaleAnimation.value,
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: Container(
-              margin: EdgeInsets.only(bottom: widget.responsive.smallSpacing),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: widget.onTap != null
-                      ? () {
-                          HapticFeedback.lightImpact();
-                          widget.onTap!();
-                        }
-                      : null,
-                  onTapDown: (_) => _animationController.forward(),
-                  onTapUp: (_) => _animationController.reverse(),
-                  onTapCancel: () => _animationController.reverse(),
-                  borderRadius:
-                      BorderRadius.circular(widget.responsive.borderRadius),
-                  child: Container(
-                    padding: widget.responsive.getResponsiveValue(
-                      wearable: const EdgeInsets.all(12),
-                      smallMobile: const EdgeInsets.all(14),
-                      mobile: const EdgeInsets.all(16),
-                      tablet: const EdgeInsets.all(18),
-                    ),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surface,
-                      borderRadius:
-                          BorderRadius.circular(widget.responsive.borderRadius),
-                      border: Border.all(
-                        color:
-                            _getBorderColor(isCurrentDuty, isUpcoming, isPast),
-                        width: isCurrentDuty ? 2 : 1,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: isCurrentDuty ? 8 : 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: widget.isCompact
-                        ? _buildCompactContent(
-                            context, theme, isCurrentDuty, isUpcoming, isPast)
-                        : _buildFullContent(
-                            context, theme, isCurrentDuty, isUpcoming, isPast),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(responsive.borderRadius),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(responsive.borderRadius),
+        child: Padding(
+          padding: responsive.containerPadding,
+          child: isCompact ? _buildCompactLayout(context, responsive, theme) : _buildFullLayout(context, responsive, theme),
+        ),
+      ),
     );
   }
 
-  Widget _buildCompactContent(BuildContext context, ThemeData theme,
-      bool isCurrentDuty, bool isUpcoming, bool isPast) {
+  Widget _buildCompactLayout(BuildContext context, ResponsiveUtils responsive, ThemeData theme) {
     return Row(
       children: [
-        _buildStatusIndicator(isCurrentDuty, isUpcoming, isPast),
-        widget.responsive.smallHorizontalSpacer,
+        _buildStatusIndicator(theme),
+        SizedBox(width: responsive.smallSpacing),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                widget.duty.site?.name ?? 'Unknown Site',
-                style: widget.responsive.getBodyStyle(
-                  fontWeight: FontWeight.w600,
+                duty.site.name,
+                style: (theme.textTheme.titleSmall ?? const TextStyle()).copyWith(
+                  fontWeight: FontWeight.bold,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
               Text(
-                '${_formatTime(widget.duty.startsAt)} - ${_formatTime(widget.duty.endsAt)}',
-                style: widget.responsive.getCaptionStyle(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
+                _formatDutyTime(),
+                style: theme.textTheme.bodySmall ?? const TextStyle(),
               ),
             ],
           ),
         ),
-        _buildStatusBadge(isCurrentDuty, isUpcoming, isPast),
+        _buildStatusBadge(theme, isCompact: true),
       ],
     );
   }
 
-  Widget _buildFullContent(BuildContext context, ThemeData theme,
-      bool isCurrentDuty, bool isUpcoming, bool isPast) {
+  Widget _buildFullLayout(BuildContext context, ResponsiveUtils responsive, ThemeData theme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildHeader(context, theme, isCurrentDuty, isUpcoming, isPast),
-        widget.responsive.smallSpacer,
-        _buildTimeInfo(context, theme),
-        if (widget.showCheckpoints) ...[
-          widget.responsive.smallSpacer,
-          _buildCheckpointInfo(context, theme),
-        ],
-        widget.responsive.smallSpacer,
-        _buildGuardInfo(context, theme),
-        if (widget.showActions && isCurrentDuty) ...[
-          widget.responsive.mediumSpacer,
-          _buildActions(context, theme),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildHeader(BuildContext context, ThemeData theme, bool isCurrentDuty,
-      bool isUpcoming, bool isPast) {
-    return Row(
-      children: [
-        _buildStatusIndicator(isCurrentDuty, isUpcoming, isPast),
-        widget.responsive.smallHorizontalSpacer,
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                widget.duty.site?.name ?? 'Unknown Site',
-                style: widget.responsive.getTitleStyle(
+        // Header with site name and status
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                duty.site.name,
+                style: (theme.textTheme.titleMedium ?? const TextStyle()).copyWith(
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              if (widget.duty.site?.physicalAddress != null)
-                Text(
-                  widget.duty.site!.physicalAddress!,
-                  style: widget.responsive.getCaptionStyle(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-            ],
-          ),
+            ),
+            _buildStatusBadge(theme),
+          ],
         ),
-        _buildStatusBadge(isCurrentDuty, isUpcoming, isPast),
+
+        SizedBox(height: responsive.smallSpacing),
+
+        // Duty time and date
+        Row(
+          children: [
+            Icon(
+              Icons.schedule,
+              size: responsive.iconSize * 0.8,
+              color: theme.colorScheme.primary,
+            ),
+            SizedBox(width: responsive.smallSpacing),
+            Expanded(
+              child: Text(
+                _formatDutyTime(),
+                style: theme.textTheme.bodyMedium ?? const TextStyle(),
+              ),
+            ),
+          ],
+        ),
+
+        SizedBox(height: responsive.smallSpacing),
+
+        // Site location
+        Row(
+          children: [
+            Icon(
+              Icons.location_on,
+              size: responsive.iconSize * 0.8,
+              color: theme.colorScheme.secondary,
+            ),
+            SizedBox(width: responsive.smallSpacing),
+            Expanded(
+              child: Text(
+                duty.site.physicalAddress,
+                style: theme.textTheme.bodySmall ?? const TextStyle(),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+
+        if (!isCompact) ...[
+          SizedBox(height: responsive.smallSpacing),
+          _buildDutyDetails(context, responsive, theme),
+        ],
       ],
     );
   }
 
-  Widget _buildStatusIndicator(
-      bool isCurrentDuty, bool isUpcoming, bool isPast) {
-    Color color;
-    IconData icon;
-
-    if (isCurrentDuty) {
-      color = AppTheme.successGreen;
-      icon = Icons.play_circle_filled;
-    } else if (isUpcoming) {
-      color = AppTheme.warningOrange;
-      icon = Icons.schedule;
-    } else {
-      color = AppTheme.primaryTeal;
-      icon = Icons.check_circle;
-    }
-
+  Widget _buildStatusIndicator(ThemeData theme) {
     return Container(
-      width: widget.responsive.getResponsiveValue(
-        wearable: 8.0,
-        smallMobile: 10.0,
-        mobile: 12.0,
-        tablet: 14.0,
-      ),
-      height: widget.responsive.getResponsiveValue(
-        wearable: 40.0,
-        smallMobile: 50.0,
-        mobile: 60.0,
-        tablet: 70.0,
-      ),
+      width: 12,
+      height: 12,
       decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(widget.responsive.borderRadius / 2),
+        shape: BoxShape.circle,
+        color: _getStatusColor(theme),
       ),
     );
   }
 
-  Widget _buildStatusBadge(bool isCurrentDuty, bool isUpcoming, bool isPast) {
-    String text;
-    Color color;
-
-    if (isCurrentDuty) {
-      text = 'ACTIVE';
-      color = AppTheme.successGreen;
-    } else if (isUpcoming) {
-      text = 'UPCOMING';
-      color = AppTheme.warningOrange;
-    } else {
-      text = widget.duty.statusLabel ?? 'COMPLETED';
-      color = AppTheme.primaryTeal;
-    }
+  Widget _buildStatusBadge(ThemeData theme, {bool isCompact = false}) {
+    final statusColor = _getStatusColor(theme);
+    final textSize = isCompact ? theme.textTheme.labelSmall : theme.textTheme.labelMedium;
 
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: widget.responsive.smallSpacing,
-        vertical: widget.responsive.smallSpacing / 2,
+        horizontal: isCompact ? 6 : 8,
+        vertical: isCompact ? 2 : 4,
       ),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(widget.responsive.borderRadius / 2),
+        color: statusColor.withValues(alpha: 0.1),
+        border: Border.all(color: statusColor),
+        borderRadius: BorderRadius.circular(isCompact ? 8 : 12),
       ),
       child: Text(
-        text,
-        style: widget.responsive.getCaptionStyle(
-          color: color,
+        duty.statusLabel,
+        style: (textSize ?? const TextStyle()).copyWith(
+          color: statusColor,
           fontWeight: FontWeight.w600,
         ),
       ),
     );
   }
 
-  Widget _buildTimeInfo(BuildContext context, ThemeData theme) {
-    final duration = widget.duty.endsAt.difference(widget.duty.startsAt);
-
-    return Container(
-      padding: widget.responsive.getResponsiveValue(
-        wearable: const EdgeInsets.all(8),
-        smallMobile: const EdgeInsets.all(10),
-        mobile: const EdgeInsets.all(12),
-        tablet: const EdgeInsets.all(14),
-      ),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(widget.responsive.borderRadius / 2),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _buildTimeDetail(
-              context,
-              'Start',
-              _formatTime(widget.duty.startsAt),
-              Icons.play_circle_outline,
-              theme,
-            ),
+  Widget _buildDutyDetails(BuildContext context, ResponsiveUtils responsive, ThemeData theme) {
+    return Row(
+      children: [
+        // Duration
+        Expanded(
+          child: _buildDetailItem(
+            context,
+            responsive,
+            theme,
+            Icons.timer,
+            'Duration',
+            _formatDuration(),
           ),
-          Container(
-            width: 1,
-            height: 30,
-            color: theme.colorScheme.outline.withValues(alpha: 0.3),
-            margin: EdgeInsets.symmetric(
-                horizontal: widget.responsive.smallSpacing),
+        ),
+        
+        // Time requirement type
+        Expanded(
+          child: _buildDetailItem(
+            context,
+            responsive,
+            theme,
+            Icons.work,
+            'Type',
+            duty.timeRequirement.guardPosition.securityGuard,
           ),
-          Expanded(
-            child: _buildTimeDetail(
-              context,
-              'End',
-              _formatTime(widget.duty.endsAt),
-              Icons.stop_circle_outlined,
-              theme,
-            ),
-          ),
-          Container(
-            width: 1,
-            height: 30,
-            color: theme.colorScheme.outline.withValues(alpha: 0.3),
-            margin: EdgeInsets.symmetric(
-                horizontal: widget.responsive.smallSpacing),
-          ),
-          Expanded(
-            child: _buildTimeDetail(
-              context,
-              'Duration',
-              _formatDuration(duration),
-              Icons.timer_outlined,
-              theme,
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  Widget _buildTimeDetail(BuildContext context, String label, String value,
-      IconData icon, ThemeData theme) {
+  Widget _buildDetailItem(
+    BuildContext context,
+    ResponsiveUtils responsive,
+    ThemeData theme,
+    IconData icon,
+    String label,
+    String value,
+  ) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(
-          icon,
-          size: widget.responsive.iconSize,
-          color: theme.colorScheme.primary,
+        Row(
+          children: [
+            Icon(
+              icon,
+              size: responsive.iconSize * 0.6,
+              color: theme.colorScheme.outline,
+            ),
+            SizedBox(width: responsive.smallSpacing * 0.5),
+            Text(
+              label,
+              style: (theme.textTheme.labelSmall ?? const TextStyle()).copyWith(
+                color: theme.colorScheme.outline,
+              ),
+            ),
+          ],
         ),
-        widget.responsive.smallSpacer,
-        Text(
-          label,
-          style: widget.responsive.getCaptionStyle(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
+        SizedBox(height: responsive.smallSpacing * 0.25),
         Text(
           value,
-          style: widget.responsive.getCaptionStyle(
+          style: (theme.textTheme.bodySmall ?? const TextStyle()).copyWith(
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -384,229 +236,69 @@ class _DutyCardWidgetState extends State<DutyCardWidget>
     );
   }
 
-  Widget _buildCheckpointInfo(BuildContext context, ThemeData theme) {
-    final checkpointCount = widget.duty.site?.perimeters
-            ?.expand((perimeter) => perimeter.checkPoints ?? [])
-            .length ??
-        0;
-
-    return Row(
-      children: [
-        Icon(
-          Icons.location_on,
-          size: widget.responsive.iconSize,
-          color: theme.colorScheme.primary,
-        ),
-        widget.responsive.smallHorizontalSpacer,
-        Expanded(
-          child: Text(
-            '$checkpointCount Checkpoints',
-            style: widget.responsive.getBodyStyle(
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-        if (checkpointCount > 0)
-          Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: widget.responsive.smallSpacing,
-              vertical: widget.responsive.smallSpacing / 2,
-            ),
-            decoration: BoxDecoration(
-              color: AppTheme.primaryTeal.withValues(alpha: 0.1),
-              borderRadius:
-                  BorderRadius.circular(widget.responsive.borderRadius / 3),
-            ),
-            child: Text(
-              _getGuardType(),
-              style: widget.responsive.getCaptionStyle(
-                color: AppTheme.primaryTeal,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildGuardInfo(BuildContext context, ThemeData theme) {
-    return Row(
-      children: [
-        Icon(
-          Icons.security,
-          size: widget.responsive.iconSize,
-          color: theme.colorScheme.onSurfaceVariant,
-        ),
-        widget.responsive.smallHorizontalSpacer,
-        Expanded(
-          child: Text(
-            'Guard Position: ${_getGuardType()}',
-            style: widget.responsive.getCaptionStyle(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ),
-        if (widget.isOffline)
-          CompactStatusIndicator(
-            isOnline: false,
-            size: widget.responsive.iconSize,
-          ),
-      ],
-    );
-  }
-
-  Widget _buildActions(BuildContext context, ThemeData theme) {
-    return Row(
-      children: [
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: () => _handleStartDuty(),
-            icon: Icon(
-              Icons.play_circle,
-              size: widget.responsive.iconSize,
-            ),
-            label: Text(
-              'Start',
-              style: widget.responsive.getCaptionStyle(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppTheme.successGreen,
-              side: const BorderSide(color: AppTheme.successGreen),
-            ),
-          ),
-        ),
-        widget.responsive.smallHorizontalSpacer,
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: () => _handleViewMap(),
-            icon: Icon(
-              Icons.map,
-              size: widget.responsive.iconSize,
-            ),
-            label: Text(
-              'Map',
-              style: widget.responsive.getCaptionStyle(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // Helper Methods
-  Color _getBorderColor(bool isCurrentDuty, bool isUpcoming, bool isPast) {
-    if (isCurrentDuty) {
-      return AppTheme.successGreen;
-    } else if (isUpcoming) {
-      return AppTheme.warningOrange;
-    } else {
-      return Theme.of(context).colorScheme.outline.withValues(alpha: 0.3);
+  Color _getStatusColor(ThemeData theme) {
+    switch (duty.status) {
+      case 1: // Present
+        return Colors.green;
+      case 0: // Absent
+        return Colors.red;
+      case -1: // Pending
+        return Colors.orange;
+      case 2: // Present but left early
+        return Colors.yellow.shade700;
+      case -2: // Expired
+        return Colors.grey;
+      case 3: // Present but late
+        return Colors.blue;
+      case 4: // Present but late and left early
+        return Colors.purple;
+      default:
+        return theme.colorScheme.outline;
     }
   }
 
-  bool _isCurrentDuty() {
-    final now = DateTime.now();
-    return widget.duty.startsAt.isBefore(now) &&
-        widget.duty.endsAt.isAfter(now);
-  }
-
-  bool _isUpcomingDuty() {
-    final now = DateTime.now();
-    return widget.duty.startsAt.isAfter(now);
-  }
-
-  bool _isPastDuty() {
-    final now = DateTime.now();
-    return widget.duty.endsAt.isBefore(now);
+  String _formatDutyTime() {
+    final startTime = _formatTime(duty.startsAt);
+    final endTime = _formatTime(duty.endsAt);
+    final date = _formatDate(duty.initialShiftDate);
+    
+    return '$date • $startTime - $endTime';
   }
 
   String _formatTime(DateTime dateTime) {
     return '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 
-  String _formatDuration(Duration duration) {
+  String _formatDate(DateTime date) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    
+    return '${date.day} ${months[date.month - 1]}';
+  }
+
+  String _formatDuration() {
+    final duration = duty.endsAt.difference(duty.startsAt);
     final hours = duration.inHours;
     final minutes = duration.inMinutes % 60;
-
-    if (hours > 0) {
-      return '${hours}h ${minutes}m';
+    
+    if (minutes == 0) {
+      return '${hours}h';
     } else {
-      return '${minutes}m';
+      return '${hours}h ${minutes}m';
     }
   }
-
-  String _getGuardType() {
-    return widget.duty.timeRequirement?.guardPosition?.securityGuard
-            ?.toUpperCase() ??
-        'UNKNOWN';
-  }
-
-  void _handleStartDuty() {
-    HapticFeedback.lightImpact();
-    // TODO: Implement start duty logic
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Start duty functionality coming soon'),
-      ),
-    );
-  }
-
-  void _handleViewMap() {
-    HapticFeedback.lightImpact();
-    // TODO: Navigate to map view
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Map view functionality coming soon'),
-      ),
-    );
-  }
 }
 
-/// Compact duty card for list views
-class CompactDutyCard extends StatelessWidget {
-  final ComprehensiveGuardDutyResponseModel duty;
-  final bool isOffline;
+// Compact duty list item for use in lists
+class DutyListTile extends StatelessWidget {
+  final RosterUserModel duty;
   final VoidCallback? onTap;
 
-  const CompactDutyCard({
+  const DutyListTile({
     super.key,
     required this.duty,
-    required this.isOffline,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final responsive = context.responsive;
-
-    return DutyCardWidget(
-      duty: duty,
-      isOffline: isOffline,
-      responsive: responsive,
-      onTap: onTap,
-      isCompact: true,
-      showCheckpoints: false,
-      showActions: false,
-    );
-  }
-}
-
-/// Duty summary card with minimal information
-class DutySummaryCard extends StatelessWidget {
-  final ComprehensiveGuardDutyResponseModel duty;
-  final bool showSite;
-  final bool showTime;
-  final VoidCallback? onTap;
-
-  const DutySummaryCard({
-    super.key,
-    required this.duty,
-    this.showSite = true,
-    this.showTime = true,
     this.onTap,
   });
 
@@ -615,55 +307,58 @@ class DutySummaryCard extends StatelessWidget {
     final responsive = context.responsive;
     final theme = Theme.of(context);
 
-    return Container(
-      padding: responsive.getResponsiveValue(
-        wearable: const EdgeInsets.all(8),
-        smallMobile: const EdgeInsets.all(10),
-        mobile: const EdgeInsets.all(12),
-        tablet: const EdgeInsets.all(14),
+    return ListTile(
+      onTap: onTap,
+      leading: CircleAvatar(
+        backgroundColor: _getStatusColor(theme),
+        radius: responsive.iconSize * 0.4,
+        child: Text(
+          '${duty.initialShiftDate.day}',
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(responsive.borderRadius / 2),
+      title: Text(
+        duty.site.name,
+        style: (theme.textTheme.titleSmall ?? const TextStyle()).copyWith(
+          fontWeight: FontWeight.w600,
+        ),
       ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(responsive.borderRadius / 2),
-        child: Row(
-          children: [
-            Icon(
-              Icons.work_outline,
-              size: responsive.iconSize,
-              color: theme.colorScheme.primary,
-            ),
-            responsive.smallHorizontalSpacer,
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (showSite)
-                    Text(
-                      duty.site?.name ?? 'Unknown Site',
-                      style: responsive.getCaptionStyle(
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  if (showTime)
-                    Text(
-                      '${_formatTime(duty.startsAt)} - ${_formatTime(duty.endsAt)}',
-                      style: responsive.getCaptionStyle(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ],
+      subtitle: Text(
+        '${_formatTime(duty.startsAt)} - ${_formatTime(duty.endsAt)}',
+        style: theme.textTheme.bodySmall ?? const TextStyle(),
+      ),
+      trailing: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: _getStatusColor(theme).withValues(alpha: 0.1),
+          border: Border.all(color: _getStatusColor(theme)),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          duty.statusLabel,
+          style: (theme.textTheme.labelSmall ?? const TextStyle()).copyWith(
+            color: _getStatusColor(theme),
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
     );
+  }
+
+  Color _getStatusColor(ThemeData theme) {
+    switch (duty.status) {
+      case 1: return Colors.green;
+      case 0: return Colors.red;
+      case -1: return Colors.orange;
+      case 2: return Colors.yellow.shade700;
+      case -2: return Colors.grey;
+      case 3: return Colors.blue;
+      case 4: return Colors.purple;
+      default: return theme.colorScheme.outline;
+    }
   }
 
   String _formatTime(DateTime dateTime) {
