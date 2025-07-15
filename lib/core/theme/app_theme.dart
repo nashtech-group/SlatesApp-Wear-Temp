@@ -1,6 +1,6 @@
-// lib/core/theme/app_theme.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:slates_app_wear/core/utils/responsive_utils.dart';
 
 class AppTheme {
@@ -54,6 +54,11 @@ class AppTheme {
       // Color scheme
       colorScheme: isDark ? _darkColorScheme : _lightColorScheme,
 
+      // Google Fonts Integration
+      textTheme: GoogleFonts.interTextTheme(
+        _buildResponsiveTextTheme(responsive, isDark),
+      ),
+
       // App bar theme with responsive sizing
       appBarTheme: AppBarTheme(
         backgroundColor: isDark ? const Color(0xFF1E1E1E) : primaryTeal,
@@ -61,10 +66,12 @@ class AppTheme {
         elevation: 0,
         centerTitle: true,
         systemOverlayStyle: SystemUiOverlayStyle.light,
-        titleTextStyle: responsive.getTitleStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.w600,
-        )?.copyWith(fontFamily: 'Inter'),
+        titleTextStyle: GoogleFonts.inter(
+          textStyle: responsive.getTitleStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
 
       // Responsive elevated button theme
@@ -77,9 +84,11 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(responsive.borderRadius),
           ),
-          textStyle: responsive.getBodyStyle(
-            fontWeight: FontWeight.w600,
-          )?.copyWith(fontFamily: 'Inter'),
+          textStyle: GoogleFonts.inter(
+            textStyle: responsive.getBodyStyle(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           padding: responsive.buttonPadding,
         ),
       ),
@@ -88,9 +97,11 @@ class AppTheme {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: isDark ? primaryTealLight : primaryTeal,
-          textStyle: responsive.getCaptionStyle(
-            fontWeight: FontWeight.w500,
-          )?.copyWith(fontFamily: 'Inter'),
+          textStyle: GoogleFonts.inter(
+            textStyle: responsive.getCaptionStyle(
+              fontWeight: FontWeight.w500,
+            ),
+          ),
           padding: responsive.buttonPadding * 0.75,
         ),
       ),
@@ -103,9 +114,11 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(responsive.borderRadius),
           ),
-          textStyle: responsive.getBodyStyle(
-            fontWeight: FontWeight.w600,
-          )?.copyWith(fontFamily: 'Inter'),
+          textStyle: GoogleFonts.inter(
+            textStyle: responsive.getBodyStyle(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           padding: responsive.buttonPadding,
         ),
       ),
@@ -141,12 +154,16 @@ class AppTheme {
           ),
         ),
         contentPadding: responsive.inputPadding,
-        labelStyle: responsive.getBodyStyle(
-          color: isDark ? const Color(0xFFB0B0B0) : mediumGrey,
-        )?.copyWith(fontFamily: 'Inter'),
-        hintStyle: responsive.getBodyStyle(
-          color: isDark ? const Color(0xFFB0B0B0) : mediumGrey,
-        )?.copyWith(fontFamily: 'Inter'),
+        labelStyle: GoogleFonts.inter(
+          textStyle: responsive.getBodyStyle(
+            color: isDark ? const Color(0xFFB0B0B0) : mediumGrey,
+          ),
+        ),
+        hintStyle: GoogleFonts.inter(
+          textStyle: responsive.getBodyStyle(
+            color: isDark ? const Color(0xFFB0B0B0) : mediumGrey,
+          ),
+        ),
       ),
 
       // Responsive card theme
@@ -158,9 +175,6 @@ class AppTheme {
         ),
         color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
       ),
-
-      // Responsive text theme
-      textTheme: _buildResponsiveTextTheme(responsive, isDark),
 
       // Responsive checkbox theme
       checkboxTheme: CheckboxThemeData(
@@ -223,7 +237,7 @@ class AppTheme {
     );
   }
 
-  /// Build responsive text theme
+  /// Build responsive text theme with Google Fonts
   static TextTheme _buildResponsiveTextTheme(ResponsiveUtils responsive, bool isDark) {
     final textColor = isDark ? Colors.white : darkGrey;
     final secondaryTextColor = isDark ? const Color(0xFFB0B0B0) : mediumGrey;
@@ -233,73 +247,73 @@ class AppTheme {
         color: textColor,
         fontWeight: FontWeight.bold,
         baseFontSize: 32,
-      )?.copyWith(fontFamily: 'Inter'),
+      ),
       
       headlineMedium: responsive.getHeadlineStyle(
         color: textColor,
         fontWeight: FontWeight.bold,
         baseFontSize: 28,
-      )?.copyWith(fontFamily: 'Inter'),
+      ),
       
       headlineSmall: responsive.getHeadlineStyle(
         color: textColor,
         fontWeight: FontWeight.w600,
         baseFontSize: 24,
-      )?.copyWith(fontFamily: 'Inter'),
+      ),
       
       titleLarge: responsive.getTitleStyle(
         color: textColor,
         fontWeight: FontWeight.w600,
         baseFontSize: 22,
-      )?.copyWith(fontFamily: 'Inter'),
+      ),
       
       titleMedium: responsive.getTitleStyle(
         color: textColor,
         fontWeight: FontWeight.w500,
         baseFontSize: 16,
-      )?.copyWith(fontFamily: 'Inter'),
+      ),
       
       titleSmall: responsive.getTitleStyle(
         color: secondaryTextColor,
         fontWeight: FontWeight.w500,
         baseFontSize: 14,
-      )?.copyWith(fontFamily: 'Inter'),
+      ),
       
       bodyLarge: responsive.getBodyStyle(
         color: textColor,
         fontWeight: FontWeight.normal,
         baseFontSize: 16,
-      )?.copyWith(fontFamily: 'Inter'),
+      ),
       
       bodyMedium: responsive.getBodyStyle(
         color: textColor,
         fontWeight: FontWeight.normal,
         baseFontSize: 14,
-      )?.copyWith(fontFamily: 'Inter'),
+      ),
       
       bodySmall: responsive.getBodyStyle(
         color: secondaryTextColor,
         fontWeight: FontWeight.normal,
         baseFontSize: 12,
-      )?.copyWith(fontFamily: 'Inter'),
+      ),
       
       labelLarge: responsive.getCaptionStyle(
         color: textColor,
         fontWeight: FontWeight.w500,
         baseFontSize: 14,
-      )?.copyWith(fontFamily: 'Inter'),
+      ),
       
       labelMedium: responsive.getCaptionStyle(
         color: secondaryTextColor,
         fontWeight: FontWeight.w500,
         baseFontSize: 12,
-      )?.copyWith(fontFamily: 'Inter'),
+      ),
       
       labelSmall: responsive.getCaptionStyle(
         color: secondaryTextColor,
         fontWeight: FontWeight.w500,
         baseFontSize: 11,
-      )?.copyWith(fontFamily: 'Inter'),
+      ),
     );
   }
 
@@ -435,7 +449,7 @@ class AppTheme {
     return theme.progressIndicatorTheme.color ?? theme.colorScheme.primary;
   }
 
-  /// Get responsive button style
+  /// Get responsive button style with Google Fonts
   static ButtonStyle getResponsiveButtonStyle(
     BuildContext context, {
     Color? backgroundColor,
@@ -462,7 +476,9 @@ class AppTheme {
       elevation: 2,
       shadowColor: theme.shadowColor.withValues(alpha: 0.2),
       padding: padding ?? responsive.buttonPadding,
-      textStyle: responsive.getBodyStyle(fontWeight: FontWeight.w600),
+      textStyle: GoogleFonts.inter(
+        textStyle: responsive.getBodyStyle(fontWeight: FontWeight.w600),
+      ),
     );
   }
 
@@ -499,7 +515,7 @@ class AppTheme {
   // RESPONSIVE COMPONENT HELPERS
   // ====================
 
-  /// Get responsive input decoration
+  /// Get responsive input decoration with Google Fonts
   static InputDecoration getResponsiveInputDecoration(
     BuildContext context, {
     String? labelText,
@@ -531,8 +547,8 @@ class AppTheme {
             BorderSide(color: theme.colorScheme.primary, width: 2),
       ),
       contentPadding: responsive.inputPadding,
-      labelStyle: responsive.getBodyStyle(),
-      hintStyle: responsive.getBodyStyle(),
+      labelStyle: GoogleFonts.inter(textStyle: responsive.getBodyStyle()),
+      hintStyle: GoogleFonts.inter(textStyle: responsive.getBodyStyle()),
     );
   }
 
@@ -566,6 +582,23 @@ class AppTheme {
   /// Get responsive form padding
   static EdgeInsets getResponsiveFormPadding(BuildContext context) {
     return context.responsive.formPadding;
+  }
+
+  /// Helper method to get Google Fonts Inter text style
+  static TextStyle? getInterTextStyle({
+    double? fontSize,
+    FontWeight? fontWeight,
+    Color? color,
+    double? letterSpacing,
+    double? height,
+  }) {
+    return GoogleFonts.inter(
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      color: color,
+      letterSpacing: letterSpacing,
+      height: height,
+    );
   }
 }
 

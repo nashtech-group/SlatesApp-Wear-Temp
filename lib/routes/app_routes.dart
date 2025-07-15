@@ -10,6 +10,7 @@ import 'package:slates_app_wear/data/presentation/screens/auth/login_screen.dart
 import 'package:slates_app_wear/data/presentation/screens/error_screen.dart';
 import 'package:slates_app_wear/data/presentation/screens/home_screen.dart';
 import 'package:slates_app_wear/data/presentation/screens/notifications/notification_center_page.dart';
+import 'package:slates_app_wear/data/presentation/screens/settings/audio_settings_screen.dart';
 import 'package:slates_app_wear/data/presentation/screens/splash_screen.dart';
 
 class AppRoutes {
@@ -52,7 +53,13 @@ class AppRoutes {
       //     builder: (_) => const NotificationSettingsPage(),
       //     settings: settings,
       //   );
-
+      
+       case RouteConstants.audioSettings:
+        return MaterialPageRoute(
+          builder: (_) => const AudioSettingsScreen(),
+          settings: settings,
+        );
+      
       case RouteConstants.unauthorized:
         return MaterialPageRoute(
           builder: (context) => ErrorScreen(

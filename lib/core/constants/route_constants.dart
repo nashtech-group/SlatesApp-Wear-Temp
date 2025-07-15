@@ -32,4 +32,7 @@ class RouteConstants {
   static const String notFound = '/404';
   static const String unauthorized = '/unauthorized';
   static const String serverError = '/error';
+
+  //Audio routes
+    static const String audioSettings = '/audio-settings';
 }
